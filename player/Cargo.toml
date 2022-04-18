@@ -1,0 +1,12 @@
+[package]
+name = "player"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cpal = { version = "0.13.5" }
+symphonia = { version = "0.5.0", features = ["aac", "mp3", "isomp4"] }
+flume = "0.10.12"
+tokio = "1.17.0"
