@@ -11,7 +11,8 @@ reqwest = { version = "0.11.10", features = [
     "gzip",
     "deflate",
     "cookies",
-] }
+    "rustls",
+], default-features = false }
 # sha1 = "0.10.1"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
