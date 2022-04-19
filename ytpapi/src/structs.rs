@@ -65,7 +65,6 @@ pub struct Video {
     pub author: String,
     pub album: String,
     pub video_id: String,
-    pub thumbnail: Vec<Thumbnail>,
     pub duration: String,
 }
 
@@ -78,30 +77,17 @@ impl Display for Video {
         )
     }
 }
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Thumbnail {
-    pub url: String,
-    pub width: u32,
-    pub height: u32,
-}
-
 fn get_video(value: &Value) -> Result<Video, Error> {
     let value = extract_meaninfull(value, "musicResponsiveListItemRenderer")?;
     let texts: Vec<String> = as_array(extract_meaninfull(value, "flexColumns")?)?
         .iter()
         .map(get_text_from_flexcolumn)
         .collect();
-    let k = extract_meaninfull(
-        value,
-        "thumbnail.musicThumbnailRenderer.thumbnail.thumbnails",
-    )?;
     Ok(Video {
         title: texts[0].to_owned(),
         author: texts[1].to_owned(),
         album: texts[2].to_owned(),
         video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
-        thumbnail: serde_json::from_value(k.clone()).map_err(Error::SerdeJson)?,
         duration: as_str(extract_meaninfull(
             value,
             "fixedColumns.0.musicResponsiveListItemFixedColumnRenderer.text.runs.0.text",
@@ -136,7 +122,6 @@ pub struct Playlist {
     pub name: String,
     pub subtitle: String,
     pub browse_id: String,
-    pub thumbnail: String,
 }
 
 pub fn get_playlist(value: &Value) -> Result<Playlist, Error> {
@@ -155,14 +140,9 @@ pub fn get_playlist(value: &Value) -> Result<Playlist, Error> {
         "navigationEndpoint.browseEndpoint.browseId",
     )?)?;
     let name = as_str(extract_meaninfull(title_div, "text")?)?;
-    let thumbnail = as_str(extract_meaninfull(
-        music_two_item_renderer,
-        "thumbnailRenderer.musicThumbnailRenderer.thumbnail.thumbnails.0.url",
-    )?)?;
     Ok(Playlist {
         name,
         subtitle,
         browse_id,
-        thumbnail,
     })
 }

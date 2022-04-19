@@ -1,17 +1,20 @@
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{atomic::AtomicBool, Arc, Mutex},
+    time::Duration,
 };
 
 use flume::{Receiver, Sender};
 use once_cell::sync::Lazy;
 use rustube::{Error, Id};
+use tokio::time::sleep;
 use ytpapi::Video;
 
 use crate::SoundAction;
 
 pub static IN_DOWNLOAD: Lazy<Mutex<Vec<ytpapi::Video>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static DOWNLOAD_MORE: AtomicBool = AtomicBool::new(true);
 
 async fn handle_download(id: &str) -> Result<PathBuf, Error> {
     rustube::Video::from_id(Id::from_str(id)?.into_owned())
@@ -32,47 +35,54 @@ pub fn downloader(s: Arc<Sender<SoundAction>>) -> Arc<Sender<Video>> {
         let rx = rx.clone();
         let s = s.clone();
         tokio::task::spawn(async move {
-            while let Ok(id) = rx.recv_async().await {
-                // TODO(#1): handle errors
-                let download_path_mp4 =
-                    PathBuf::from_str(&format!("data/downloads/{}.mp4", &id.video_id)).unwrap();
-                let download_path_json =
-                    PathBuf::from_str(&format!("data/downloads/{}.json", &id.video_id)).unwrap();
-                if download_path_json.exists() {
-                    s.send(SoundAction::PlayVideo(id)).unwrap();
+            loop {
+                if !DOWNLOAD_MORE.load(std::sync::atomic::Ordering::SeqCst) {
+                    sleep(Duration::from_millis(200)).await;
                     continue;
                 }
-                if download_path_mp4.exists() {
-                    std::fs::remove_file(&download_path_mp4).unwrap();
-                }
-                {
-                    IN_DOWNLOAD.lock().unwrap().push(id.clone());
-                }
-                match handle_download(&id.video_id).await {
-                    Ok(_) => {
-                        std::fs::write(download_path_json, serde_json::to_string(&id).unwrap())
+                if let Ok(id) = rx.recv_async().await {
+                    // TODO(#1): handle errors
+                    let download_path_mp4 =
+                        PathBuf::from_str(&format!("data/downloads/{}.mp4", &id.video_id)).unwrap();
+                    let download_path_json =
+                        PathBuf::from_str(&format!("data/downloads/{}.json", &id.video_id))
                             .unwrap();
-
-                        {
-                            IN_DOWNLOAD
-                                .lock()
-                                .unwrap()
-                                .retain(|x| x.video_id != id.video_id);
-                        }
+                    if download_path_json.exists() {
                         s.send(SoundAction::PlayVideo(id)).unwrap();
+                        continue;
                     }
-                    Err(_) => {
-                        if download_path_mp4.exists() {
-                            std::fs::remove_file(download_path_mp4).unwrap();
-                        }
+                    if download_path_mp4.exists() {
+                        std::fs::remove_file(&download_path_mp4).unwrap();
+                    }
+                    {
+                        IN_DOWNLOAD.lock().unwrap().push(id.clone());
+                    }
+                    match handle_download(&id.video_id).await {
+                        Ok(_) => {
+                            std::fs::write(download_path_json, serde_json::to_string(&id).unwrap())
+                                .unwrap();
 
-                        {
-                            IN_DOWNLOAD
-                                .lock()
-                                .unwrap()
-                                .retain(|x| x.video_id != id.video_id);
+                            {
+                                IN_DOWNLOAD
+                                    .lock()
+                                    .unwrap()
+                                    .retain(|x| x.video_id != id.video_id);
+                            }
+                            s.send(SoundAction::PlayVideo(id)).unwrap();
                         }
-                        // TODO(#1): handle errors
+                        Err(_) => {
+                            if download_path_mp4.exists() {
+                                std::fs::remove_file(download_path_mp4).unwrap();
+                            }
+
+                            {
+                                IN_DOWNLOAD
+                                    .lock()
+                                    .unwrap()
+                                    .retain(|x| x.video_id != id.video_id);
+                            }
+                            // TODO(#1): handle errors
+                        }
                     }
                 }
             }
