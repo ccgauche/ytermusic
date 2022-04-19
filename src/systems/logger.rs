@@ -21,7 +21,6 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
                 buffer.push('\n');
             }
             file.write_all(buffer.as_bytes()).unwrap();
-            std::fs::write("log.txt", buffer.as_bytes()).unwrap();
         }
     });
     tx

@@ -131,7 +131,7 @@ pub fn videos_from_playlist(string: &str) -> Result<Vec<Video>, Error> {
     as_array(out)?.iter().map(get_video).collect()
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Playlist {
     pub name: String,
     pub subtitle: String,

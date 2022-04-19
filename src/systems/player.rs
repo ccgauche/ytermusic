@@ -1,17 +1,17 @@
-use std::{collections::VecDeque, path::PathBuf, str::FromStr, time::Duration};
+use std::{collections::VecDeque, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 
 use flume::Sender;
 use player::{Guard, Player};
 use ytpapi::Video;
 
 use crate::{
-    terminal::{App, MusicStatus, UIMusic},
+    terminal::{App, AppMessage, MusicStatus, UIMusic},
     SoundAction,
 };
 
 use super::download::IN_DOWNLOAD;
 
-pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
+pub fn player_system(updater: Arc<Sender<AppMessage>>) -> Sender<SoundAction> {
     let (tx, rx) = flume::unbounded::<SoundAction>();
     std::thread::spawn(move || {
         let (mut sink, guard) = Player::new();
@@ -20,10 +20,10 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
         let mut current: Option<Video> = None;
         loop {
             updater
-                .send(App::new(
+                .send(AppMessage::UpdateApp(App::new(
                     &sink,
                     generate_music(&queue, &previous, &current, &sink),
-                ))
+                )))
                 .unwrap();
             std::thread::sleep(Duration::from_millis(100));
             while let Ok(e) = rx.try_recv() {
@@ -50,13 +50,6 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
                     } else {
                         if let Some(e) = current.take() {
                             previous.push(e);
-
-                            updater
-                                .send(App::new(
-                                    &sink,
-                                    generate_music(&queue, &previous, &current, &sink),
-                                ))
-                                .unwrap();
                         }
                         while let Ok(e) = rx.try_recv() {
                             apply_sound_action(
@@ -72,6 +65,13 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
                             }
                         }
                         std::thread::sleep(Duration::from_millis(200));
+
+                        updater
+                            .send(AppMessage::UpdateApp(App::new(
+                                &sink,
+                                generate_music(&queue, &previous, &current, &sink),
+                            )))
+                            .unwrap();
                     }
                 }
             }
