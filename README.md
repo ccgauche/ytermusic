@@ -41,7 +41,7 @@ It's aims to be as fast and simple as possible.
 
 ## Upcomming features
 
-- [ ] Add a playlist selector
+- [x] Add a playlist selector
 - [ ] Add error message display in the TUI
 - [ ] Really enable to connection less music playing
 - [ ] Add a cache limit to not exceed some given disk space
