@@ -208,6 +208,8 @@ impl Chooser {
         }
         match key.code {
             KeyCode::Enter => {
+                let a = &self.items[self.selected];
+                std::fs::write("last-playlist.json", serde_json::to_string(&a).unwrap()).unwrap();
                 for video in self.items.get(self.selected).unwrap().1.iter() {
                     sender.send(video.clone()).unwrap();
                 }

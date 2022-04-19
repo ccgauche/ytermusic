@@ -42,6 +42,20 @@ async fn main() -> Result<(), Error> {
     {
         let updater_s = updater_s.clone();
         tokio::task::spawn(async move {
+            let playlist = std::fs::read_to_string("last-playlist.json").ok()?;
+            let mut playlist: (String, Vec<Video>) = serde_json::from_str(&playlist).ok()?;
+            if !playlist.0.starts_with("Last playlist: ") {
+                playlist.0 = format!("Last playlist: {}", playlist.0);
+            }
+            updater_s
+                .send(AppMessage::AddElementToChooser(playlist))
+                .unwrap();
+            Some(())
+        });
+    }
+    {
+        let updater_s = updater_s.clone();
+        tokio::task::spawn(async move {
             match YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).await
             {
                 Ok(api) => {
