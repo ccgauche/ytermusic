@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, path::PathBuf, str::FromStr, time::Duration};
 
 use flume::Sender;
-use player::Player;
+use player::{Guard, Player};
 use ytpapi::Video;
 
 use crate::{
@@ -27,33 +27,14 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
                 .unwrap();
             std::thread::sleep(Duration::from_millis(100));
             while let Ok(e) = rx.try_recv() {
-                match e {
-                    SoundAction::Backward => sink.seek_bw(),
-                    SoundAction::Forward => sink.seek_fw(),
-                    SoundAction::PlayPause => sink.toggle_playback(),
-                    SoundAction::Plus => sink.volume_up(),
-                    SoundAction::Minus => sink.volume_down(),
-                    SoundAction::Next => {
-                        if sink.is_finished() {
-                            if let Some(e) = queue.pop_front() {
-                                previous.push(e);
-                            }
-                        }
-                        sink.stop(&guard);
-                    }
-                    SoundAction::PlayVideo(video) => {
-                        queue.push_back(video);
-                    }
-                    SoundAction::Previous => {
-                        if let Some(e) = previous.pop() {
-                            if let Some(c) = current.take() {
-                                queue.push_front(c);
-                            }
-                            queue.push_front(e);
-                        }
-                        sink.stop(&guard);
-                    }
-                }
+                apply_sound_action(
+                    e,
+                    &mut sink,
+                    &guard,
+                    &mut queue,
+                    &mut previous,
+                    &mut current,
+                );
             }
             if sink.is_finished() {
                 'a: loop {
@@ -67,9 +48,26 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
                         sink.play(k.as_path(), &guard);
                         break 'a;
                     } else {
+                        if let Some(e) = current.take() {
+                            previous.push(e);
+
+                            updater
+                                .send(App::new(
+                                    &sink,
+                                    generate_music(&queue, &previous, &current, &sink),
+                                ))
+                                .unwrap();
+                        }
                         while let Ok(e) = rx.try_recv() {
-                            if let SoundAction::PlayVideo(video) = e {
-                                queue.push_back(video);
+                            apply_sound_action(
+                                e.clone(),
+                                &mut sink,
+                                &guard,
+                                &mut queue,
+                                &mut previous,
+                                &mut current,
+                            );
+                            if matches!(e, SoundAction::PlayVideo(_)) {
                                 continue 'a;
                             }
                         }
@@ -80,6 +78,43 @@ pub fn player_system(updater: Sender<App>) -> Sender<SoundAction> {
         }
     });
     tx
+}
+
+fn apply_sound_action(
+    e: SoundAction,
+    sink: &mut Player,
+    guard: &Guard,
+    queue: &mut VecDeque<Video>,
+    previous: &mut Vec<Video>,
+    current: &mut Option<Video>,
+) {
+    match e {
+        SoundAction::Backward => sink.seek_bw(),
+        SoundAction::Forward => sink.seek_fw(),
+        SoundAction::PlayPause => sink.toggle_playback(),
+        SoundAction::Plus => sink.volume_up(),
+        SoundAction::Minus => sink.volume_down(),
+        SoundAction::Next => {
+            /* if sink.is_finished() {
+                if let Some(e) = queue.pop_front() {
+                    previous.push(e);
+                }
+            } */
+            sink.stop(&guard);
+        }
+        SoundAction::PlayVideo(video) => {
+            queue.push_back(video);
+        }
+        SoundAction::Previous => {
+            if let Some(e) = previous.pop() {
+                if let Some(c) = current.take() {
+                    queue.push_front(c);
+                }
+                queue.push_front(e);
+            }
+            sink.stop(&guard);
+        }
+    }
 }
 
 fn generate_music(

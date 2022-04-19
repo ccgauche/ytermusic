@@ -11,7 +11,7 @@ use ytpapi::YTApi;
 mod systems;
 mod terminal;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SoundAction {
     PlayPause,
     Plus,
