@@ -61,7 +61,9 @@ Alpha a0.0.3
 - Mouse support to select playlist and music
 - Download limiter
 - Connection less music playing
-  Alpha a0.0.2
+
+Alpha a0.0.2
+
 - Playlist selector
 - Improved error management
 - Improved TUI
