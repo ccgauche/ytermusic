@@ -17,10 +17,10 @@ pub enum SoundAction {
     PlayPause,
     Plus,
     Minus,
-    Previous,
+    Previous(usize),
     Forward,
     Backward,
-    Next,
+    Next(usize),
     PlayVideo(Video),
 }
 

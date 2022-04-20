@@ -33,14 +33,23 @@ pub struct UIMusic {
     pub status: MusicStatus,
     pub title: String,
     pub author: String,
+    pub position: MusicStatusAction,
+}
+
+pub enum MusicStatusAction {
+    Skip(usize),
+    Current,
+    Before(usize),
+    Downloading,
 }
 
 impl UIMusic {
-    pub fn new(video: &Video, status: MusicStatus) -> UIMusic {
+    pub fn new(video: &Video, status: MusicStatus, position: MusicStatusAction) -> UIMusic {
         UIMusic {
             status,
             title: video.title.clone(),
             author: video.author.clone(),
+            position,
         }
     }
 }
@@ -118,6 +127,7 @@ impl MusicStatus {
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        MouseEventKind,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -139,7 +149,7 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::SoundAction;
+use crate::{systems::logger::log, SoundAction};
 
 pub enum AppMessage {
     UpdateApp(App),
@@ -187,6 +197,25 @@ impl Chooser {
             f.size(),
             &mut ListState::default(),
         );
+    }
+    fn interact(
+        &mut self,
+        x: u16,
+        y: u16,
+        f: &Rect,
+        action_sender: &Sender<Video>,
+    ) -> (View, bool) {
+        if rect_contains(&f, x, y, 1) {
+            let (_, y) = relative_pos(&f, x, y, 1);
+            if self.items.len() > y as usize {
+                self.selected = y as usize;
+                return self.keyboard_input(
+                    &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+                    action_sender,
+                );
+            }
+        }
+        return (View::Chooser, false);
     }
     fn selected(&mut self, selected: isize) {
         if selected < 0 {
@@ -255,10 +284,10 @@ impl App {
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
                 KeyCode::Char('<') | KeyCode::Left => {
-                    sender.send(SoundAction::Previous).unwrap();
+                    sender.send(SoundAction::Previous(1)).unwrap();
                 }
                 KeyCode::Char('>') | KeyCode::Right => {
-                    sender.send(SoundAction::Next).unwrap();
+                    sender.send(SoundAction::Next(1)).unwrap();
                 }
                 _ => {}
             }
@@ -283,6 +312,28 @@ impl App {
             }
         }
         return false;
+    }
+    fn interact(&self, x: u16, y: u16, f: &Rect, action_sender: &Sender<SoundAction>) {
+        let [top_rect, _] = split_y(*f, 3);
+        let [list_rect, _] = split_x(top_rect, 10);
+        if rect_contains(&list_rect, x, y, 1) {
+            let (_, y) = relative_pos(&list_rect, x, y, 1);
+            if self.musics.len() > y as usize {
+                let o = &self.musics[y as usize];
+                match o.position {
+                    MusicStatusAction::Skip(a) => {
+                        action_sender.send(SoundAction::Next(a)).unwrap();
+                    }
+                    MusicStatusAction::Current => {
+                        action_sender.send(SoundAction::PlayPause).unwrap();
+                    }
+                    MusicStatusAction::Before(a) => {
+                        action_sender.send(SoundAction::Previous(a)).unwrap();
+                    }
+                    MusicStatusAction::Downloading => {}
+                }
+            }
+        }
     }
     fn render<B: Backend>(&self, f: &mut Frame<B>) {
         let [top_rect, progress_rect] = split_y(f.size(), 3);
@@ -349,6 +400,17 @@ impl App {
             &mut ListState::default(),
         );
     }
+}
+
+fn rect_contains(rect: &Rect, x: u16, y: u16, margin: u16) -> bool {
+    rect.x + margin <= x
+        && x <= rect.x + rect.width - margin
+        && rect.y + margin <= y
+        && y <= rect.y + rect.height - margin
+}
+
+fn relative_pos(rect: &Rect, x: u16, y: u16, margin: u16) -> (u16, u16) {
+    (x - rect.x - margin, y - rect.y - margin)
 }
 
 pub fn main(
@@ -422,6 +484,7 @@ fn run_app<B: Backend>(
                 }
             }
         }
+        let rectsize = terminal.size()?;
         match &view {
             View::App => {
                 terminal.draw(|f| app.render(f))?;
@@ -435,8 +498,8 @@ fn run_app<B: Backend>(
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
         if crossterm::event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                match &view {
+            match event::read()? {
+                Event::Key(key) => match &view {
                     View::App => {
                         if app.keyboard_input(&key, &action_sender) {
                             return Ok(());
@@ -449,7 +512,29 @@ fn run_app<B: Backend>(
                             return Ok(());
                         }
                     }
+                },
+                Event::Mouse(mouse) => {
+                    if let MouseEventKind::Down(_) = mouse.kind {
+                        match &view {
+                            View::App => {
+                                app.interact(mouse.column, mouse.row, &rectsize, &action_sender);
+                            }
+                            View::Chooser => {
+                                let (a, b) = chooser.interact(
+                                    mouse.column,
+                                    mouse.row,
+                                    &rectsize,
+                                    &video_sender,
+                                );
+                                view = a;
+                                if b {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
                 }
+                _ => (),
             }
         }
         if last_tick.elapsed() >= tick_rate {

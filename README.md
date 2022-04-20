@@ -35,6 +35,7 @@ It's aims to be as fast and simple as possible.
 
 ## Usage
 
+- Use your mouse to click in lists if your terminal has mouse support
 - Press `Space` to play/pause
 - Press `Arrow Right` or `>` to skip 5 seconds
 - Press `Arrow Left` or `<` to go back 5 seconds
@@ -44,10 +45,25 @@ It's aims to be as fast and simple as possible.
 - Press `-` for volume down
 - Press `ESC` to quit
 
-## Upcomming features
+## Features and upcomming features
 
 - [x] Add a playlist selector
 - [ ] Add error message display in the TUI
 - [x] Really enable to connection less music playing
 - [ ] Add a cache limit to not exceed some given disk space
 - [x] Add a download limit to stop downloading after the queue is full
+- [x] Mouse support
+
+## Changelog
+
+Alpha a0.0.3
+
+- Mouse support to select playlist and music
+- Download limiter
+- Connection less music playing
+  Alpha a0.0.2
+- Playlist selector
+- Improved error management
+- Improved TUI
+- Performance upgrade
+- Switch to Rustls instead of openSSL

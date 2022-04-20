@@ -5,7 +5,7 @@ use player::{Guard, Player};
 use ytpapi::Video;
 
 use crate::{
-    terminal::{App, AppMessage, MusicStatus, UIMusic},
+    terminal::{App, AppMessage, MusicStatus, MusicStatusAction, UIMusic},
     SoundAction,
 };
 
@@ -95,23 +95,31 @@ fn apply_sound_action(
         SoundAction::PlayPause => sink.toggle_playback(),
         SoundAction::Plus => sink.volume_up(),
         SoundAction::Minus => sink.volume_down(),
-        SoundAction::Next => {
+        SoundAction::Next(a) => {
             /* if sink.is_finished() {
                 if let Some(e) = queue.pop_front() {
                     previous.push(e);
                 }
             } */
+            for _ in 1..a {
+                if let Some(e) = queue.pop_front() {
+                    previous.push(e);
+                }
+            }
+
             sink.stop(&guard);
         }
         SoundAction::PlayVideo(video) => {
             queue.push_back(video);
         }
-        SoundAction::Previous => {
-            if let Some(e) = previous.pop() {
-                if let Some(c) = current.take() {
-                    queue.push_front(c);
+        SoundAction::Previous(a) => {
+            for _ in 0..a {
+                if let Some(e) = previous.pop() {
+                    if let Some(c) = current.take() {
+                        queue.push_front(c);
+                    }
+                    queue.push_front(e);
                 }
-                queue.push_front(e);
             }
             sink.stop(&guard);
         }
@@ -126,16 +134,26 @@ fn generate_music(
 ) -> Vec<UIMusic> {
     let mut music = Vec::new();
     {
-        music.extend(
-            IN_DOWNLOAD
-                .lock()
-                .unwrap()
-                .iter()
-                .map(|e| UIMusic::new(e, MusicStatus::Downloading)),
-        );
-        previous.iter().rev().take(3).rev().for_each(|e| {
-            music.push(UIMusic::new(e, MusicStatus::Previous));
-        });
+        music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
+            UIMusic::new(
+                e,
+                MusicStatus::Downloading,
+                crate::terminal::MusicStatusAction::Downloading,
+            )
+        }));
+        previous
+            .iter()
+            .rev()
+            .take(3)
+            .enumerate()
+            .rev()
+            .for_each(|e| {
+                music.push(UIMusic::new(
+                    e.1,
+                    MusicStatus::Previous,
+                    crate::terminal::MusicStatusAction::Before(e.0 + 1),
+                ));
+            });
         if let Some(e) = current {
             music.push(UIMusic::new(
                 e,
@@ -144,13 +162,15 @@ fn generate_music(
                 } else {
                     MusicStatus::Playing
                 },
+                MusicStatusAction::Current,
             ));
         }
         music.extend(
             queue
                 .iter()
                 .take(40)
-                .map(|e| UIMusic::new(e, MusicStatus::Next)),
+                .enumerate()
+                .map(|e| UIMusic::new(e.1, MusicStatus::Next, MusicStatusAction::Skip(e.0 + 1))),
         );
     }
     music
