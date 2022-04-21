@@ -10,7 +10,7 @@ use crate::Error;
 /// `test.tabs.#0.value`
 ///
 
-fn extract_meaninfull<'a>(value: &'a Value, path: &str) -> Result<&'a Value, Error> {
+pub fn extract_meaninfull<'a>(value: &'a Value, path: &str) -> Result<&'a Value, Error> {
     let mut current_value = value;
     for path_part in path.split('.') {
         if let Ok(a) = path_part.parse::<usize>() {
@@ -77,22 +77,74 @@ impl Display for Video {
         )
     }
 }
+fn get_video_titles(value: &Value) -> Result<Video, Error> {
+    let value = extract_meaninfull(value, "musicResponsiveListItemRenderer")?;
+    let texts: Vec<String> = as_array(extract_meaninfull(value, "flexColumns")?)?
+        .iter()
+        .map(get_text_from_flexcolumn)
+        .collect();
+    let author = texts.get(1).cloned().unwrap_or_default();
+    let begin = author.find('•').map(|x| x + "•".len()).unwrap_or(0);
+    let end = author.rfind('•').unwrap_or_else(|| author.len());
+    let author = author[begin.min(end)..end.max(begin)].trim().to_owned();
+    let k = author
+        .rfind('•')
+        .unwrap_or_else(|| author.len() - "•".len());
+    let album = author[k + "•".len()..].trim().to_owned();
+    let author = author[..k].trim().to_owned();
+    Ok(Video {
+        title: texts.get(0).cloned().unwrap_or_default(),
+        author,
+        album,
+        video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
+        duration: String::new(),
+    })
+}
 fn get_video(value: &Value) -> Result<Video, Error> {
     let value = extract_meaninfull(value, "musicResponsiveListItemRenderer")?;
     let texts: Vec<String> = as_array(extract_meaninfull(value, "flexColumns")?)?
         .iter()
         .map(get_text_from_flexcolumn)
         .collect();
-    Ok(Video {
-        title: texts[0].to_owned(),
-        author: texts[1].to_owned(),
-        album: texts[2].to_owned(),
-        video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
-        duration: as_str(extract_meaninfull(
+    let k: Result<String, Error> = (|| {
+        as_str(extract_meaninfull(
             value,
             "fixedColumns.0.musicResponsiveListItemFixedColumnRenderer.text.runs.0.text",
-        )?)?,
+        )?)
+    })();
+    Ok(Video {
+        title: texts.get(0).cloned().unwrap_or_default(),
+        author: texts.get(1).cloned().unwrap_or_default(),
+        album: texts.get(2).cloned().unwrap_or_default(),
+        video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
+        duration: k.unwrap_or_default(),
     })
+}
+
+const ALLOWED: &[&str] = &[
+    "Video", "Vidéo", "Title", "Song", "Titre", "Meilleur", "Best",
+];
+
+pub fn search_results(json: Value) -> Result<Vec<Video>, Error> {
+    let json = extract_meaninfull(&json, "contents.tabbedSearchResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents")?;
+    let mut list = Vec::new();
+    for i in as_array(json)?.iter() {
+        // .1.musicShelfRenderer.contents
+        let title = as_str(extract_meaninfull(
+            i,
+            "musicShelfRenderer.title.runs.0.text",
+        )?)?;
+        if ALLOWED.iter().any(|x| title.contains(x)) {
+            list.extend(
+                as_array(extract_meaninfull(i, "musicShelfRenderer.contents")?)?
+                    .iter()
+                    .map(get_video_titles)
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter(),
+            );
+        }
+    }
+    Ok(list)
 }
 
 fn get_text_from_flexcolumn(value: &Value) -> String {
@@ -100,11 +152,12 @@ fn get_text_from_flexcolumn(value: &Value) -> String {
         let value = value.as_object()?.values().next()?;
 
         Some(
-            if let Ok(e) = extract_meaninfull(value, "text.runs.0.text") {
-                e.as_str()?.to_string()
-            } else {
-                String::new()
-            },
+            as_array(extract_meaninfull(value, "text.runs").ok()?)
+                .ok()?
+                .iter()
+                .flat_map(|x| as_str(extract_meaninfull(x, "text").ok()?).ok())
+                .collect::<Vec<_>>()
+                .join(""),
         )
     })();
     k.unwrap_or_default()

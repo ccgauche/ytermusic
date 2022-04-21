@@ -1,7 +1,10 @@
 #![feature(try_blocks)]
 
 use rustube::Error;
-use terminal::AppMessage;
+use term::music_player::App;
+use term::playlist::Chooser;
+use term::search::Search;
+use term::{Manager, ManagerMessage};
 
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use systems::player::player_system;
@@ -10,10 +13,11 @@ use systems::{download::downloader, logger::log};
 use ytpapi::{Video, YTApi};
 
 mod systems;
-mod terminal;
+mod term;
 
 #[derive(Debug, Clone)]
 pub enum SoundAction {
+    Cleanup,
     PlayPause,
     Plus,
     Minus,
@@ -32,13 +36,13 @@ async fn main() -> Result<(), Error> {
         println!("This file should contain your headers separated by `: `.");
         return Ok(());
     }
-    let (updater_s, updater_r) = flume::unbounded::<AppMessage>();
+    let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
     tokio::task::spawn(async {
         clean();
     });
     let updater_s = Arc::new(updater_s);
-    let sa = Arc::new(player_system(updater_s.clone()));
-    let sender = downloader(sa.clone());
+    let sa = player_system(updater_s.clone());
+    downloader(sa.clone());
     {
         let updater_s = updater_s.clone();
         tokio::task::spawn(async move {
@@ -48,7 +52,10 @@ async fn main() -> Result<(), Error> {
                 playlist.0 = format!("Last playlist: {}", playlist.0);
             }
             updater_s
-                .send(AppMessage::AddElementToChooser(playlist))
+                .send(ManagerMessage::PassTo(
+                    "playlist".to_owned(),
+                    Box::new(ManagerMessage::AddElementToChooser(playlist)),
+                ))
                 .unwrap();
             Some(())
         });
@@ -68,10 +75,16 @@ async fn main() -> Result<(), Error> {
                             match api.browse_playlist(&playlist.browse_id).await {
                                 Ok(videos) => {
                                     updater_s
-                                        .send(AppMessage::AddElementToChooser((
-                                            format!("{} ({})", playlist.name, playlist.subtitle),
-                                            videos,
-                                        )))
+                                        .send(ManagerMessage::PassTo(
+                                            "playlist".to_owned(),
+                                            Box::new(ManagerMessage::AddElementToChooser((
+                                                format!(
+                                                    "{} ({})",
+                                                    playlist.name, playlist.subtitle
+                                                ),
+                                                videos,
+                                            ))),
+                                        ))
                                         .unwrap();
                                 }
                                 Err(e) => {
@@ -100,15 +113,27 @@ async fn main() -> Result<(), Error> {
                     videos.push(video);
                 }
             }
+
             updater_s
-                .send(AppMessage::AddElementToChooser((
-                    "Local musics".to_owned(),
-                    videos,
-                )))
+                .send(ManagerMessage::PassTo(
+                    "playlist".to_owned(),
+                    Box::new(ManagerMessage::AddElementToChooser((
+                        "Local musics".to_owned(),
+                        videos,
+                    ))),
+                ))
                 .unwrap();
         });
     }
-    terminal::main(sender.clone(), updater_r, sa).unwrap();
+    let mut manager = Manager::new();
+    manager.add_screen(App::default(sa));
+    manager.add_screen(Chooser {
+        selected: 0,
+        items: Vec::new(),
+    });
+    manager.add_screen(Search::new().await);
+    manager.set_current_screen("playlist".to_string());
+    manager.run(&updater_r).unwrap();
     Ok(())
 }
 

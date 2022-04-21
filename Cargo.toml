@@ -21,6 +21,7 @@ serde = { version = "1.0.136", features = ["derive"] }
 player = { path = "player" }
 crossterm = "0.23.2"
 tui = "0.17.0"
+urlencoding = "2.1.0"
 
 [profile.release]
 lto = true

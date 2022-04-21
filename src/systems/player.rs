@@ -5,14 +5,19 @@ use player::{Guard, Player};
 use ytpapi::Video;
 
 use crate::{
-    terminal::{App, AppMessage, MusicStatus, MusicStatusAction, UIMusic},
+    term::{
+        music_player::{App, MusicStatus, MusicStatusAction, UIMusic},
+        ManagerMessage,
+    },
     SoundAction,
 };
 
 use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
 
-pub fn player_system(updater: Arc<Sender<AppMessage>>) -> Sender<SoundAction> {
+pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAction>> {
     let (tx, rx) = flume::unbounded::<SoundAction>();
+    let tx = Arc::new(tx);
+    let k = tx.clone();
     std::thread::spawn(move || {
         let (mut sink, guard) = Player::new();
         let mut queue: VecDeque<Video> = VecDeque::new();
@@ -21,10 +26,14 @@ pub fn player_system(updater: Arc<Sender<AppMessage>>) -> Sender<SoundAction> {
         loop {
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
-                .send(AppMessage::UpdateApp(App::new(
-                    &sink,
-                    generate_music(&queue, &previous, &current, &sink),
-                )))
+                .send(ManagerMessage::PassTo(
+                    "music-player".to_owned(),
+                    Box::new(ManagerMessage::UpdateApp(App::new(
+                        &sink,
+                        generate_music(&queue, &previous, &current, &sink),
+                        k.clone(),
+                    ))),
+                ))
                 .unwrap();
             std::thread::sleep(Duration::from_millis(100));
             while let Ok(e) = rx.try_recv() {
@@ -66,12 +75,15 @@ pub fn player_system(updater: Arc<Sender<AppMessage>>) -> Sender<SoundAction> {
                             }
                         }
                         std::thread::sleep(Duration::from_millis(200));
-
                         updater
-                            .send(AppMessage::UpdateApp(App::new(
-                                &sink,
-                                generate_music(&queue, &previous, &current, &sink),
-                            )))
+                            .send(ManagerMessage::PassTo(
+                                "music-player".to_owned(),
+                                Box::new(ManagerMessage::UpdateApp(App::new(
+                                    &sink,
+                                    generate_music(&queue, &previous, &current, &sink),
+                                    k.clone(),
+                                ))),
+                            ))
                             .unwrap();
                     }
                 }
@@ -93,6 +105,12 @@ fn apply_sound_action(
         SoundAction::Backward => sink.seek_bw(),
         SoundAction::Forward => sink.seek_fw(),
         SoundAction::PlayPause => sink.toggle_playback(),
+        SoundAction::Cleanup => {
+            queue.clear();
+            previous.clear();
+            *current = None;
+            sink.stop(guard);
+        }
         SoundAction::Plus => sink.volume_up(),
         SoundAction::Minus => sink.volume_down(),
         SoundAction::Next(a) => {
@@ -134,13 +152,13 @@ fn generate_music(
 ) -> Vec<UIMusic> {
     let mut music = Vec::new();
     {
-        music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
-            UIMusic::new(
-                e,
-                MusicStatus::Downloading,
-                crate::terminal::MusicStatusAction::Downloading,
-            )
-        }));
+        music.extend(
+            IN_DOWNLOAD
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|e| UIMusic::new(e, MusicStatus::Downloading, MusicStatusAction::Downloading)),
+        );
         previous
             .iter()
             .rev()
@@ -151,7 +169,7 @@ fn generate_music(
                 music.push(UIMusic::new(
                     e.1,
                     MusicStatus::Previous,
-                    crate::terminal::MusicStatusAction::Before(e.0 + 1),
+                    MusicStatusAction::Before(e.0 + 1),
                 ));
             });
         if let Some(e) = current {

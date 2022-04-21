@@ -11,8 +11,9 @@ use reqwest::{
     Client, ClientBuilder,
 };
 
+use serde_json::Value;
 use string_utils::StringUtils;
-use structs::{playlists_from_json, videos_from_playlist};
+use structs::{playlists_from_json, search_results, videos_from_playlist};
 
 pub use structs::{Playlist, Video};
 
@@ -20,15 +21,6 @@ const YTM_DOMAIN: &str = "https://music.youtube.com";
 
 mod string_utils;
 mod structs;
-
-/* #[test]
-fn visitor_id() {
-    let api = YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).unwrap();
-    println!(
-        "{:?}",
-        api.browse_playlist(&api.playlists[0].browse_id).unwrap()
-    );
-} */
 
 /* fn sapisid_from_cookie(string: &str) -> Option<String> {
     string.find("__Secure-3PAPISID=").map(|i| {
@@ -134,6 +126,17 @@ fn extract_json(string: &str) -> Result<String, Error> {
         .ok_or_else(|| Error::InvalidHTMLFile(string.to_string()))?;
     unescape(&json)
 }
+fn extract_json_search(string: &str) -> Result<String, Error> {
+    let json = string
+        .between(
+            "initialData.push({path: '\\/search', params: J",
+            "'});ytcfg.set({",
+        )
+        .after("data: '")
+        .to_owned_()
+        .ok_or_else(|| Error::InvalidHTMLFile(string.to_string()))?;
+    unescape(&json)
+}
 
 /* const YTM_BASE_API: &'static str = "https://music.youtube.com/youtubei/v1/";
 const YTM_PARAMS: &'static str = "?alt=json&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"; */
@@ -183,6 +186,22 @@ impl YTApi {
     pub async fn update_playlists(&mut self) -> Result<(), Error> {
         self.playlists = get_visitor_id(&self.client, &HeaderMap::new()).await?.1;
         Ok(())
+    }
+    pub async fn search(&self, search: &str) -> Result<Vec<Video>, Error> {
+        let k = extract_json_search(
+            &self
+                .client
+                .get(&format!("https://music.youtube.com/search?q={}", search))
+                .send()
+                .await
+                .map_err(Error::Reqwest)?
+                .text()
+                .await
+                .map_err(Error::Reqwest)?,
+        )?;
+        let json: Value = serde_json::from_str(&k).map_err(Error::SerdeJson)?;
+        std::fs::write("search.json", k).map_err(Error::Io)?;
+        search_results(json)
     }
     pub fn playlists(&self) -> &Vec<Playlist> {
         &self.playlists
