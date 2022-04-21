@@ -1,7 +1,7 @@
 use std::{
     path::PathBuf,
     str::FromStr,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
 };
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
@@ -9,8 +9,7 @@ use tokio::task::JoinHandle;
 use tui::{
     layout::{Alignment, Rect},
     style::{Color, Style},
-    text::Text,
-    widgets::{canvas::Label, Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 use urlencoding::encode;
@@ -208,8 +207,5 @@ impl Search {
     fn set_elements(&mut self, element: Vec<(String, Video)>) {
         *self.items.write().unwrap() = element;
         self.selected = 0;
-    }
-    fn add_element(&mut self, element: (String, Video)) {
-        self.items.write().unwrap().push(element);
     }
 }
