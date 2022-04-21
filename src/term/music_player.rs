@@ -199,7 +199,7 @@ impl Screen for App {
                 _ => {}
             }
         }
-        return EventResponse::None;
+        EventResponse::None
     }
 
     fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
@@ -297,7 +297,7 @@ impl App {
             current_time: 0,
             total_time: 0,
             volume: 0.5,
-            action_sender: action_sender,
+            action_sender,
         }
     }
     pub fn new(

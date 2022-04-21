@@ -67,7 +67,7 @@ impl Screen for Chooser {
             _ => {}
         }
 
-        return EventResponse::None;
+        EventResponse::None
     }
 
     fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
@@ -105,11 +105,8 @@ impl Screen for Chooser {
     }
 
     fn handle_global_message(&mut self, message: super::ManagerMessage) -> super::EventResponse {
-        match message {
-            ManagerMessage::AddElementToChooser(a) => {
-                self.add_element(a);
-            }
-            _ => (),
+        if let ManagerMessage::AddElementToChooser(a) = message {
+            self.add_element(a);
         }
         EventResponse::None
     }

@@ -125,7 +125,7 @@ fn apply_sound_action(
                 }
             }
 
-            sink.stop(&guard);
+            sink.stop(guard);
         }
         SoundAction::PlayVideo(video) => {
             queue.push_back(video);
@@ -139,7 +139,7 @@ fn apply_sound_action(
                     queue.push_front(e);
                 }
             }
-            sink.stop(&guard);
+            sink.stop(guard);
         }
     }
 }

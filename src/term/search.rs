@@ -112,7 +112,7 @@ impl Screen for Search {
             self.set_elements(vec![]);
         }
 
-        return EventResponse::None;
+        EventResponse::None
     }
 
     fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
