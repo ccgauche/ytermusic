@@ -127,21 +127,25 @@ const ALLOWED: &[&str] = &[
 
 pub fn search_results(json: Value) -> Result<Vec<Video>, Error> {
     let json = extract_meaninfull(&json, "contents.tabbedSearchResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents")?;
-    let mut list = Vec::new();
+    let mut list: Vec<Video> = Vec::new();
     for i in as_array(json)?.iter() {
-        // .1.musicShelfRenderer.contents
-        let title = as_str(extract_meaninfull(
-            i,
-            "musicShelfRenderer.title.runs.0.text",
-        )?)?;
+        let title = if let Ok(e) = extract_meaninfull(i, "musicShelfRenderer.title.runs.0.text") {
+            e
+        } else {
+            continue;
+        };
+        let title = as_str(title)?;
         if ALLOWED.iter().any(|x| title.contains(x)) {
-            list.extend(
-                as_array(extract_meaninfull(i, "musicShelfRenderer.contents")?)?
-                    .iter()
-                    .map(get_video_titles)
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter(),
-            );
+            for k in as_array(extract_meaninfull(i, "musicShelfRenderer.contents")?)?
+                .iter()
+                .flat_map(get_video_titles)
+                .collect::<Vec<_>>()
+            {
+                if list.iter().any(|w| w.video_id == k.video_id) {
+                    continue;
+                }
+                list.push(k);
+            }
         }
     }
     Ok(list)

@@ -200,6 +200,7 @@ impl YTApi {
                 .map_err(Error::Reqwest)?,
         )?;
         let json: Value = serde_json::from_str(&k).map_err(Error::SerdeJson)?;
+        //std::fs::write("search.json", k).map_err(Error::Io)?;
         search_results(json)
     }
     pub fn playlists(&self) -> &Vec<Playlist> {

@@ -56,6 +56,12 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
+Alpha a0.0.4
+
+- Added menu navigation
+- Added searching for musics
+- Added new terminal backend
+
 Alpha a0.0.3
 
 - Mouse support to select playlist and music
