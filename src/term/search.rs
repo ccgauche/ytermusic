@@ -42,6 +42,11 @@ impl Screen for Search {
             let y = mouse_event.row;
             if rect_contains(&splitted[1], x, y, 1) {
                 let (_, y) = relative_pos(&splitted[1], x, y, 1);
+                let y = if self.selected == 0 {
+                    y
+                } else {
+                    y + self.selected as u16 - 1
+                };
                 if self.items.read().unwrap().len() > y as usize {
                     self.selected = y as usize;
                     return self.on_key_press(

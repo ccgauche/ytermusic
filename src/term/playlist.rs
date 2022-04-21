@@ -30,6 +30,11 @@ impl Screen for Chooser {
             let y = mouse_event.row;
             if rect_contains(frame_data, x, y, 1) {
                 let (_, y) = relative_pos(frame_data, x, y, 1);
+                let y = if self.selected == 0 {
+                    y
+                } else {
+                    y + self.selected as u16 - 1
+                };
                 if self.items.len() > y as usize {
                     self.selected = y as usize;
                     return self.on_key_press(
