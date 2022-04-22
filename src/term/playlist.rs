@@ -58,10 +58,14 @@ impl Screen for Chooser {
         }
         match key.code {
             KeyCode::Enter => {
-                let a = &self.items[self.selected];
-                std::fs::write("last-playlist.json", serde_json::to_string(&a).unwrap()).unwrap();
-                for video in self.items.get(self.selected).unwrap().1.iter() {
-                    download::add(video.clone());
+                if let Some(a) = &self.items.get(self.selected) {
+                    if a.0 != "Local musics" {
+                        std::fs::write("last-playlist.json", serde_json::to_string(&a).unwrap())
+                            .unwrap();
+                    }
+                    for video in self.items.get(self.selected).unwrap().1.iter() {
+                        download::add(video.clone());
+                    }
                 }
                 return EventResponse::Message(vec![ManagerMessage::ChangeState(
                     "music-player".to_string(),
