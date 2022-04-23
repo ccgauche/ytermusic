@@ -17,7 +17,9 @@ use ytpapi::{Video, YTApi};
 
 use crate::systems::{download, logger::log};
 
-use super::{rect_contains, relative_pos, split_y_start, EventResponse, ManagerMessage, Screen};
+use super::{
+    rect_contains, relative_pos, split_y_start, EventResponse, ManagerMessage, Screen, Screens,
+};
 
 pub struct Search {
     pub text: String,
@@ -27,10 +29,6 @@ pub struct Search {
     pub api: Option<Arc<ytpapi::YTApi>>,
 }
 impl Screen for Search {
-    fn name(&self) -> String {
-        "search".to_string()
-    }
-
     fn on_mouse_press(
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
@@ -61,9 +59,7 @@ impl Screen for Search {
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> super::EventResponse {
         if KeyCode::Esc == key.code {
-            return EventResponse::Message(vec![ManagerMessage::ChangeState(
-                "playlist".to_string(),
-            )]);
+            return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::Playlist)]);
         }
         let textbefore = self.text.trim().to_owned();
         match key.code {
@@ -71,7 +67,7 @@ impl Screen for Search {
                 if let Some(a) = self.items.read().unwrap().get(self.selected).cloned() {
                     download::add(a.1);
                     return EventResponse::Message(vec![ManagerMessage::ChangeState(
-                        "music-player".to_string(),
+                        Screens::MusicPlayer,
                     )]);
                 }
             }
@@ -174,7 +170,7 @@ impl Screen for Search {
         EventResponse::None
     }
 
-    fn close(&mut self, _: String) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> super::EventResponse {
         EventResponse::None
     }
 

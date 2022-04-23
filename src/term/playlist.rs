@@ -9,17 +9,14 @@ use ytpapi::Video;
 
 use crate::systems::download;
 
-use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen};
+use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 
+#[derive(Default)]
 pub struct Chooser {
     pub selected: usize,
     pub items: Vec<(String, Vec<Video>)>,
 }
 impl Screen for Chooser {
-    fn name(&self) -> String {
-        "playlist".to_string()
-    }
-
     fn on_mouse_press(
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
@@ -53,7 +50,7 @@ impl Screen for Chooser {
         }
         if KeyCode::Char('f') == key.code {
             return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                "search".to_string(),
+                Screens::Search,
             )]);
         }
         match key.code {
@@ -68,7 +65,7 @@ impl Screen for Chooser {
                     }
                 }
                 return EventResponse::Message(vec![ManagerMessage::ChangeState(
-                    "music-player".to_string(),
+                    Screens::MusicPlayer,
                 )]);
             }
             KeyCode::Char('+') | KeyCode::Up => self.selected(self.selected as isize - 1),
@@ -120,7 +117,7 @@ impl Screen for Chooser {
         EventResponse::None
     }
 
-    fn close(&mut self, _: String) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> super::EventResponse {
         EventResponse::None
     }
 

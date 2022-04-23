@@ -3,8 +3,8 @@ pub mod playlist;
 pub mod search;
 
 use std::{
-    collections::HashMap,
     io::{self, Stdout},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -15,21 +15,20 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use flume::Receiver;
+use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi::Video;
 
-use crate::systems::logger::log;
+use crate::{systems::logger::log, SoundAction};
 
-use self::music_player::App;
+use self::{music_player::App, playlist::Chooser, search::Search};
 
 pub trait Screen {
-    fn name(&self) -> String;
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
     fn on_key_press(&mut self, mouse_event: KeyEvent, frame_data: &Rect) -> EventResponse;
     fn render(&mut self, frame: &mut Frame<CrosstermBackend<Stdout>>);
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse;
-    fn close(&mut self, new_screen: String) -> EventResponse;
+    fn close(&mut self, new_screen: Screens) -> EventResponse;
     fn open(&mut self) -> EventResponse;
 }
 
@@ -41,35 +40,48 @@ pub enum EventResponse {
 
 #[derive(Debug, Clone)]
 pub enum ManagerMessage {
-    PassTo(String, Box<ManagerMessage>),
-    ChangeState(String),
+    PassTo(Screens, Box<ManagerMessage>),
+    ChangeState(Screens),
     UpdateApp(App),
     Quit,
     AddElementToChooser((String, Vec<Video>)),
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Screens {
+    MusicPlayer = 0x0,
+    Playlist = 0x1,
+    Search = 0x2,
+}
+
 pub struct Manager {
-    screens: HashMap<String, Box<dyn Screen>>,
-    current_screen: String,
+    music_player: App,
+    chooser: Chooser,
+    search: Search,
+    current_screen: Screens,
 }
 
 impl Manager {
-    pub fn new() -> Self {
+    pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
         Manager {
-            screens: HashMap::new(),
-            current_screen: String::new(),
+            music_player: App::default(action_sender),
+            chooser: Chooser::default(),
+            search: Search::new().await,
+            current_screen: Screens::Playlist,
         }
     }
-    pub fn add_screen(&mut self, screen: impl Screen + 'static) {
-        self.screens.insert(screen.name(), Box::new(screen));
+    pub fn current_screen(&mut self) -> &mut dyn Screen {
+        self.get_screen(self.current_screen)
     }
-    pub fn current_screen(&mut self) -> &mut Box<dyn Screen> {
-        self.screens.get_mut(&self.current_screen).unwrap()
+    pub fn get_screen(&mut self, screen: Screens) -> &mut dyn Screen {
+        match screen {
+            Screens::MusicPlayer => &mut self.music_player,
+            Screens::Playlist => &mut self.chooser,
+            Screens::Search => &mut self.search,
+        }
     }
-    pub fn get_screen<'a>(&'a mut self, screen: &str) -> &'a mut Box<dyn Screen> {
-        self.screens.get_mut(screen).unwrap()
-    }
-    pub fn set_current_screen(&mut self, screen: String) {
+    pub fn set_current_screen(&mut self, screen: Screens) {
         self.current_screen = screen;
         let k = self.current_screen().open();
         self.handle_event(k);
@@ -90,14 +102,15 @@ impl Manager {
     pub fn handle_manager_message(&mut self, e: ManagerMessage) -> bool {
         match e {
             ManagerMessage::PassTo(e, a) => {
-                self.get_screen(&e).handle_global_message(*a);
+                self.get_screen(e).handle_global_message(*a);
             }
             ManagerMessage::Quit => {
-                self.current_screen().close(String::new());
+                let c = self.current_screen;
+                self.current_screen().close(c);
                 return true;
             }
             ManagerMessage::ChangeState(e) => {
-                self.current_screen().close(e.clone());
+                self.current_screen().close(e);
                 self.set_current_screen(e);
             }
             e => {

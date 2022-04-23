@@ -7,7 +7,7 @@ use ytpapi::Video;
 use crate::{
     term::{
         music_player::{App, MusicStatus, MusicStatusAction, UIMusic},
-        ManagerMessage,
+        ManagerMessage, Screens,
     },
     SoundAction,
 };
@@ -27,7 +27,7 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
                 .send(ManagerMessage::PassTo(
-                    "music-player".to_owned(),
+                    Screens::MusicPlayer,
                     Box::new(ManagerMessage::UpdateApp(App::new(
                         &sink,
                         generate_music(&queue, &previous, &current, &sink),
@@ -77,7 +77,7 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
                         std::thread::sleep(Duration::from_millis(200));
                         updater
                             .send(ManagerMessage::PassTo(
-                                "music-player".to_owned(),
+                                Screens::MusicPlayer,
                                 Box::new(ManagerMessage::UpdateApp(App::new(
                                     &sink,
                                     generate_music(&queue, &previous, &current, &sink),

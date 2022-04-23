@@ -11,7 +11,9 @@ use ytpapi::Video;
 
 use crate::{systems::download, SoundAction};
 
-use super::{rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen};
+use super::{
+    rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen, Screens,
+};
 
 #[derive(Debug, Clone)]
 pub struct UIMusic {
@@ -122,10 +124,6 @@ pub struct App {
 }
 
 impl Screen for App {
-    fn name(&self) -> String {
-        "music-player".to_string()
-    }
-
     fn on_mouse_press(
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
@@ -161,12 +159,12 @@ impl Screen for App {
     fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> super::EventResponse {
         if KeyCode::Esc == key.code {
             return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                "playlist".to_string(),
+                Screens::Playlist,
             )]);
         }
         if KeyCode::Char('f') == key.code {
             return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                "search".to_string(),
+                Screens::Search,
             )]);
         }
         if key.modifiers.contains(KeyModifiers::CONTROL) {
@@ -278,7 +276,7 @@ impl Screen for App {
         }
     }
 
-    fn close(&mut self, _: String) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> super::EventResponse {
         self.action_sender.send(SoundAction::Cleanup).unwrap();
         download::clean(self.action_sender.clone());
         EventResponse::None
@@ -305,16 +303,12 @@ impl App {
         musics: Vec<UIMusic>,
         action_sender: Arc<Sender<SoundAction>>,
     ) -> Self {
-        let app_status = AppStatus::new(sink);
-        let current_time = sink.elapsed().as_secs() as u32;
-        let total_time = sink.duration().map(|x| x as u32).unwrap_or(1);
-        let volume = sink.volume_percent() as f32 / 100.;
-        App {
+        Self {
             musics,
-            app_status,
-            current_time,
-            total_time,
-            volume,
+            app_status: AppStatus::new(sink),
+            current_time: sink.elapsed().as_secs() as u32,
+            total_time: sink.duration().map(|x| x as u32).unwrap_or(1),
+            volume: sink.volume_percent() as f32 / 100.,
             action_sender,
         }
     }

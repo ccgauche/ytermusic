@@ -1,10 +1,7 @@
 #![feature(try_blocks)]
 
 use rustube::Error;
-use term::music_player::App;
-use term::playlist::Chooser;
-use term::search::Search;
-use term::{Manager, ManagerMessage};
+use term::{Manager, ManagerMessage, Screens};
 
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use systems::player::player_system;
@@ -53,7 +50,7 @@ async fn main() -> Result<(), Error> {
             }
             updater_s
                 .send(ManagerMessage::PassTo(
-                    "playlist".to_owned(),
+                    Screens::Playlist,
                     Box::new(ManagerMessage::AddElementToChooser(playlist)),
                 ))
                 .unwrap();
@@ -76,7 +73,7 @@ async fn main() -> Result<(), Error> {
                                 Ok(videos) => {
                                     updater_s
                                         .send(ManagerMessage::PassTo(
-                                            "playlist".to_owned(),
+                                            Screens::Playlist,
                                             Box::new(ManagerMessage::AddElementToChooser((
                                                 format!(
                                                     "{} ({})",
@@ -116,7 +113,7 @@ async fn main() -> Result<(), Error> {
 
             updater_s
                 .send(ManagerMessage::PassTo(
-                    "playlist".to_owned(),
+                    Screens::Playlist,
                     Box::new(ManagerMessage::AddElementToChooser((
                         "Local musics".to_owned(),
                         videos,
@@ -125,14 +122,7 @@ async fn main() -> Result<(), Error> {
                 .unwrap();
         });
     }
-    let mut manager = Manager::new();
-    manager.add_screen(App::default(sa));
-    manager.add_screen(Chooser {
-        selected: 0,
-        items: Vec::new(),
-    });
-    manager.add_screen(Search::new().await);
-    manager.set_current_screen("playlist".to_string());
+    let mut manager = Manager::new(sa).await;
     manager.run(&updater_r).unwrap();
     Ok(())
 }
