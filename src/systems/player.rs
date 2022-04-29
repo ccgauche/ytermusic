@@ -1,7 +1,11 @@
-use std::{collections::VecDeque, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc, time::Duration,
+};
 
 use flume::Sender;
 use player::{Guard, Player};
+use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
+
 use ytpapi::Video;
 
 use crate::{
@@ -12,10 +16,40 @@ use crate::{
     SoundAction,
 };
 
-use super::{
-    download::{DOWNLOAD_MORE, IN_DOWNLOAD},
-    logger::log,
-};
+use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
+#[cfg(not(target_os = "windows"))]
+fn get_handle() -> MediaControls {
+    MediaControls::new(PlatformConfig {
+        dbus_name: "ytermusic",
+        display_name: "YTerMusic",
+        hwnd: None,
+    })
+    .unwrap()
+}
+
+#[cfg(target_os = "windows")]
+fn get_handle() -> MediaControls {
+    use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+    use winit::event_loop::EventLoop;
+    use winit::{platform::windows::EventLoopExtWindows, window::WindowBuilder};
+
+    let config = PlatformConfig {
+        dbus_name: "ytermusic",
+        display_name: "YTerMusic",
+        hwnd: if let RawWindowHandle::Win32(h) = WindowBuilder::new()
+            .with_visible(false)
+            .build(&EventLoop::<()>::new_any_thread())
+            .unwrap()
+            .raw_window_handle()
+        {
+            Some(h.hwnd)
+        } else {
+            unreachable!()
+        },
+    };
+
+    MediaControls::new(config).unwrap()
+}
 
 pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAction>> {
     let (tx, rx) = flume::unbounded::<SoundAction>();
@@ -26,8 +60,10 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         let mut queue: VecDeque<Video> = VecDeque::new();
         let mut previous: Vec<Video> = Vec::new();
         let mut current: Option<Video> = None;
+        let mut controls = get_handle();
+        connect(&mut controls, k.clone()).unwrap();
         loop {
-            log("update player");
+            update(&mut controls, &sink, &current).unwrap();
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
                 .send(ManagerMessage::PassTo(
@@ -52,6 +88,7 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
             }
             if sink.is_finished() {
                 'a: loop {
+                    update(&mut controls, &sink, &current).unwrap();
                     if let Some(video) = queue.pop_front() {
                         let k =
                             PathBuf::from_str(&format!("data/downloads/{}.mp4", video.video_id))
@@ -95,6 +132,64 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         }
     });
     tx
+}
+
+// https://docs.rs/souvlaki/latest/souvlaki/
+
+fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Result<(), Error> {
+    mpris.attach(move |e| match e {
+        souvlaki::MediaControlEvent::Toggle
+        | souvlaki::MediaControlEvent::Play
+        | souvlaki::MediaControlEvent::Pause => {
+            sender.send(SoundAction::PlayPause).unwrap();
+        }
+        souvlaki::MediaControlEvent::Next => {
+            sender.send(SoundAction::Next(1)).unwrap();
+        }
+        souvlaki::MediaControlEvent::Previous => {
+            sender.send(SoundAction::Previous(1)).unwrap();
+        }
+        souvlaki::MediaControlEvent::Stop => {
+            sender.send(SoundAction::Cleanup).unwrap();
+        }
+        souvlaki::MediaControlEvent::Seek(a) => match a {
+            souvlaki::SeekDirection::Forward => {
+                sender.send(SoundAction::Forward).unwrap();
+            }
+            souvlaki::SeekDirection::Backward => {
+                sender.send(SoundAction::Backward).unwrap();
+            }
+        },
+        souvlaki::MediaControlEvent::SeekBy(_, _) => todo!(),
+        souvlaki::MediaControlEvent::SetPosition(_) => todo!(),
+        souvlaki::MediaControlEvent::OpenUri(_) => todo!(),
+        souvlaki::MediaControlEvent::Raise => todo!(),
+        souvlaki::MediaControlEvent::Quit => {
+            exit(0);
+        }
+    })
+}
+
+fn update(e: &mut MediaControls, sink: &Player, current: &Option<Video>) -> Result<(), Error> {
+    e.set_metadata(MediaMetadata {
+        title: current.as_ref().map(|video| video.title.as_str()),
+        album: current.as_ref().map(|video| video.album.as_str()),
+        artist: current.as_ref().map(|video| video.author.as_str()),
+        cover_url: None,
+        duration: None,
+    })?;
+    if sink.is_finished() {
+        e.set_playback(MediaPlayback::Stopped)?;
+    } else if sink.is_paused() {
+        e.set_playback(MediaPlayback::Paused {
+            progress: Some(MediaPosition(sink.elapsed())),
+        })?;
+    } else {
+        e.set_playback(MediaPlayback::Playing {
+            progress: Some(MediaPosition(sink.elapsed())),
+        })?;
+    }
+    Ok(())
 }
 
 fn apply_sound_action(
