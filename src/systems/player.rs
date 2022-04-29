@@ -2,8 +2,8 @@ use std::{
     collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc, time::Duration,
 };
 
-use flume::Sender;
-use player::{Guard, Player};
+use flume::{unbounded, Receiver, Sender};
+use player::{Guard, Player, StreamError};
 use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
 
 use ytpapi::Video;
@@ -64,7 +64,13 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
     let tx = Arc::new(tx);
     let k = tx.clone();
     std::thread::spawn(move || {
-        let (mut sink, guard) = Player::new();
+        let (stream_error_sender, stream_error_receiver) = unbounded();
+        let stream_error_sender = Arc::new(stream_error_sender);
+        let (mut sink, mut guard) = handle_error_option(
+            "player creation error",
+            Player::new(stream_error_sender.clone()),
+        )
+        .unwrap();
         let mut queue: VecDeque<Video> = VecDeque::new();
         let mut previous: Vec<Video> = Vec::new();
         let mut current: Option<Video> = None;
@@ -77,6 +83,7 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
             if let Some(e) = &mut controls {
                 handle_error("Can't update media control", update(e, &sink, &current));
             }
+            handle_stream_errors(&stream_error_receiver, &updater);
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
                 .send(ManagerMessage::PassTo(
@@ -93,14 +100,16 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
                 apply_sound_action(
                     e,
                     &mut sink,
-                    &guard,
+                    &mut guard,
                     &mut queue,
                     &mut previous,
                     &mut current,
+                    &stream_error_sender,
                 );
             }
             if sink.is_finished() {
                 'a: loop {
+                    handle_stream_errors(&stream_error_receiver, &updater);
                     if let Some(e) = &mut controls {
                         handle_error(
                             "Can't update finished media control",
@@ -124,10 +133,11 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
                             apply_sound_action(
                                 e.clone(),
                                 &mut sink,
-                                &guard,
+                                &mut guard,
                                 &mut queue,
                                 &mut previous,
                                 &mut current,
+                                &stream_error_sender,
                             );
                             if matches!(e, SoundAction::PlayVideo(_)) {
                                 continue 'a;
@@ -150,6 +160,18 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         }
     });
     tx
+}
+
+fn handle_stream_errors(
+    stream_error_receiver: &Receiver<StreamError>,
+    updater: &Sender<ManagerMessage>,
+) {
+    while let Ok(e) = stream_error_receiver.try_recv() {
+        updater
+            .send(ManagerMessage::ChangeState(Screens::DeviceLost))
+            .unwrap();
+        log(format!("{:?}", e));
+    }
 }
 
 fn handle_error_option<T, E>(error_type: &'static str, a: Result<E, T>) -> Option<E>
@@ -232,10 +254,11 @@ fn update(e: &mut MediaControls, sink: &Player, current: &Option<Video>) -> Resu
 fn apply_sound_action(
     e: SoundAction,
     sink: &mut Player,
-    guard: &Guard,
+    guard: &mut Guard,
     queue: &mut VecDeque<Video>,
     previous: &mut Vec<Video>,
     current: &mut Option<Video>,
+    error_sender: &Arc<Sender<StreamError>>,
 ) {
     match e {
         SoundAction::Backward => sink.seek_bw(),
@@ -245,7 +268,7 @@ fn apply_sound_action(
             queue.clear();
             previous.clear();
             *current = None;
-            sink.stop(guard);
+            handle_error("sink stop", sink.stop(guard));
         }
         SoundAction::Plus => sink.volume_up(),
         SoundAction::Minus => sink.volume_down(),
@@ -261,7 +284,7 @@ fn apply_sound_action(
                 }
             }
 
-            sink.stop(guard);
+            handle_error("sink stop", sink.stop(guard));
         }
         SoundAction::PlayVideo(video) => {
             queue.push_back(video);
@@ -275,7 +298,31 @@ fn apply_sound_action(
                     queue.push_front(e);
                 }
             }
-            sink.stop(guard);
+            handle_error("sink stop", sink.stop(guard));
+        }
+        SoundAction::RestartPlayer => {
+            (*sink, *guard) = Player::new(error_sender.clone()).unwrap();
+            if let Some(e) = current {
+                apply_sound_action(
+                    SoundAction::PlayVideo(e.clone()),
+                    sink,
+                    guard,
+                    queue,
+                    previous,
+                    current,
+                    error_sender,
+                );
+            }
+        }
+        SoundAction::ForcePause => {
+            if !sink.is_paused() && !sink.is_finished() {
+                sink.pause();
+            }
+        }
+        SoundAction::ForcePlay => {
+            if sink.is_paused() && !sink.is_finished() {
+                sink.pause();
+            }
         }
     }
 }

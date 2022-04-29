@@ -1,3 +1,4 @@
+pub mod device_lost;
 pub mod music_player;
 pub mod playlist;
 pub mod search;
@@ -21,7 +22,7 @@ use ytpapi::Video;
 
 use crate::{systems::logger::log, SoundAction};
 
-use self::{music_player::App, playlist::Chooser, search::Search};
+use self::{device_lost::DeviceLost, music_player::App, playlist::Chooser, search::Search};
 
 pub trait Screen {
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
@@ -43,6 +44,7 @@ pub enum ManagerMessage {
     PassTo(Screens, Box<ManagerMessage>),
     ChangeState(Screens),
     UpdateApp(App),
+    RestartPlayer,
     Quit,
     AddElementToChooser((String, Vec<Video>)),
 }
@@ -53,22 +55,29 @@ pub enum Screens {
     MusicPlayer = 0x0,
     Playlist = 0x1,
     Search = 0x2,
+    DeviceLost = 0x3,
 }
 
 pub struct Manager {
     music_player: App,
     chooser: Chooser,
     search: Search,
+    device_lost: DeviceLost,
     current_screen: Screens,
 }
 
 impl Manager {
     pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
         Manager {
-            music_player: App::default(action_sender),
-            chooser: Chooser::default(),
-            search: Search::new().await,
+            music_player: App::default(action_sender.clone()),
+            chooser: Chooser {
+                selected: 0,
+                items: vec![],
+                action_sender: action_sender.clone(),
+            },
+            search: Search::new(action_sender).await,
             current_screen: Screens::Playlist,
+            device_lost: DeviceLost,
         }
     }
     pub fn current_screen(&mut self) -> &mut dyn Screen {
@@ -79,6 +88,7 @@ impl Manager {
             Screens::MusicPlayer => &mut self.music_player,
             Screens::Playlist => &mut self.chooser,
             Screens::Search => &mut self.search,
+            Screens::DeviceLost => &mut self.device_lost,
         }
     }
     pub fn set_current_screen(&mut self, screen: Screens) {
@@ -102,7 +112,8 @@ impl Manager {
     pub fn handle_manager_message(&mut self, e: ManagerMessage) -> bool {
         match e {
             ManagerMessage::PassTo(e, a) => {
-                self.get_screen(e).handle_global_message(*a);
+                let rs = self.get_screen(e).handle_global_message(*a);
+                self.handle_event(rs);
             }
             ManagerMessage::Quit => {
                 let c = self.current_screen;

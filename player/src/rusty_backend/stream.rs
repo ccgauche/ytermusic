@@ -9,28 +9,30 @@ use super::sink::Sink;
 use super::source::Source;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::Sample;
+use flume::Sender;
 
 /// `cpal::Stream` container. Also see the more useful `OutputStreamHandle`.
 ///
 /// If this is dropped playback will end & attached `OutputStreamHandle`s will no longer work.
 #[allow(clippy::module_name_repetitions)]
 pub struct OutputStream {
-    mixer: Arc<DynamicMixerController<f32>>,
-    _stream: cpal::Stream,
+    pub mixer: Arc<DynamicMixerController<f32>>,
+    pub _stream: cpal::Stream,
 }
 
 /// More flexible handle to a `OutputStream` that provides playback.
 #[derive(Clone)]
 pub struct OutputStreamHandle {
-    mixer: Weak<DynamicMixerController<f32>>,
+    pub(crate) mixer: Weak<DynamicMixerController<f32>>,
 }
 
 impl OutputStream {
     /// Returns a new stream & handle using the given output device.
     pub fn try_from_device(
         device: &cpal::Device,
+        error_sender: Arc<Sender<StreamError>>,
     ) -> Result<(Self, OutputStreamHandle), StreamError> {
-        let (mixer, stream) = device.try_new_output_stream()?;
+        let (mixer, stream) = device.try_new_output_stream(error_sender)?;
         stream.play()?;
         let out = Self {
             mixer,
@@ -45,12 +47,14 @@ impl OutputStream {
     /// Return a new stream & handle using the default output device.
     ///
     /// On failure will fallback to trying any non-default output devices.
-    pub fn try_default() -> Result<(Self, OutputStreamHandle), StreamError> {
+    pub fn try_default(
+        error_sender: Arc<Sender<StreamError>>,
+    ) -> Result<(Self, OutputStreamHandle), StreamError> {
         let default_device = cpal::default_host()
             .default_output_device()
             .ok_or(StreamError::NoDevice)?;
 
-        let default_stream = Self::try_from_device(&default_device);
+        let default_stream = Self::try_from_device(&default_device, error_sender.clone());
 
         default_stream.or_else(|original_err| {
             // default device didn't work, try other ones
@@ -60,7 +64,7 @@ impl OutputStream {
             };
 
             devices
-                .find_map(|d| Self::try_from_device(&d).ok())
+                .find_map(|d| Self::try_from_device(&d, error_sender.clone()).ok())
                 .ok_or(original_err)
         })
     }
@@ -95,6 +99,8 @@ impl OutputStreamHandle {
 pub enum PlayError {
     /// Attempting to decode the audio failed.
     DecoderError(decoder::DecoderError),
+    /// Stream error
+    StreamError(StreamError),
     /// The output device was lost.
     NoDevice,
 }
@@ -110,6 +116,7 @@ impl fmt::Display for PlayError {
         match self {
             Self::DecoderError(e) => e.fmt(f),
             Self::NoDevice => write!(f, "NoDevice"),
+            Self::StreamError(e) => e.fmt(f),
         }
     }
 }
@@ -119,6 +126,7 @@ impl error::Error for PlayError {
         match self {
             Self::DecoderError(e) => Some(e),
             Self::NoDevice => None,
+            Self::StreamError(e) => Some(e),
         }
     }
 }
@@ -126,6 +134,7 @@ impl error::Error for PlayError {
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions, clippy::enum_variant_names)]
 pub enum StreamError {
+    StreamError(cpal::StreamError),
     PlayStreamError(cpal::PlayStreamError),
     DefaultStreamConfigError(cpal::DefaultStreamConfigError),
     BuildStreamError(cpal::BuildStreamError),
@@ -161,6 +170,7 @@ impl fmt::Display for StreamError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::PlayStreamError(e) => e.fmt(f),
+            Self::StreamError(e) => e.fmt(f),
             Self::BuildStreamError(e) => e.fmt(f),
             Self::DefaultStreamConfigError(e) => e.fmt(f),
             Self::SupportedStreamConfigsError(e) => e.fmt(f),
@@ -174,6 +184,7 @@ impl error::Error for StreamError {
         match self {
             Self::PlayStreamError(e) => Some(e),
             Self::BuildStreamError(e) => Some(e),
+            Self::StreamError(e) => Some(e),
             Self::DefaultStreamConfigError(e) => Some(e),
             Self::SupportedStreamConfigsError(e) => Some(e),
             Self::NoDevice => None,
@@ -185,23 +196,28 @@ impl error::Error for StreamError {
 pub trait CpalDeviceExt {
     fn new_output_stream_with_format(
         &self,
+        error_sender: Arc<Sender<StreamError>>,
         format: cpal::SupportedStreamConfig,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), cpal::BuildStreamError>;
 
     fn try_new_output_stream(
         &self,
+        error_sender: Arc<Sender<StreamError>>,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), StreamError>;
 }
 
 impl CpalDeviceExt for cpal::Device {
     fn new_output_stream_with_format(
         &self,
+        error_sender: Arc<Sender<StreamError>>,
         format: cpal::SupportedStreamConfig,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), cpal::BuildStreamError> {
         let (mixer_tx, mut mixer_rx) =
             dynamic_mixer::mixer::<f32>(format.channels(), format.sample_rate().0);
 
-        let error_callback = |err| eprintln!("an error occurred on output stream: {}", err);
+        let error_callback = move |err: cpal::StreamError| {
+            error_sender.send(StreamError::StreamError(err)).unwrap();
+        };
 
         match format.sample_format() {
             cpal::SampleFormat::F32 => self.build_output_stream::<f32, _, _>(
@@ -235,15 +251,19 @@ impl CpalDeviceExt for cpal::Device {
 
     fn try_new_output_stream(
         &self,
+        error_sender: Arc<Sender<StreamError>>,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), StreamError> {
         // Determine the format to use for the new stream.
         let default_format = self.default_output_config()?;
 
-        self.new_output_stream_with_format(default_format)
+        self.new_output_stream_with_format(error_sender.clone(), default_format)
             .or_else(|err| {
                 // look through all supported formats to see if another works
                 supported_output_formats(self)?
-                    .find_map(|format| self.new_output_stream_with_format(format).ok())
+                    .find_map(|format| {
+                        self.new_output_stream_with_format(error_sender.clone(), format)
+                            .ok()
+                    })
                     // return original error if nothing works
                     .ok_or(StreamError::BuildStreamError(err))
             })

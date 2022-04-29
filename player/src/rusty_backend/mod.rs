@@ -11,18 +11,23 @@ pub mod queue;
 pub mod source;
 
 pub use conversions::Sample;
+use cpal::traits::{HostTrait, StreamTrait};
 pub use cpal::{
     self, traits::DeviceTrait, Device, Devices, DevicesError, InputDevices, OutputDevices,
     SupportedStreamConfig,
 };
 pub use decoder::Decoder;
+use flume::Sender;
 pub use sink::Sink;
 pub use source::Source;
 pub use stream::{OutputStream, OutputStreamHandle, PlayError, StreamError};
 
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 use std::{fs::File, io::BufReader};
+
+use self::stream::CpalDeviceExt;
 
 static VOLUME_STEP: u16 = 5;
 
@@ -42,13 +47,54 @@ pub struct PlayerData {
     safe_guard: bool,
 }
 impl Player {
-    pub fn new() -> (Self, Guard) {
-        let (stream, handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&handle).unwrap();
+    /// Returns a new stream & handle using the given output device.
+    fn try_from_device(
+        device: &cpal::Device,
+        error_sender: Arc<Sender<StreamError>>,
+    ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
+        let (mixer, stream) = device.try_new_output_stream(error_sender)?;
+        stream.play()?;
+        let out = OutputStream {
+            mixer,
+            _stream: stream,
+        };
+        let handle = OutputStreamHandle {
+            mixer: Arc::downgrade(&out.mixer),
+        };
+        Ok((out, handle))
+    }
+
+    /// Return a new stream & handle using the default output device.
+    ///
+    /// On failure will fallback to trying any non-default output devices.
+    fn try_default(
+        error_sender: Arc<Sender<StreamError>>,
+    ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
+        let default_device = cpal::default_host()
+            .default_output_device()
+            .ok_or(StreamError::NoDevice)?;
+
+        let default_stream = Self::try_from_device(&default_device, error_sender.clone());
+
+        default_stream.or_else(move |original_err| {
+            // default device didn't work, try other ones
+            let mut devices = match cpal::default_host().output_devices() {
+                Ok(d) => d,
+                Err(_) => return Err(original_err),
+            };
+
+            devices
+                .find_map(|d| Self::try_from_device(&d, error_sender.clone()).ok())
+                .ok_or(original_err)
+        })
+    }
+    pub fn new(error_sender: Arc<Sender<StreamError>>) -> Result<(Self, Guard), PlayError> {
+        let (stream, handle) = Self::try_default(error_sender).map_err(PlayError::StreamError)?;
+        let sink = Sink::try_new(&handle)?;
         let volume = 50;
         sink.set_volume(f32::from(volume) / 100.0);
 
-        (
+        Ok((
             Self {
                 sink: sink,
                 data: PlayerData {
@@ -61,7 +107,7 @@ impl Player {
                 _stream: stream,
                 handle: handle,
             },
-        )
+        ))
     }
 }
 
@@ -89,10 +135,11 @@ impl Player {
         self.data.total_duration = decoder.total_duration();
         self.sink.append(decoder);
     }
-    pub fn stop(&mut self, guard: &Guard) {
+    pub fn stop(&mut self, guard: &Guard) -> Result<(), PlayError> {
         self.sink.destroy();
-        self.sink = Sink::try_new(&guard.handle).unwrap();
+        self.sink = Sink::try_new(&guard.handle)?;
         self.sink.set_volume(f32::from(self.data.volume) / 100.0);
+        Ok(())
     }
     pub fn elapsed(&self) -> Duration {
         self.sink.elapsed()

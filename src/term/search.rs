@@ -5,6 +5,7 @@ use std::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
+use flume::Sender;
 use tokio::task::JoinHandle;
 use tui::{
     layout::{Alignment, Rect},
@@ -15,7 +16,10 @@ use tui::{
 use urlencoding::encode;
 use ytpapi::{Video, YTApi};
 
-use crate::systems::{download, logger::log};
+use crate::{
+    systems::{download, logger::log},
+    SoundAction,
+};
 
 use super::{
     rect_contains, relative_pos, split_y_start, EventResponse, ManagerMessage, Screen, Screens,
@@ -27,6 +31,7 @@ pub struct Search {
     pub items: Arc<RwLock<Vec<(String, Video)>>>,
     pub search_handle: Option<JoinHandle<()>>,
     pub api: Option<Arc<ytpapi::YTApi>>,
+    pub action_sender: Arc<Sender<SoundAction>>,
 }
 impl Screen for Search {
     fn on_mouse_press(
@@ -65,6 +70,8 @@ impl Screen for Search {
         match key.code {
             KeyCode::Enter => {
                 if let Some(a) = self.items.read().unwrap().get(self.selected).cloned() {
+                    self.action_sender.send(SoundAction::Cleanup).unwrap();
+                    download::clean(self.action_sender.clone());
                     download::add(a.1);
                     return EventResponse::Message(vec![ManagerMessage::ChangeState(
                         Screens::MusicPlayer,
@@ -179,7 +186,7 @@ impl Screen for Search {
     }
 }
 impl Search {
-    pub async fn new() -> Self {
+    pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
         Self {
             text: String::new(),
             selected: 0,
@@ -189,6 +196,7 @@ impl Search {
                 .await
                 .ok()
                 .map(Arc::new),
+            action_sender,
         }
     }
     fn selected(&mut self, selected: isize) {

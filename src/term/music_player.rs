@@ -9,7 +9,7 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::{systems::download, SoundAction};
+use crate::SoundAction;
 
 use super::{
     rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen, Screens,
@@ -272,17 +272,21 @@ impl Screen for App {
                 *self = app;
                 super::EventResponse::None
             }
+            ManagerMessage::RestartPlayer => {
+                self.action_sender.send(SoundAction::RestartPlayer).unwrap();
+                EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)])
+            }
             _ => EventResponse::None,
         }
     }
 
     fn close(&mut self, _: Screens) -> super::EventResponse {
-        self.action_sender.send(SoundAction::Cleanup).unwrap();
-        download::clean(self.action_sender.clone());
+        self.action_sender.send(SoundAction::ForcePause).unwrap();
         EventResponse::None
     }
 
     fn open(&mut self) -> super::EventResponse {
+        self.action_sender.send(SoundAction::ForcePlay).unwrap();
         EventResponse::None
     }
 }

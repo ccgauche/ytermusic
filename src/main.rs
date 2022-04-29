@@ -16,6 +16,9 @@ mod term;
 pub enum SoundAction {
     Cleanup,
     PlayPause,
+    ForcePause,
+    ForcePlay,
+    RestartPlayer,
     Plus,
     Minus,
     Previous(usize),

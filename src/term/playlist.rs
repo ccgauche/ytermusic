@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
+use flume::Sender;
 use tui::{
     layout::Rect,
     style::{Color, Style},
@@ -7,14 +10,14 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::systems::download;
+use crate::{systems::download, SoundAction};
 
 use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 
-#[derive(Default)]
 pub struct Chooser {
     pub selected: usize,
     pub items: Vec<(String, Vec<Video>)>,
+    pub action_sender: Arc<Sender<SoundAction>>,
 }
 impl Screen for Chooser {
     fn on_mouse_press(
@@ -46,7 +49,7 @@ impl Screen for Chooser {
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> super::EventResponse {
         if KeyCode::Esc == key.code {
-            return EventResponse::Message(vec![ManagerMessage::Quit]);
+            return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
         }
         if KeyCode::Char('f') == key.code {
             return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
@@ -60,6 +63,8 @@ impl Screen for Chooser {
                         std::fs::write("last-playlist.json", serde_json::to_string(&a).unwrap())
                             .unwrap();
                     }
+                    self.action_sender.send(SoundAction::Cleanup).unwrap();
+                    download::clean(self.action_sender.clone());
                     for video in self.items.get(self.selected).unwrap().1.iter() {
                         download::add(video.clone());
                     }
