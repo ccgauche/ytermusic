@@ -34,6 +34,7 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
         handle.clear();
     }
     IN_DOWNLOAD.lock().unwrap().clear();
+    DOWNLOAD_MORE.store(true, std::sync::atomic::Ordering::SeqCst);
     downloader(sender);
 }
 
