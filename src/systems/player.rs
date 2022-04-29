@@ -16,19 +16,24 @@ use crate::{
     SoundAction,
 };
 
-use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
+use super::{
+    download::{DOWNLOAD_MORE, IN_DOWNLOAD},
+    logger::log,
+};
 #[cfg(not(target_os = "windows"))]
-fn get_handle() -> MediaControls {
-    MediaControls::new(PlatformConfig {
-        dbus_name: "ytermusic",
-        display_name: "YTerMusic",
-        hwnd: None,
-    })
-    .unwrap()
+fn get_handle() -> Option<MediaControls> {
+    handle_error_option(
+        "Can't create media controls",
+        MediaControls::new(PlatformConfig {
+            dbus_name: "ytermusic",
+            display_name: "YTerMusic",
+            hwnd: None,
+        }),
+    )
 }
 
 #[cfg(target_os = "windows")]
-fn get_handle() -> MediaControls {
+fn get_handle() -> Option<MediaControls> {
     use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
     use winit::event_loop::EventLoop;
     use winit::{platform::windows::EventLoopExtWindows, window::WindowBuilder};
@@ -36,19 +41,22 @@ fn get_handle() -> MediaControls {
     let config = PlatformConfig {
         dbus_name: "ytermusic",
         display_name: "YTerMusic",
-        hwnd: if let RawWindowHandle::Win32(h) = WindowBuilder::new()
-            .with_visible(false)
-            .build(&EventLoop::<()>::new_any_thread())
-            .unwrap()
-            .raw_window_handle()
+        hwnd: if let RawWindowHandle::Win32(h) = handle_error_option(
+            "OS Error while creating media hook window",
+            WindowBuilder::new()
+                .with_visible(false)
+                .build(&EventLoop::<()>::new_any_thread()),
+        )?
+        .raw_window_handle()
         {
             Some(h.hwnd)
         } else {
-            unreachable!()
+            log("No window handle found");
+            return None;
         },
     };
 
-    MediaControls::new(config).unwrap()
+    handle_error_option("Can't create media controls", MediaControls::new(config))
 }
 
 pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAction>> {
@@ -61,9 +69,14 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         let mut previous: Vec<Video> = Vec::new();
         let mut current: Option<Video> = None;
         let mut controls = get_handle();
-        connect(&mut controls, k.clone()).unwrap();
+        if let Some(e) = &mut controls {
+            handle_error("Can't connect media control", connect(e, k.clone()));
+        }
+
         loop {
-            update(&mut controls, &sink, &current).unwrap();
+            if let Some(e) = &mut controls {
+                handle_error("Can't update media control", update(e, &sink, &current));
+            }
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
                 .send(ManagerMessage::PassTo(
@@ -88,7 +101,12 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
             }
             if sink.is_finished() {
                 'a: loop {
-                    update(&mut controls, &sink, &current).unwrap();
+                    if let Some(e) = &mut controls {
+                        handle_error(
+                            "Can't update finished media control",
+                            update(e, &sink, &current),
+                        );
+                    }
                     if let Some(video) = queue.pop_front() {
                         let k =
                             PathBuf::from_str(&format!("data/downloads/{}.mp4", video.video_id))
@@ -132,6 +150,25 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         }
     });
     tx
+}
+
+fn handle_error_option<T, E>(error_type: &'static str, a: Result<E, T>) -> Option<E>
+where
+    T: std::fmt::Debug,
+{
+    match a {
+        Ok(e) => Some(e),
+        Err(a) => {
+            log(format!("{}{:?}", error_type, a));
+            None
+        }
+    }
+}
+fn handle_error<T>(error_type: &'static str, a: Result<(), T>)
+where
+    T: std::fmt::Debug,
+{
+    let _ = handle_error_option(error_type, a);
 }
 
 // https://docs.rs/souvlaki/latest/souvlaki/
