@@ -12,7 +12,10 @@ use crate::{
     SoundAction,
 };
 
-use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
+use super::{
+    download::{DOWNLOAD_MORE, IN_DOWNLOAD},
+    logger::log,
+};
 
 pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAction>> {
     let (tx, rx) = flume::unbounded::<SoundAction>();
@@ -24,6 +27,7 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
         let mut previous: Vec<Video> = Vec::new();
         let mut current: Option<Video> = None;
         loop {
+            log("update player");
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
                 .send(ManagerMessage::PassTo(
