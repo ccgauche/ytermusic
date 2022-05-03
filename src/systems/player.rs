@@ -301,7 +301,7 @@ fn apply_sound_action(
             handle_error("sink stop", sink.stop(guard));
         }
         SoundAction::RestartPlayer => {
-            (*sink, *guard) = Player::new(error_sender.clone()).unwrap();
+            (*sink, *guard) = handle_error_option("update player", sink.update()).unwrap();
             if let Some(e) = current {
                 apply_sound_action(
                     SoundAction::PlayVideo(e.clone()),

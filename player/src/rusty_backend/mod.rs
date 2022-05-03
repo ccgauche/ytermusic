@@ -34,6 +34,7 @@ static VOLUME_STEP: u16 = 5;
 pub struct Player {
     sink: Sink,
     data: PlayerData,
+    error_sender: Arc<Sender<StreamError>>,
 }
 
 pub struct Guard {
@@ -41,6 +42,7 @@ pub struct Guard {
     handle: OutputStreamHandle,
 }
 
+#[derive(Clone)]
 pub struct PlayerData {
     total_duration: Option<Duration>,
     volume: u16,
@@ -89,7 +91,8 @@ impl Player {
         })
     }
     pub fn new(error_sender: Arc<Sender<StreamError>>) -> Result<(Self, Guard), PlayError> {
-        let (stream, handle) = Self::try_default(error_sender).map_err(PlayError::StreamError)?;
+        let (stream, handle) =
+            Self::try_default(error_sender.clone()).map_err(PlayError::StreamError)?;
         let sink = Sink::try_new(&handle)?;
         let volume = 50;
         sink.set_volume(f32::from(volume) / 100.0);
@@ -97,11 +100,30 @@ impl Player {
         Ok((
             Self {
                 sink: sink,
+                error_sender: error_sender,
                 data: PlayerData {
                     total_duration: None,
                     volume,
                     safe_guard: false,
                 },
+            },
+            Guard {
+                _stream: stream,
+                handle: handle,
+            },
+        ))
+    }
+    pub fn update(&self) -> Result<(Self, Guard), PlayError> {
+        let (stream, handle) =
+            Self::try_default(self.error_sender.clone()).map_err(PlayError::StreamError)?;
+        let sink = Sink::try_new(&handle)?;
+        let volume = self.data.volume;
+        sink.set_volume(f32::from(volume) / 100.0);
+        Ok((
+            Self {
+                sink,
+                error_sender: self.error_sender.clone(),
+                data: self.data.clone(),
             },
             Guard {
                 _stream: stream,
