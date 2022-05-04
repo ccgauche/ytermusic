@@ -11,26 +11,18 @@ use super::{EventResponse, ManagerMessage, Screen, Screens};
 pub struct DeviceLost;
 
 impl Screen for DeviceLost {
-    fn on_mouse_press(
-        &mut self,
-        _: crossterm::event::MouseEvent,
-        _: &Rect,
-    ) -> super::EventResponse {
-        super::EventResponse::None
+    fn on_mouse_press(&mut self, _: crossterm::event::MouseEvent, _: &Rect) -> EventResponse {
+        EventResponse::None
     }
 
-    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> super::EventResponse {
-        if KeyCode::Esc == key.code {
-            return EventResponse::Message(vec![ManagerMessage::Quit]);
+    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
+        match key.code {
+            KeyCode::Enter | KeyCode::Char(' ') => ManagerMessage::RestartPlayer
+                .pass_to(Screens::MusicPlayer)
+                .event(),
+            KeyCode::Esc => ManagerMessage::Quit.event(),
+            _ => EventResponse::None,
         }
-        if KeyCode::Enter == key.code || KeyCode::Char(' ') == key.code {
-            return EventResponse::Message(vec![ManagerMessage::PassTo(
-                Screens::MusicPlayer,
-                Box::new(ManagerMessage::RestartPlayer),
-            )]);
-        }
-
-        EventResponse::None
     }
 
     fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
@@ -51,15 +43,15 @@ impl Screen for DeviceLost {
         );
     }
 
-    fn handle_global_message(&mut self, _: super::ManagerMessage) -> super::EventResponse {
+    fn handle_global_message(&mut self, _: ManagerMessage) -> EventResponse {
         EventResponse::None
     }
 
-    fn close(&mut self, _: Screens) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> EventResponse {
         EventResponse::None
     }
 
-    fn open(&mut self) -> super::EventResponse {
+    fn open(&mut self) -> EventResponse {
         EventResponse::None
     }
 }

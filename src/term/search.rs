@@ -38,7 +38,7 @@ impl Screen for Search {
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
         frame_data: &Rect,
-    ) -> super::EventResponse {
+    ) -> EventResponse {
         if let MouseEventKind::Down(_) = mouse_event.kind {
             let splitted = split_y_start(*frame_data, 3);
             let x = mouse_event.column;
@@ -59,12 +59,12 @@ impl Screen for Search {
                 }
             }
         }
-        super::EventResponse::None
+        EventResponse::None
     }
 
-    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> super::EventResponse {
+    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         if KeyCode::Esc == key.code {
-            return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::Playlist)]);
+            return ManagerMessage::ChangeState(Screens::Playlist).event();
         }
         let textbefore = self.text.trim().to_owned();
         match key.code {
@@ -73,9 +73,7 @@ impl Screen for Search {
                     self.action_sender.send(SoundAction::Cleanup).unwrap();
                     download::clean(self.action_sender.clone());
                     download::add(a.1);
-                    return EventResponse::Message(vec![ManagerMessage::ChangeState(
-                        Screens::MusicPlayer,
-                    )]);
+                    return ManagerMessage::ChangeState(Screens::MusicPlayer).event();
                 }
             }
             KeyCode::Char('+') | KeyCode::Up => self.selected(self.selected as isize - 1),
@@ -173,15 +171,15 @@ impl Screen for Search {
         );
     }
 
-    fn handle_global_message(&mut self, _: super::ManagerMessage) -> super::EventResponse {
+    fn handle_global_message(&mut self, _: super::ManagerMessage) -> EventResponse {
         EventResponse::None
     }
 
-    fn close(&mut self, _: Screens) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> EventResponse {
         EventResponse::None
     }
 
-    fn open(&mut self) -> super::EventResponse {
+    fn open(&mut self) -> EventResponse {
         EventResponse::None
     }
 }

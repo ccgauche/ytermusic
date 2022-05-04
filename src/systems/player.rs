@@ -20,6 +20,7 @@ use super::{
     download::{DOWNLOAD_MORE, IN_DOWNLOAD},
     logger::log,
 };
+
 #[cfg(not(target_os = "windows"))]
 fn get_handle() -> Option<MediaControls> {
     handle_error_option(
@@ -86,14 +87,14 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
             handle_stream_errors(&stream_error_receiver, &updater);
             DOWNLOAD_MORE.store(queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
             updater
-                .send(ManagerMessage::PassTo(
-                    Screens::MusicPlayer,
-                    Box::new(ManagerMessage::UpdateApp(App::new(
+                .send(
+                    ManagerMessage::UpdateApp(App::new(
                         &sink,
                         generate_music(&queue, &previous, &current, &sink),
                         k.clone(),
-                    ))),
-                ))
+                    ))
+                    .pass_to(Screens::MusicPlayer),
+                )
                 .unwrap();
             std::thread::sleep(Duration::from_millis(100));
             while let Ok(e) = rx.try_recv() {
@@ -145,13 +146,13 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
                         }
                         std::thread::sleep(Duration::from_millis(200));
                         updater
-                            .send(ManagerMessage::PassTo(
-                                Screens::MusicPlayer,
-                                Box::new(ManagerMessage::UpdateApp(App::new(
+                            .send(ManagerMessage::UpdateApp(
+                                App::new(
                                     &sink,
                                     generate_music(&queue, &previous, &current, &sink),
                                     k.clone(),
-                                ))),
+                                )
+                                .pass_to(Screens::MusicPlayer),
                             ))
                             .unwrap();
                     }

@@ -24,7 +24,7 @@ impl Screen for Chooser {
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
         frame_data: &Rect,
-    ) -> super::EventResponse {
+    ) -> EventResponse {
         if let MouseEventKind::Down(_) = mouse_event.kind {
             let x = mouse_event.column;
             let y = mouse_event.row;
@@ -44,19 +44,13 @@ impl Screen for Chooser {
                 }
             }
         }
-        super::EventResponse::None
+        EventResponse::None
     }
 
-    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> super::EventResponse {
-        if KeyCode::Esc == key.code {
-            return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
-        }
-        if KeyCode::Char('f') == key.code {
-            return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                Screens::Search,
-            )]);
-        }
+    fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         match key.code {
+            KeyCode::Esc => return ManagerMessage::ChangeState(Screens::MusicPlayer).event(),
+            KeyCode::Char('f') => return ManagerMessage::ChangeState(Screens::Search).event(),
             KeyCode::Enter => {
                 if let Some(a) = &self.items.get(self.selected) {
                     if a.0 != "Local musics" {
@@ -77,7 +71,6 @@ impl Screen for Chooser {
             KeyCode::Char('-') | KeyCode::Down => self.selected(self.selected as isize + 1),
             _ => {}
         }
-
         EventResponse::None
     }
 
@@ -115,18 +108,18 @@ impl Screen for Chooser {
         );
     }
 
-    fn handle_global_message(&mut self, message: super::ManagerMessage) -> super::EventResponse {
+    fn handle_global_message(&mut self, message: super::ManagerMessage) -> EventResponse {
         if let ManagerMessage::AddElementToChooser(a) = message {
             self.add_element(a);
         }
         EventResponse::None
     }
 
-    fn close(&mut self, _: Screens) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> EventResponse {
         EventResponse::None
     }
 
-    fn open(&mut self) -> super::EventResponse {
+    fn open(&mut self) -> EventResponse {
         EventResponse::None
     }
 }

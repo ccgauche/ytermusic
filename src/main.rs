@@ -52,10 +52,7 @@ async fn main() -> Result<(), Error> {
                 playlist.0 = format!("Last playlist: {}", playlist.0);
             }
             updater_s
-                .send(ManagerMessage::PassTo(
-                    Screens::Playlist,
-                    Box::new(ManagerMessage::AddElementToChooser(playlist)),
-                ))
+                .send(ManagerMessage::AddElementToChooser(playlist).pass_to(Screens::Playlist))
                 .unwrap();
             Some(())
         });
@@ -75,16 +72,16 @@ async fn main() -> Result<(), Error> {
                             match api.browse_playlist(&playlist.browse_id).await {
                                 Ok(videos) => {
                                     updater_s
-                                        .send(ManagerMessage::PassTo(
-                                            Screens::Playlist,
-                                            Box::new(ManagerMessage::AddElementToChooser((
+                                        .send(
+                                            ManagerMessage::AddElementToChooser((
                                                 format!(
                                                     "{} ({})",
                                                     playlist.name, playlist.subtitle
                                                 ),
                                                 videos,
-                                            ))),
-                                        ))
+                                            ))
+                                            .pass_to(Screens::Playlist),
+                                        )
                                         .unwrap();
                                 }
                                 Err(e) => {
@@ -115,13 +112,10 @@ async fn main() -> Result<(), Error> {
             }
 
             updater_s
-                .send(ManagerMessage::PassTo(
-                    Screens::Playlist,
-                    Box::new(ManagerMessage::AddElementToChooser((
-                        "Local musics".to_owned(),
-                        videos,
-                    ))),
-                ))
+                .send(
+                    ManagerMessage::AddElementToChooser(("Local musics".to_owned(), videos))
+                        .pass_to(Screens::Playlist),
+                )
                 .unwrap();
         });
     }

@@ -128,7 +128,7 @@ impl Screen for App {
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
         frame_data: &tui::layout::Rect,
-    ) -> super::EventResponse {
+    ) -> EventResponse {
         if let MouseEventKind::Down(_) = &mouse_event.kind {
             let x = mouse_event.column;
             let y = mouse_event.row;
@@ -156,48 +156,40 @@ impl Screen for App {
         EventResponse::None
     }
 
-    fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> super::EventResponse {
-        if KeyCode::Esc == key.code {
-            return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                Screens::Playlist,
-            )]);
-        }
-        if KeyCode::Char('f') == key.code {
-            return super::EventResponse::Message(vec![ManagerMessage::ChangeState(
-                Screens::Search,
-            )]);
-        }
-        if key.modifiers.contains(KeyModifiers::CONTROL) {
-            match key.code {
-                KeyCode::Char('<') | KeyCode::Left => {
-                    self.action_sender.send(SoundAction::Previous(1)).unwrap();
-                }
-                KeyCode::Char('>') | KeyCode::Right => {
-                    self.action_sender.send(SoundAction::Next(1)).unwrap();
-                }
-                _ => {}
+    fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> EventResponse {
+        match key.code {
+            KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
+            KeyCode::Char('f') => ManagerMessage::ChangeState(Screens::Search).event(),
+            KeyCode::Char(' ') => {
+                self.action_sender.send(SoundAction::PlayPause).unwrap();
+                EventResponse::None
             }
-        } else {
-            match key.code {
-                KeyCode::Char(' ') => {
-                    self.action_sender.send(SoundAction::PlayPause).unwrap();
-                }
-                KeyCode::Char('<') | KeyCode::Left => {
+            KeyCode::Char('+') | KeyCode::Up => {
+                self.action_sender.send(SoundAction::Plus).unwrap();
+                EventResponse::None
+            }
+            KeyCode::Char('-') | KeyCode::Down => {
+                self.action_sender.send(SoundAction::Minus).unwrap();
+                EventResponse::None
+            }
+            KeyCode::Char('<') | KeyCode::Left => {
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    self.action_sender.send(SoundAction::Previous(1)).unwrap();
+                } else {
                     self.action_sender.send(SoundAction::Backward).unwrap();
                 }
-                KeyCode::Char('>') | KeyCode::Right => {
+                EventResponse::None
+            }
+            KeyCode::Char('>') | KeyCode::Right => {
+                if key.modifiers.contains(KeyModifiers::CONTROL) {
+                    self.action_sender.send(SoundAction::Next(1)).unwrap();
+                } else {
                     self.action_sender.send(SoundAction::Forward).unwrap();
                 }
-                KeyCode::Char('+') | KeyCode::Up => {
-                    self.action_sender.send(SoundAction::Plus).unwrap();
-                }
-                KeyCode::Char('-') | KeyCode::Down => {
-                    self.action_sender.send(SoundAction::Minus).unwrap();
-                }
-                _ => {}
+                EventResponse::None
             }
+            _ => EventResponse::None,
         }
-        EventResponse::None
     }
 
     fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
@@ -266,26 +258,26 @@ impl Screen for App {
         );
     }
 
-    fn handle_global_message(&mut self, message: super::ManagerMessage) -> super::EventResponse {
+    fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {
         match message {
             ManagerMessage::UpdateApp(app) => {
                 *self = app;
-                super::EventResponse::None
+                EventResponse::None
             }
             ManagerMessage::RestartPlayer => {
                 self.action_sender.send(SoundAction::RestartPlayer).unwrap();
-                EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)])
+                ManagerMessage::ChangeState(Screens::MusicPlayer).event()
             }
             _ => EventResponse::None,
         }
     }
 
-    fn close(&mut self, _: Screens) -> super::EventResponse {
+    fn close(&mut self, _: Screens) -> EventResponse {
         self.action_sender.send(SoundAction::ForcePause).unwrap();
         EventResponse::None
     }
 
-    fn open(&mut self) -> super::EventResponse {
+    fn open(&mut self) -> EventResponse {
         self.action_sender.send(SoundAction::ForcePlay).unwrap();
         EventResponse::None
     }

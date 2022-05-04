@@ -49,6 +49,15 @@ pub enum ManagerMessage {
     AddElementToChooser((String, Vec<Video>)),
 }
 
+impl ManagerMessage {
+    pub fn pass_to(self, screen: Screens) -> Self {
+        Self::PassTo(screen, Box::new(self))
+    }
+    pub fn event(self) -> EventResponse {
+        EventResponse::Message(vec![self])
+    }
+}
+
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Screens {
