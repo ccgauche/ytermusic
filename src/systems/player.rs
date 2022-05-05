@@ -146,14 +146,14 @@ pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAc
                         }
                         std::thread::sleep(Duration::from_millis(200));
                         updater
-                            .send(ManagerMessage::UpdateApp(
-                                App::new(
+                            .send(
+                                ManagerMessage::UpdateApp(App::new(
                                     &sink,
                                     generate_music(&queue, &previous, &current, &sink),
                                     k.clone(),
-                                )
+                                ))
                                 .pass_to(Screens::MusicPlayer),
-                            ))
+                            )
                             .unwrap();
                     }
                 }
