@@ -84,7 +84,12 @@ impl Sink {
                     src.stop();
                 } else {
                     if let Some(seek_time) = controls.seek.lock().unwrap().take() {
-                        src.seek(seek_time).unwrap();
+                        match src.seek(seek_time) {
+                            Ok(_) => {}
+                            Err(a) => {
+                                std::fs::write("error.seek", format!("Error seeking: {:?}", a));
+                            }
+                        }
                     }
                     *elapsed.write().unwrap() = src.elapsed();
                     src.inner_mut().set_factor(*controls.volume.lock().unwrap());
