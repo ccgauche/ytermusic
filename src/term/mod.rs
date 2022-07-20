@@ -25,7 +25,7 @@ use crate::{
     SoundAction,
 };
 
-use self::{device_lost::DeviceLost, music_player::App, playlist::Chooser, search::Search};
+use self::{device_lost::DeviceLost, playlist::Chooser, search::Search};
 
 pub trait Screen {
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
@@ -70,7 +70,7 @@ pub enum Screens {
 }
 
 pub struct Manager {
-    music_player: App,
+    music_player: PlayerState,
     chooser: Chooser,
     search: Search,
     device_lost: DeviceLost,
@@ -78,9 +78,9 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>, player: PlayerState) -> Self {
-        Manager {
-            music_player: App::default(player),
+    pub async fn new(action_sender: Arc<Sender<SoundAction>>, music_player: PlayerState) -> Self {
+        Self {
+            music_player,
             chooser: Chooser {
                 selected: 0,
                 items: vec![],

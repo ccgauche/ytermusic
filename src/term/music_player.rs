@@ -70,11 +70,7 @@ impl MusicStatus {
     }
 }
 
-pub struct App {
-    pub player: PlayerState,
-}
-
-impl Screen for App {
+impl Screen for PlayerState {
     fn on_mouse_press(
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
@@ -87,20 +83,15 @@ impl Screen for App {
             let [list_rect, _] = split_x(top_rect, 10);
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
-                match get_action(
-                    y as usize,
-                    &self.player.queue,
-                    &self.player.previous,
-                    &self.player.current,
-                ) {
+                match get_action(y as usize, &self.queue, &self.previous, &self.current) {
                     Some(MusicStatusAction::Skip(a)) => {
-                        self.player.apply_sound_action(SoundAction::Next(a));
+                        self.apply_sound_action(SoundAction::Next(a));
                     }
                     Some(MusicStatusAction::Current) => {
-                        self.player.apply_sound_action(SoundAction::PlayPause);
+                        self.apply_sound_action(SoundAction::PlayPause);
                     }
                     Some(MusicStatusAction::Before(a)) => {
-                        self.player.apply_sound_action(SoundAction::Previous(a));
+                        self.apply_sound_action(SoundAction::Previous(a));
                     }
                     None | Some(MusicStatusAction::Downloading) => (),
                 }
@@ -114,30 +105,30 @@ impl Screen for App {
             KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
             KeyCode::Char('f') => ManagerMessage::ChangeState(Screens::Search).event(),
             KeyCode::Char(' ') => {
-                self.player.apply_sound_action(SoundAction::PlayPause);
+                self.apply_sound_action(SoundAction::PlayPause);
                 EventResponse::None
             }
             KeyCode::Char('+') | KeyCode::Up => {
-                self.player.apply_sound_action(SoundAction::Plus);
+                self.apply_sound_action(SoundAction::Plus);
                 EventResponse::None
             }
             KeyCode::Char('-') | KeyCode::Down => {
-                self.player.apply_sound_action(SoundAction::Minus);
+                self.apply_sound_action(SoundAction::Minus);
                 EventResponse::None
             }
             KeyCode::Char('<') | KeyCode::Left => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.player.apply_sound_action(SoundAction::Previous(1));
+                    self.apply_sound_action(SoundAction::Previous(1));
                 } else {
-                    self.player.apply_sound_action(SoundAction::Backward);
+                    self.apply_sound_action(SoundAction::Backward);
                 }
                 EventResponse::None
             }
             KeyCode::Char('>') | KeyCode::Right => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.player.apply_sound_action(SoundAction::Next(1));
+                    self.apply_sound_action(SoundAction::Next(1));
                 } else {
-                    self.player.apply_sound_action(SoundAction::Forward);
+                    self.apply_sound_action(SoundAction::Forward);
                 }
                 EventResponse::None
             }
@@ -146,12 +137,12 @@ impl Screen for App {
     }
 
     fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
-        self.player.update();
+        self.update();
         let [top_rect, progress_rect] = split_y(f.size(), 3);
         let [list_rect, volume_rect] = split_x(top_rect, 10);
-        let colors = if self.player.sink.is_paused() {
+        let colors = if self.sink.is_paused() {
             AppStatus::Paused
-        } else if self.player.sink.is_finished() {
+        } else if self.sink.is_finished() {
             AppStatus::NoMusic
         } else {
             AppStatus::Playing
@@ -161,18 +152,17 @@ impl Screen for App {
             Gauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
-                .ratio((self.player.sink.volume() as f64).min(1.0).max(0.0)),
+                .ratio((self.sink.volume() as f64).min(1.0).max(0.0)),
             volume_rect,
         );
-        let current_time = self.player.sink.elapsed().as_secs();
-        let total_time = self.player.sink.duration().map(|x| x as u32).unwrap_or(0);
+        let current_time = self.sink.elapsed().as_secs();
+        let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
             Gauge::default()
                 .block(
                     Block::default()
                         .title(
-                            self.player
-                                .current
+                            self.current
                                 .as_ref()
                                 .map(|x| format!(" {} | {} ", x.author, x.title))
                                 .unwrap_or_else(|| " No music playing ".to_owned()),
@@ -181,10 +171,10 @@ impl Screen for App {
                 )
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
                 .ratio(
-                    if self.player.sink.is_finished() {
+                    if self.sink.is_finished() {
                         0.5
                     } else {
-                        self.player.sink.percentage().min(100.)
+                        self.sink.percentage().min(100.)
                     }
                     .min(1.0)
                     .max(0.0),
@@ -201,10 +191,10 @@ impl Screen for App {
         // Create a List from all list items and highlight the currently selected one
         f.render_stateful_widget(
             List::new(generate_music(
-                &self.player.queue,
-                &self.player.previous,
-                &self.player.current,
-                &self.player.sink,
+                &self.queue,
+                &self.previous,
+                &self.current,
+                &self.sink,
             ))
             .block(Block::default().borders(Borders::ALL).title(" Playlist ")),
             list_rect,
@@ -215,7 +205,7 @@ impl Screen for App {
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {
         match message {
             ManagerMessage::RestartPlayer => {
-                self.player.apply_sound_action(SoundAction::RestartPlayer);
+                self.apply_sound_action(SoundAction::RestartPlayer);
                 ManagerMessage::ChangeState(Screens::MusicPlayer).event()
             }
             _ => EventResponse::None,
@@ -223,18 +213,12 @@ impl Screen for App {
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
-        self.player.apply_sound_action(SoundAction::ForcePause);
+        self.apply_sound_action(SoundAction::ForcePause);
         EventResponse::None
     }
 
     fn open(&mut self) -> EventResponse {
-        self.player.apply_sound_action(SoundAction::ForcePlay);
+        self.apply_sound_action(SoundAction::ForcePlay);
         EventResponse::None
-    }
-}
-
-impl App {
-    pub fn default(player: PlayerState) -> Self {
-        Self { player }
     }
 }
