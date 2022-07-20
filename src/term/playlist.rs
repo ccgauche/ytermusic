@@ -63,7 +63,7 @@ impl Screen for Chooser {
                     self.action_sender.send(SoundAction::Cleanup).unwrap();
                     download::clean(self.action_sender.clone());
                     for video in self.items.get(self.selected).unwrap().1.iter() {
-                        download::add(video.clone());
+                        download::add(video.clone(), &self.action_sender);
                     }
                 }
                 return EventResponse::Message(vec![ManagerMessage::ChangeState(

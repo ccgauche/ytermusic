@@ -6,7 +6,7 @@ use rustube::Error;
 use term::{Manager, ManagerMessage, Screens};
 use varuint::{ReadVarint, WriteVarint};
 
-use std::collections::{HashSet, LinkedList};
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{Cursor, Read, Write};
 use std::sync::RwLock;
@@ -18,6 +18,7 @@ use ytpapi::{Video, YTApi};
 
 use crate::systems::logger::log_;
 
+mod errors;
 mod systems;
 mod term;
 

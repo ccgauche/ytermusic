@@ -17,6 +17,7 @@ use crate::SoundAction;
 pub static IN_DOWNLOAD: Lazy<Mutex<Vec<ytpapi::Video>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static DOWNLOAD_MORE: AtomicBool = AtomicBool::new(true);
+// TODO Maybe switch to a channel
 static DOWNLOAD_QUEUE: Lazy<Mutex<VecDeque<ytpapi::Video>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
@@ -38,8 +39,14 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
     downloader(sender);
 }
 
-pub fn add(video: Video) {
-    DOWNLOAD_QUEUE.lock().unwrap().push_back(video);
+pub fn add(video: Video, s: &Sender<SoundAction>) {
+    let download_path_json =
+        PathBuf::from_str(&format!("data/downloads/{}.json", &video.video_id)).unwrap();
+    if download_path_json.exists() {
+        s.send(SoundAction::PlayVideo(video.clone())).unwrap();
+    } else {
+        DOWNLOAD_QUEUE.lock().unwrap().push_back(video);
+    }
 }
 
 async fn handle_download(id: &str) -> Result<PathBuf, Error> {

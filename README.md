@@ -37,24 +37,33 @@ It's aims to be as fast and simple as possible.
 
 - Use your mouse to click in lists if your terminal has mouse support
 - Press `Space` to play/pause
+- Press `f` to search
 - Press `Arrow Right` or `>` to skip 5 seconds
 - Press `Arrow Left` or `<` to go back 5 seconds
 - Press `CTRL + Arrow Right` or `CTRL + >` to go to the next song
 - Press `CTRL + Arrow Left` or `CTRL + <` to go to the previous song
 - Press `+` for volume up
 - Press `-` for volume down
-- Press `ESC` to quit
+- Press `ESC` to exit the current menu
+- Press `CTRL + C` or `CTRL + D` to exit
 
 ## Features and upcomming features
 
-- [x] Add a playlist selector
-- [ ] Add error message display in the TUI
-- [x] Really enable to connection less music playing
-- [ ] Add a cache limit to not exceed some given disk space
-- [x] Add a download limit to stop downloading after the queue is full
+- [x] Playlist selector
+- [x] Error message display in the TUI
+- [x] Enable connection less music playing
+- [ ] Cache limit to not exceed some given disk space
+- [x] A download limit to stop downloading after the queue is full
 - [x] Mouse support
 
 ## Changelog
+
+Alpha a0.0.5
+
+- Added local database cache to improve IO accesses
+- Added searching for musics in the local library
+- Greatly improved render performance and RAM usage
+- Error management and error display in specific screen
 
 Alpha a0.0.4
 

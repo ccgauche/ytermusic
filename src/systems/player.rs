@@ -8,6 +8,7 @@ use tui::{style::Style, widgets::ListItem};
 use ytpapi::Video;
 
 use crate::{
+    errors::{handle_error, handle_error_option},
     term::{
         music_player::{MusicStatus, MusicStatusAction},
         ManagerMessage, Screens,
@@ -63,7 +64,7 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
     handle_error_option(
         updater,
         "Can't create media controls",
-        MediaControls::new(config),
+        MediaControls::new(config).map_err(|x| format!("{:?}", x)),
     )
 }
 
@@ -98,7 +99,7 @@ impl PlayerState {
             handle_error(
                 &updater,
                 "Can't connect media control",
-                connect(e, soundaction_sender.clone()),
+                connect(e, soundaction_sender.clone()).map_err(|x| format!("{:?}", x)),
             );
         }
         Self {
@@ -138,8 +139,19 @@ impl PlayerState {
                             .write()
                             .unwrap()
                             .retain(|x| x.video_id != video.video_id);
-                        std::fs::remove_file(k);
-                        std::fs::remove_file(format!("data/downloads/{}.json", &video.video_id));
+                        handle_error(
+                            &self.updater,
+                            "invalid cleaning MP4",
+                            std::fs::remove_file(k),
+                        );
+                        handle_error(
+                            &self.updater,
+                            "invalid cleaning JSON",
+                            std::fs::remove_file(format!(
+                                "data/downloads/{}.json",
+                                &video.video_id
+                            )),
+                        );
                         self.current = None;
                         crate::write();
                     } else {
@@ -161,22 +173,12 @@ impl PlayerState {
 
     fn handle_stream_errors(&self) {
         while let Ok(e) = self.stream_error_receiver.try_recv() {
-            self.updater
-                .send(ManagerMessage::ChangeState(Screens::DeviceLost))
-                .unwrap();
-            self.updater
-                .send(ManagerMessage::PassTo(
-                    Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error(format!("{:?}", e))),
-                ))
-                .unwrap();
+            let _ = handle_error(&self.updater, "audio device stream error", Err(e));
         }
     }
     fn update_controls(&mut self) {
-        handle_error::<Error>(
-            &self.updater,
-            "Can't update finished media control",
-            try {
+        handle_error::<String>(&self.updater, "Can't update finished media control", {
+            let k: Result<_, Error> = try {
                 if let Some(e) = &mut self.controls {
                     e.set_metadata(MediaMetadata {
                         title: self.current.as_ref().map(|video| video.title.as_str()),
@@ -198,8 +200,9 @@ impl PlayerState {
                     }
                 }
                 ()
-            },
-        );
+            };
+            k.map_err(|x| format!("{:?}", x))
+        });
     }
     pub fn apply_sound_action(&mut self, e: SoundAction) {
         match e {
@@ -269,34 +272,6 @@ pub fn player_system(
     let tx = Arc::new(tx);
     let k = tx.clone();
     (tx, PlayerState::new(k, rx, updater))
-}
-
-fn handle_error_option<T, E>(
-    updater: &Sender<ManagerMessage>,
-    error_type: &'static str,
-    a: Result<E, T>,
-) -> Option<E>
-where
-    T: std::fmt::Debug,
-{
-    match a {
-        Ok(e) => Some(e),
-        Err(a) => {
-            updater
-                .send(ManagerMessage::PassTo(
-                    Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error(format!("{}{:?}", error_type, a))),
-                ))
-                .unwrap();
-            None
-        }
-    }
-}
-fn handle_error<T>(updater: &Sender<ManagerMessage>, error_type: &'static str, a: Result<(), T>)
-where
-    T: std::fmt::Debug,
-{
-    let _ = handle_error_option(updater, error_type, a);
 }
 
 // https://docs.rs/souvlaki/latest/souvlaki/
