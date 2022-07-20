@@ -15,8 +15,7 @@ rustube = { path = "./rustube", features = [
 ytpapi = { path = "./ytpapi" }
 
 #  --- Threading & Sync ---
-tokio = { version = "*", features = ["full"] }
-futures-util = "0.3.21"
+tokio = { version = "*", features = ["rt-multi-thread"] }
 once_cell = "1.10.0"
 flume = "0.10.12"
 

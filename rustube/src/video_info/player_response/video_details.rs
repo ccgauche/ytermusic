@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{json::JsonString, serde_as};
 
-use crate::IdBuf;
+use crate::id::IdBuf;
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -56,23 +56,31 @@ pub struct Thumbnail {
     pub url: String,
 }
 
-
 impl Thumbnail {
-    pub(crate) fn deserialize_vec<'de, D>(deserializer: D) -> Result<Vec<Self>, <D as Deserializer<'de>>::Error> where
-        D: Deserializer<'de> {
+    pub(crate) fn deserialize_vec<'de, D>(
+        deserializer: D,
+    ) -> Result<Vec<Self>, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
         #[derive(Deserialize)]
-        struct Thumbnails { thumbnails: Vec<Thumbnail> }
+        struct Thumbnails {
+            thumbnails: Vec<Thumbnail>,
+        }
 
-        Ok(
-            Thumbnails::deserialize(deserializer)?
-                .thumbnails
-        )
+        Ok(Thumbnails::deserialize(deserializer)?.thumbnails)
     }
-    pub(crate) fn serialize_vec<S>(thumbnails: &[Thumbnail], serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer {
+    pub(crate) fn serialize_vec<S>(
+        thumbnails: &[Thumbnail],
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
         #[derive(Serialize)]
-        struct Thumbnails<'a> { thumbnails: &'a [Thumbnail] }
+        struct Thumbnails<'a> {
+            thumbnails: &'a [Thumbnail],
+        }
 
         Thumbnails { thumbnails }.serialize(serializer)
     }

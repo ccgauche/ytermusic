@@ -2,8 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{json::JsonString, serde_as};
 
-use crate::IdBuf;
-use crate::video_info::player_response::video_details::Thumbnail;
+use crate::{id::IdBuf, video_info::player_response::video_details::Thumbnail};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(tag = "status", rename_all = "SCREAMING_SNAKE_CASE")]
@@ -127,7 +126,7 @@ pub enum ButtonRendererStyle {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum ButtonRendererSize {
     #[serde(rename = "SIZE_DEFAULT")]
-    Default
+    Default,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -143,7 +142,6 @@ pub struct NavigationEndpoint {
 pub struct Endpoint {
     pub click_tracking_params: String,
     pub command_metadata: CommandMetadata,
-
     // todo: there may be an extra field `url_endpoint: Option<UrlEndpoint>`
     // currently this field is only used in NextEndpoint and therefore not exposed in this struct
 }
@@ -166,7 +164,7 @@ pub struct WebCommandMetadata {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum WebPageType {
     #[serde(rename = "WEB_PAGE_TYPE_UNKNOWN")]
-    Unknown
+    Unknown,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -199,7 +197,7 @@ pub struct Icon {
 #[derive(Clone, Copy, Debug, derive_more::Display, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IconType {
-    ErrorOutline
+    ErrorOutline,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
@@ -211,7 +209,7 @@ pub struct LiveStreamAbility {
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
-pub struct LiveStreamAbilityRenderer {
+struct LiveStreamAbilityRenderer {
     video_id: IdBuf,
     offline_slate: OfflineSlate,
     #[serde_as(as = "JsonString")]
@@ -220,13 +218,13 @@ pub struct LiveStreamAbilityRenderer {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
-pub struct OfflineSlate {
+struct OfflineSlate {
     live_stream_offline_slate_renderer: LiveStreamOfflineSlateRenderer,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
-pub struct LiveStreamOfflineSlateRenderer {
+struct LiveStreamOfflineSlateRenderer {
     #[serde(with = "crate::serde_impl::unix_timestamp_secs")]
     scheduled_start_time: DateTime<Utc>,
     main_text: Reason,
@@ -234,5 +232,5 @@ pub struct LiveStreamOfflineSlateRenderer {
     #[serde(rename = "thumbnail")]
     #[serde(serialize_with = "Thumbnail::serialize_vec")]
     #[serde(deserialize_with = "Thumbnail::deserialize_vec")]
-    pub thumbnails: Vec<Thumbnail>,
+    pub(crate) thumbnails: Vec<Thumbnail>,
 }

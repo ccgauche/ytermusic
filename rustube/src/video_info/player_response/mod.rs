@@ -2,19 +2,13 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "microformat")]
-use microformat::Microformat;
 use playability_status::PlayabilityStatus;
 use streaming_data::StreamingData;
 use video_details::VideoDetails;
 
-pub mod video_details;
-pub mod streaming_data;
-pub mod playability_status;
-#[cfg(feature = "microformat")]
-#[doc(cfg(feature = "microformat"))]
-pub mod microformat;
-
+pub(crate) mod playability_status;
+pub(crate) mod streaming_data;
+pub(crate) mod video_details;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -41,9 +35,18 @@ pub struct PlayerResponse {
 }
 
 #[derive(
-Clone, Default, Debug, derive_more::Display,
-Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash
+    Clone,
+    Default,
+    Debug,
+    derive_more::Display,
+    Deserialize,
+    Serialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
 )]
 pub struct Assets {
-    pub js: String
+    pub js: String,
 }

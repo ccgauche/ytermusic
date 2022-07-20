@@ -181,7 +181,6 @@ async fn main() -> Result<(), Error> {
     }
     {
         let updater_s = updater_s.clone();
-        println!("getting locals...");
         tokio::task::spawn(async move {
             if let Some(e) = read() {
                 *DATABASE.write().unwrap() = e.clone();
@@ -216,11 +215,9 @@ async fn main() -> Result<(), Error> {
                     .unwrap();
                 write();
             }
-            println!("locals retreived");
         });
     }
     let mut manager = Manager::new(sa, player).await;
-    println!("manager running...");
     manager.run(&updater_r).unwrap();
     Ok(())
 }

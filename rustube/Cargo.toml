@@ -94,32 +94,35 @@ optional = true
 
 [dependencies.url]
 version = "2.2.2"
-[dev-dependencies.env_logger]
-version = "0.9.0"
-
-[dev-dependencies.rand]
-version = "0.8.4"
-
-[dev-dependencies.test-env-log]
-version = "0.2.7"
-
-[dev-dependencies.tokio]
-version = "1.12.0"
-features = ["full"]
-
-[dev-dependencies.tokio-test]
-version = "0.4.2"
 
 [features]
-blocking = ["tokio/rt", "tokio/rt-multi-thread", "std"]
-callback = ["tokio/sync", "futures", "download"]
-default = ["download", "std", "default-tls"]
-default-tls = ["reqwest/default-tls"]
+default = ["download", "std", "reqwest/rustls-tls"]
 descramble = ["fetch", "stream"]
-download = ["fetch", "tokio/fs", "tokio/io-util", "tokio/parking_lot", "tokio-stream"]
-fetch = ["tokio/macros", "reqwest/json", "serde/default", "serde/rc", "serde_with/json", "serde_json", "serde_qs", "bytes", "chrono", "mime", "std", "descramble", "url/serde", "reqwest/cookies", "reqwest/stream", "reqwest/gzip"]
-microformat = ["fetch", "chrono/serde"]
-native-tls = ["reqwest/native-tls"]
-rustls-tls = ["reqwest/rustls-tls"]
+download = [
+    "fetch",
+    "tokio/fs",
+    "tokio/io-util",
+    "tokio/parking_lot",
+    "tokio-stream",
+]
+fetch = [
+    "tokio/macros",
+    "reqwest/json",
+    "serde/default",
+    "serde/rc",
+    "serde_with/json",
+    "serde_json",
+    "serde_qs",
+    "bytes",
+    "chrono",
+    "mime",
+    "std",
+    "descramble",
+    "url/serde",
+    "reqwest/cookies",
+    "reqwest/stream",
+    "reqwest/gzip",
+]
+rustls-tls = []
 std = ["regex", "thiserror"]
 stream = ["descramble", "chrono/serde"]

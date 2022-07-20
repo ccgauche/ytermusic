@@ -5,7 +5,7 @@ use serde_with::{json::JsonString, serde_as};
 
 use player_response::PlayerResponse;
 
-pub mod player_response;
+pub(crate) mod player_response;
 
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

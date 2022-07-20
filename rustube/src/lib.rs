@@ -10,7 +10,6 @@
 )]
 #![allow(clippy::nonstandard_macro_braces)]
 #![warn(
-missing_debug_implementations,
 // missing_docs,
 rust_2018_idioms,
 unreachable_pub
@@ -204,34 +203,13 @@ extern crate alloc;
 pub use tokio;
 pub use url;
 
-#[cfg(feature = "descramble")]
-#[doc(cfg(feature = "descramble"))]
-pub use crate::descrambler::VideoDescrambler;
 #[cfg(feature = "std")]
 #[doc(cfg(feature = "std"))]
 pub use crate::error::Error;
-#[cfg(feature = "fetch")]
-#[doc(cfg(feature = "fetch"))]
-pub use crate::fetcher::VideoFetcher;
-pub use crate::id::{Id, IdBuf};
-#[cfg(feature = "regex")]
-#[doc(cfg(feature = "regex"))]
-pub use crate::id::{
-    EMBED_URL_PATTERN, ID_PATTERN, ID_PATTERNS, SHARE_URL_PATTERN, WATCH_URL_PATTERN,
-};
-#[cfg(feature = "callback")]
-#[doc(cfg(feature = "callback"))]
-pub use crate::stream::callback::{Callback, CallbackArguments, OnCompleteType, OnProgressType};
-#[cfg(feature = "stream")]
-#[doc(cfg(feature = "stream"))]
-pub use crate::stream::Stream;
+pub use crate::id::Id;
 #[cfg(feature = "descramble")]
 #[doc(cfg(feature = "descramble"))]
 pub use crate::video::Video;
-#[doc(inline)]
-#[cfg(feature = "microformat")]
-#[doc(cfg(feature = "microformat"))]
-pub use crate::video_info::player_response::microformat::Microformat;
 #[doc(inline)]
 #[cfg(feature = "fetch")]
 #[doc(cfg(feature = "fetch"))]
@@ -243,15 +221,12 @@ pub use crate::video_info::{
 /// Alias for `Result`, with the default error type [`Error`].
 #[cfg(feature = "std")]
 #[doc(cfg(feature = "std"))]
-pub type Result<T, E = Error> = core::result::Result<T, E>;
+type Result<T, E = Error> = core::result::Result<T, E>;
 
-#[cfg(feature = "blocking")]
-#[doc(cfg(feature = "blocking"))]
-pub mod blocking;
 #[doc(hidden)]
 #[cfg(feature = "descramble")]
 #[doc(cfg(feature = "descramble"))]
-pub mod descrambler;
+mod descrambler;
 #[doc(hidden)]
 #[cfg(feature = "std")]
 #[doc(cfg(feature = "std"))]
@@ -259,69 +234,23 @@ pub mod error;
 #[doc(hidden)]
 #[cfg(feature = "fetch")]
 #[doc(cfg(feature = "fetch"))]
-pub mod fetcher;
+mod fetcher;
 #[doc(hidden)]
-pub mod id;
+mod id;
 #[doc(hidden)]
 #[cfg(feature = "stream")]
 #[doc(cfg(feature = "stream"))]
-pub mod stream;
+mod stream;
 #[doc(hidden)]
 #[cfg(feature = "descramble")]
 #[doc(cfg(feature = "descramble"))]
-pub mod video;
+mod video;
 #[cfg(feature = "fetch")]
 #[doc(cfg(feature = "fetch"))]
-pub mod video_info;
+mod video_info;
 
 #[cfg(feature = "fetch")]
 mod serde_impl;
-
-use std::path::Path;
-
-/// The absolute most straightforward way of downloading a YouTube video in high quality!
-///
-/// Takes an arbitrary video identifier, like any video URL, or the video id, and downloads
-/// the video to `<VIDEO_ID>.mp4` in the current working directory.
-///
-/// For more control over the download process have a look at the [`crate`] level documentation,
-/// or at the [`Video`] struct.
-#[cfg(all(feature = "download", feature = "regex"))]
-#[doc(cfg(all(feature = "download", feature = "regex")))]
-pub async fn download_best_quality(
-    inpath: &Path,
-    video_identifier: &str,
-) -> Result<std::path::PathBuf> {
-    let id = Id::from_raw(video_identifier)?;
-    Video::from_id(id.into_owned())
-        .await?
-        .best_quality()
-        .ok_or(Error::NoStreams)?
-        .download(inpath)
-        .await
-}
-
-/// The absolute most straightforward way of downloading a YouTube video in low quality!
-///
-/// Takes an arbitrary video identifier, like any video URL, or the video id, and downloads
-/// the video to `<VIDEO_ID>.mp4` in the current working directory.
-///
-/// For more control over the download process have a look at the [`crate`] level documentation,
-/// or at the [`Video`] struct.
-#[cfg(all(feature = "download", feature = "regex"))]
-#[doc(cfg(all(feature = "download", feature = "regex")))]
-pub async fn download_worst_quality(
-    inpath: &Path,
-    video_identifier: &str,
-) -> Result<std::path::PathBuf> {
-    let id = Id::from_raw(video_identifier)?;
-    Video::from_id(id.into_owned())
-        .await?
-        .worst_quality()
-        .ok_or(Error::NoStreams)?
-        .download(inpath)
-        .await
-}
 
 /// A trait for collecting iterators into arbitrary, in particular fixed-sized, types.
 trait TryCollect<T>: Iterator {

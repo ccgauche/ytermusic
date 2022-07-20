@@ -15,7 +15,7 @@ use core::cmp::Ordering;
 use crate::{Error, Result};
 
 /// Alias for an owned [`Id`].
-pub type IdBuf = Id<'static>;
+pub(crate) type IdBuf = Id<'static>;
 
 // todo: check patterns with regex debugger
 /// A list of possible YouTube video identifier patterns.
@@ -25,47 +25,44 @@ pub type IdBuf = Id<'static>;
 /// - The captured id will always match following regex (defined in [ID_PATTERN]): `^[a-zA-Z0-9_-]{11}$`
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static ID_PATTERNS: [&std::lazy::SyncLazy<Regex>; 5] = [
+pub(crate) static ID_PATTERNS: [&std::lazy::SyncLazy<Regex>; 5] = [
     &WATCH_URL_PATTERN,
     &SHORTS_URL_PATTERN,
     &EMBED_URL_PATTERN,
     &SHARE_URL_PATTERN,
-    &ID_PATTERN
+    &ID_PATTERN,
 ];
 /// A pattern matching the watch url of a video (i.e. `youtube.com/watch?v=<ID>`).
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static WATCH_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
+pub(crate) static WATCH_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
     // watch url    (i.e. https://youtube.com/watch?v=video_id)
-    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/watch\?v=(?P<id>[a-zA-Z0-9_-]{11})(&.*)?$").unwrap()
-);
+    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/watch\?v=(?P<id>[a-zA-Z0-9_-]{11})(&.*)?$").unwrap());
 /// A pattern matching the shorts url of a video (i.e. `https://youtube.com/shorts/<ID>`).
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static SHORTS_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
-    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/shorts/(?P<id>[a-zA-Z0-9_-]{11})(\?.*)?$").unwrap()
-);
+pub(crate) static SHORTS_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(|| {
+    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/shorts/(?P<id>[a-zA-Z0-9_-]{11})(\?.*)?$")
+        .unwrap()
+});
 /// A pattern matching the embedded url of a video (i.e. `youtube.com/embed/<ID>`).
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static EMBED_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
+pub(crate) static EMBED_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
     // embed url    (i.e. https://youtube.com/embed/video_id)
-    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/embed/(?P<id>[a-zA-Z0-9_-]{11})\\?(\?.*)?$").unwrap()
-);
+    Regex::new(r"^(https?://)?(www\.)?youtube.\w\w\w?/embed/(?P<id>[a-zA-Z0-9_-]{11})\\?(\?.*)?$").unwrap());
 /// A pattern matching the embedded url of a video (i.e. `youtu.be/<ID>`).
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static SHARE_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
+pub(crate) static SHARE_URL_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
     // share url    (i.e. https://youtu.be/video_id)
-    Regex::new(r"^(https?://)?youtu\.be/(?P<id>[a-zA-Z0-9_-]{11})$").unwrap()
-);
+    Regex::new(r"^(https?://)?youtu\.be/(?P<id>[a-zA-Z0-9_-]{11})$").unwrap());
 /// A pattern matching the id of a video (`^[a-zA-Z0-9_-]{11}$`).
 #[cfg(feature = "regex")]
 #[doc(cfg(feature = "regex"))]
-pub static ID_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
+pub(crate) static ID_PATTERN: std::lazy::SyncLazy<Regex> = std::lazy::SyncLazy::new(||
     // id          (i.e. video_id)
-    Regex::new("^(?P<id>[a-zA-Z0-9_-]{11})$").unwrap()
-);
+    Regex::new("^(?P<id>[a-zA-Z0-9_-]{11})$").unwrap());
 
 /// A wrapper around a Cow<'a, str> that makes sure the video id, which is contained, always
 /// has the correct format.
@@ -172,16 +169,14 @@ impl<'a> Id<'a> {
     pub fn into_owned(self) -> IdBuf {
         match self.0 {
             Cow::Owned(id) => Id(Cow::Owned(id)),
-            Cow::Borrowed(id) => Id(Cow::Owned(id.to_owned()))
+            Cow::Borrowed(id) => Id(Cow::Owned(id.to_owned())),
         }
     }
 
     #[inline]
     #[must_use]
     pub fn as_owned(&self) -> IdBuf {
-        self
-            .clone()
-            .into_owned()
+        self.clone().into_owned()
     }
 
     #[inline]
@@ -199,45 +194,30 @@ impl<'a> Id<'a> {
     #[inline]
     #[must_use]
     pub fn watch_url(&self) -> Url {
-        Url::parse_with_params(
-            "https://www.youtube.com/watch?",
-            &[("v", self.as_str())],
-        ).unwrap()
+        Url::parse_with_params("https://www.youtube.com/watch?", &[("v", self.as_str())]).unwrap()
     }
 
     #[inline]
     #[must_use]
     pub fn shorts_url(&self) -> Url {
-        let mut url = Url::parse("https://www.youtube.com/shorts")
-            .unwrap();
-        url
-            .path_segments_mut()
-            .unwrap()
-            .push(self.as_str());
+        let mut url = Url::parse("https://www.youtube.com/shorts").unwrap();
+        url.path_segments_mut().unwrap().push(self.as_str());
         url
     }
 
     #[inline]
     #[must_use]
     pub fn embed_url(&self) -> Url {
-        let mut url = Url::parse("https://www.youtube.com/embed")
-            .unwrap();
-        url
-            .path_segments_mut()
-            .unwrap()
-            .push(self.as_str());
+        let mut url = Url::parse("https://www.youtube.com/embed").unwrap();
+        url.path_segments_mut().unwrap().push(self.as_str());
         url
     }
 
     #[inline]
     #[must_use]
     pub fn share_url(&self) -> Url {
-        let mut url = Url::parse("https://youtu.be")
-            .unwrap();
-        url
-            .path_segments_mut()
-            .unwrap()
-            .push(self.as_str());
+        let mut url = Url::parse("https://youtu.be").unwrap();
+        url.path_segments_mut().unwrap().push(self.as_str());
         url
     }
 }
@@ -267,36 +247,39 @@ impl IdBuf {
 impl<'de> Id<'de> {
     #[inline]
     pub fn deserialize_borrowed<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-        where
-            D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         let raw = <&'de str>::deserialize(deserializer)?;
         #[cfg(not(all(feature = "regex", feature = "std")))]
-            let res = Self::from_str(raw).ok_or(());
+        let res = Self::from_str(raw).ok_or(());
         #[cfg(all(feature = "regex", feature = "std"))]
-            let res = Self::from_raw(raw);
+        let res = Self::from_raw(raw);
 
-        res
-            .map_err(|_| D::Error::invalid_value(
+        res.map_err(|_| {
+            D::Error::invalid_value(
                 Unexpected::Str(raw),
                 &"expected a valid youtube video identifier",
-            ))
+            )
+        })
     }
 }
 
 impl<'de> Deserialize<'de> for Id<'static> {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-        where
-            D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         let raw = String::deserialize(deserializer)?;
-        Self::from_string(raw)
-            .map_err(|s| D::Error::invalid_value(
+        Self::from_string(raw).map_err(|s| {
+            D::Error::invalid_value(
                 Unexpected::Str(&s),
                 &"expected a valid youtube video identifier",
-            ))
+            )
+        })
     }
 }
-
 
 impl core::fmt::Display for Id<'_> {
     #[inline]
@@ -322,14 +305,12 @@ impl core::convert::AsRef<str> for Id<'_> {
 }
 
 impl<T> core::cmp::PartialEq<T> for Id<'_>
-    where
-        T: core::convert::AsRef<str> {
+where
+    T: core::convert::AsRef<str>,
+{
     #[inline]
     fn eq(&self, other: &T) -> bool {
-        core::cmp::PartialEq::eq(
-            self.as_str(),
-            other.as_ref(),
-        )
+        core::cmp::PartialEq::eq(self.as_str(), other.as_ref())
     }
 }
 
@@ -343,13 +324,11 @@ impl core::cmp::Ord for Id<'_> {
 }
 
 impl<T> core::cmp::PartialOrd<T> for Id<'_>
-    where
-        T: AsRef<str> {
+where
+    T: AsRef<str>,
+{
     #[inline]
     fn partial_cmp(&self, other: &T) -> Option<Ordering> {
-        core::cmp::PartialOrd::partial_cmp(
-            self.as_str(),
-            other.as_ref(),
-        )
+        core::cmp::PartialOrd::partial_cmp(self.as_str(), other.as_ref())
     }
 }
