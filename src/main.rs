@@ -41,7 +41,7 @@ async fn main() -> Result<(), Error> {
         clean();
     });
     let updater_s = Arc::new(updater_s);
-    let sa = player_system(updater_s.clone());
+    let (sa, player) = player_system(updater_s.clone());
     downloader(sa.clone());
     {
         let updater_s = updater_s.clone();
@@ -119,7 +119,7 @@ async fn main() -> Result<(), Error> {
                 .unwrap();
         });
     }
-    let mut manager = Manager::new(sa).await;
+    let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
     Ok(())
 }

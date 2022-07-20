@@ -1,6 +1,4 @@
-use std::{
-    collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc, time::Duration,
-};
+use std::{collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc};
 
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, Player, StreamError};
@@ -10,7 +8,7 @@ use ytpapi::Video;
 
 use crate::{
     term::{
-        music_player::{App, MusicStatus, MusicStatusAction, UIMusic},
+        music_player::{MusicStatus, MusicStatusAction, UIMusic},
         ManagerMessage, Screens,
     },
     SoundAction,
@@ -60,17 +58,17 @@ fn get_handle() -> Option<MediaControls> {
     handle_error_option("Can't create media controls", MediaControls::new(config))
 }
 
-struct PlayerState {
-    queue: VecDeque<Video>,
-    current: Option<Video>,
-    previous: Vec<Video>,
-    controls: Option<MediaControls>,
-    sink: Player,
-    guard: Guard,
-    updater: Arc<Sender<ManagerMessage>>,
-    soundaction_sender: Arc<Sender<SoundAction>>,
-    soundaction_receiver: Receiver<SoundAction>,
-    stream_error_receiver: Receiver<StreamError>,
+pub struct PlayerState {
+    pub queue: VecDeque<Video>,
+    pub current: Option<Video>,
+    pub previous: Vec<Video>,
+    pub controls: Option<MediaControls>,
+    pub sink: Player,
+    pub guard: Guard,
+    pub updater: Arc<Sender<ManagerMessage>>,
+    pub soundaction_sender: Arc<Sender<SoundAction>>,
+    pub soundaction_receiver: Receiver<SoundAction>,
+    pub stream_error_receiver: Receiver<StreamError>,
 }
 
 impl PlayerState {
@@ -106,66 +104,31 @@ impl PlayerState {
         }
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         self.update_controls();
         self.handle_stream_errors();
         DOWNLOAD_MORE.store(self.queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
-        self.updater
-            .send(
-                ManagerMessage::UpdateApp(App::new(
-                    &self.sink,
-                    generate_music(&self.queue, &self.previous, &self.current, &self.sink),
-                    self.soundaction_sender.clone(),
-                ))
-                .pass_to(Screens::MusicPlayer),
-            )
-            .unwrap();
-        std::thread::sleep(Duration::from_millis(100));
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             self.apply_sound_action(e);
         }
         if self.sink.is_finished() {
-            'a: loop {
-                self.handle_stream_errors();
-                self.update_controls();
-                if let Some(video) = self.queue.pop_front() {
-                    let k = PathBuf::from_str(&format!("data/downloads/{}.mp4", video.video_id))
-                        .unwrap();
-                    if let Some(e) = self.current.replace(video) {
-                        self.previous.push(e);
-                    }
-                    self.sink.play(k.as_path(), &self.guard);
-                    break 'a;
-                } else {
-                    if let Some(e) = self.current.take() {
-                        self.previous.push(e);
-                    }
-                    while let Ok(e) = self.soundaction_receiver.try_recv() {
-                        self.apply_sound_action(e.clone());
-                        if matches!(e, SoundAction::PlayVideo(_)) {
-                            continue 'a;
-                        }
-                    }
-                    std::thread::sleep(Duration::from_millis(200));
-                    self.updater
-                        .send(
-                            ManagerMessage::UpdateApp(App::new(
-                                &self.sink,
-                                generate_music(
-                                    &self.queue,
-                                    &self.previous,
-                                    &self.current,
-                                    &self.sink,
-                                ),
-                                self.soundaction_sender.clone(),
-                            ))
-                            .pass_to(Screens::MusicPlayer),
-                        )
-                        .unwrap();
+            self.handle_stream_errors();
+            self.update_controls();
+            if let Some(video) = self.queue.pop_front() {
+                let k =
+                    PathBuf::from_str(&format!("data/downloads/{}.mp4", video.video_id)).unwrap();
+                if let Some(e) = self.current.replace(video) {
+                    self.previous.push(e);
+                }
+                self.sink.play(k.as_path(), &self.guard);
+            } else {
+                if let Some(e) = self.current.take() {
+                    self.previous.push(e);
                 }
             }
         }
     }
+
     fn handle_stream_errors(&self) {
         while let Ok(e) = self.stream_error_receiver.try_recv() {
             self.updater
@@ -202,7 +165,7 @@ impl PlayerState {
             },
         );
     }
-    fn apply_sound_action(&mut self, e: SoundAction) {
+    pub fn apply_sound_action(&mut self, e: SoundAction) {
         match e {
             SoundAction::Backward => self.sink.seek_bw(),
             SoundAction::Forward => self.sink.seek_fw(),
@@ -264,17 +227,13 @@ impl PlayerState {
     }
 }
 
-pub fn player_system(updater: Arc<Sender<ManagerMessage>>) -> Arc<Sender<SoundAction>> {
+pub fn player_system(
+    updater: Arc<Sender<ManagerMessage>>,
+) -> (Arc<Sender<SoundAction>>, PlayerState) {
     let (tx, rx) = flume::unbounded::<SoundAction>();
     let tx = Arc::new(tx);
     let k = tx.clone();
-    std::thread::spawn(move || {
-        let mut state = PlayerState::new(k, rx, updater);
-        loop {
-            state.update();
-        }
-    });
-    tx
+    (tx, PlayerState::new(k, rx, updater))
 }
 
 fn handle_error_option<T, E>(error_type: &'static str, a: Result<E, T>) -> Option<E>
@@ -332,7 +291,7 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
     })
 }
 
-fn generate_music(
+pub fn generate_music(
     queue: &VecDeque<Video>,
     previous: &[Video],
     current: &Option<Video>,

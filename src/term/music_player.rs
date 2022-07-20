@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
-use flume::Sender;
+
 use player::Player;
 use tui::{
     style::{Color, Style},
@@ -9,7 +7,10 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::SoundAction;
+use crate::{
+    systems::player::{generate_music, PlayerState},
+    SoundAction,
+};
 
 use super::{
     rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen, Screens,
@@ -113,14 +114,9 @@ impl MusicStatus {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct App {
     pub musics: Vec<UIMusic>,
-    pub app_status: AppStatus,
-    pub current_time: u32,
-    pub total_time: u32,
-    pub volume: f32,
-    pub action_sender: Arc<Sender<SoundAction>>,
+    pub player: PlayerState,
 }
 
 impl Screen for App {
@@ -140,13 +136,13 @@ impl Screen for App {
                     let o = &self.musics[y as usize];
                     match o.position {
                         MusicStatusAction::Skip(a) => {
-                            self.action_sender.send(SoundAction::Next(a)).unwrap();
+                            self.player.apply_sound_action(SoundAction::Next(a));
                         }
                         MusicStatusAction::Current => {
-                            self.action_sender.send(SoundAction::PlayPause).unwrap();
+                            self.player.apply_sound_action(SoundAction::PlayPause);
                         }
                         MusicStatusAction::Before(a) => {
-                            self.action_sender.send(SoundAction::Previous(a)).unwrap();
+                            self.player.apply_sound_action(SoundAction::Previous(a));
                         }
                         MusicStatusAction::Downloading => {}
                     }
@@ -161,30 +157,30 @@ impl Screen for App {
             KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
             KeyCode::Char('f') => ManagerMessage::ChangeState(Screens::Search).event(),
             KeyCode::Char(' ') => {
-                self.action_sender.send(SoundAction::PlayPause).unwrap();
+                self.player.apply_sound_action(SoundAction::PlayPause);
                 EventResponse::None
             }
             KeyCode::Char('+') | KeyCode::Up => {
-                self.action_sender.send(SoundAction::Plus).unwrap();
+                self.player.apply_sound_action(SoundAction::Plus);
                 EventResponse::None
             }
             KeyCode::Char('-') | KeyCode::Down => {
-                self.action_sender.send(SoundAction::Minus).unwrap();
+                self.player.apply_sound_action(SoundAction::Minus);
                 EventResponse::None
             }
             KeyCode::Char('<') | KeyCode::Left => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.action_sender.send(SoundAction::Previous(1)).unwrap();
+                    self.player.apply_sound_action(SoundAction::Previous(1));
                 } else {
-                    self.action_sender.send(SoundAction::Backward).unwrap();
+                    self.player.apply_sound_action(SoundAction::Backward);
                 }
                 EventResponse::None
             }
             KeyCode::Char('>') | KeyCode::Right => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.action_sender.send(SoundAction::Next(1)).unwrap();
+                    self.player.apply_sound_action(SoundAction::Next(1));
                 } else {
-                    self.action_sender.send(SoundAction::Forward).unwrap();
+                    self.player.apply_sound_action(SoundAction::Forward);
                 }
                 EventResponse::None
             }
@@ -193,16 +189,32 @@ impl Screen for App {
     }
 
     fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+        self.musics = generate_music(
+            &self.player.queue,
+            &self.player.previous,
+            &self.player.current,
+            &self.player.sink,
+        );
+        self.player.update();
         let [top_rect, progress_rect] = split_y(f.size(), 3);
         let [list_rect, volume_rect] = split_x(top_rect, 10);
-        let colors = self.app_status.colors();
+        let colors = if self.player.sink.is_paused() {
+            AppStatus::Paused
+        } else if self.player.sink.is_finished() {
+            AppStatus::NoMusic
+        } else {
+            AppStatus::Playing
+        }
+        .colors();
         f.render_widget(
             Gauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
-                .ratio((self.volume as f64).min(1.0).max(0.0)),
+                .ratio((self.player.sink.volume() as f64).min(1.0).max(0.0)),
             volume_rect,
         );
+        let current_time = self.player.sink.elapsed().as_secs();
+        let total_time = self.player.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
             Gauge::default()
                 .block(
@@ -221,20 +233,20 @@ impl Screen for App {
                 )
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
                 .ratio(
-                    if self.app_status == AppStatus::NoMusic {
+                    if self.player.sink.is_finished() {
                         0.5
                     } else {
-                        self.current_time as f64 / self.total_time as f64
+                        self.player.sink.percentage().min(100.)
                     }
                     .min(1.0)
                     .max(0.0),
                 )
                 .label(format!(
                     "{}:{:02} / {}:{:02}",
-                    self.current_time / 60,
-                    self.current_time % 60,
-                    self.total_time / 60,
-                    self.total_time % 60
+                    current_time / 60,
+                    current_time % 60,
+                    total_time / 60,
+                    total_time % 60
                 )),
             progress_rect,
         );
@@ -260,12 +272,8 @@ impl Screen for App {
 
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {
         match message {
-            ManagerMessage::UpdateApp(app) => {
-                *self = app;
-                EventResponse::None
-            }
             ManagerMessage::RestartPlayer => {
-                self.action_sender.send(SoundAction::RestartPlayer).unwrap();
+                self.player.apply_sound_action(SoundAction::RestartPlayer);
                 ManagerMessage::ChangeState(Screens::MusicPlayer).event()
             }
             _ => EventResponse::None,
@@ -273,39 +281,21 @@ impl Screen for App {
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
-        self.action_sender.send(SoundAction::ForcePause).unwrap();
+        self.player.apply_sound_action(SoundAction::ForcePause);
         EventResponse::None
     }
 
     fn open(&mut self) -> EventResponse {
-        self.action_sender.send(SoundAction::ForcePlay).unwrap();
+        self.player.apply_sound_action(SoundAction::ForcePlay);
         EventResponse::None
     }
 }
 
 impl App {
-    pub fn default(action_sender: Arc<Sender<SoundAction>>) -> Self {
+    pub fn default(player: PlayerState) -> Self {
         Self {
             musics: vec![],
-            app_status: AppStatus::NoMusic,
-            current_time: 0,
-            total_time: 0,
-            volume: 0.5,
-            action_sender,
-        }
-    }
-    pub fn new(
-        sink: &Player,
-        musics: Vec<UIMusic>,
-        action_sender: Arc<Sender<SoundAction>>,
-    ) -> Self {
-        Self {
-            musics,
-            app_status: AppStatus::new(sink),
-            current_time: sink.elapsed().as_secs() as u32,
-            total_time: sink.duration().map(|x| x as u32).unwrap_or(1),
-            volume: sink.volume_percent() as f32 / 100.,
-            action_sender,
+            player,
         }
     }
 }

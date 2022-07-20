@@ -20,7 +20,10 @@ use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi::Video;
 
-use crate::{systems::logger::log, SoundAction};
+use crate::{
+    systems::{logger::log, player::PlayerState},
+    SoundAction,
+};
 
 use self::{device_lost::DeviceLost, music_player::App, playlist::Chooser, search::Search};
 
@@ -43,7 +46,6 @@ pub enum EventResponse {
 pub enum ManagerMessage {
     PassTo(Screens, Box<ManagerMessage>),
     ChangeState(Screens),
-    UpdateApp(App),
     RestartPlayer,
     Quit,
     AddElementToChooser((String, Vec<Video>)),
@@ -76,9 +78,9 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
+    pub async fn new(action_sender: Arc<Sender<SoundAction>>, player: PlayerState) -> Self {
         Manager {
-            music_player: App::default(action_sender.clone()),
+            music_player: App::default(player),
             chooser: Chooser {
                 selected: 0,
                 items: vec![],
