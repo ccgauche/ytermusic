@@ -4,11 +4,12 @@ use flume::{unbounded, Receiver, Sender};
 use player::{Guard, Player, StreamError};
 use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
 
+use tui::{style::Style, widgets::ListItem};
 use ytpapi::Video;
 
 use crate::{
     term::{
-        music_player::{MusicStatus, MusicStatusAction, UIMusic},
+        music_player::{MusicStatus, MusicStatusAction},
         ManagerMessage, Screens,
     },
     SoundAction,
@@ -179,11 +180,6 @@ impl PlayerState {
             SoundAction::Plus => self.sink.volume_up(),
             SoundAction::Minus => self.sink.volume_down(),
             SoundAction::Next(a) => {
-                /* if sink.is_finished() {
-                    if let Some(e) = queue.pop_front() {
-                        previous.push(e);
-                    }
-                } */
                 for _ in 1..a {
                     if let Some(e) = self.queue.pop_front() {
                         self.previous.push(e);
@@ -291,52 +287,97 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
     })
 }
 
-pub fn generate_music(
+pub fn get_action(
+    mut index: usize,
     queue: &VecDeque<Video>,
     previous: &[Video],
     current: &Option<Video>,
-    sink: &Player,
-) -> Vec<UIMusic> {
-    let mut music = Vec::new();
-    {
-        music.extend(
-            IN_DOWNLOAD
-                .lock()
-                .unwrap()
-                .iter()
-                .map(|e| UIMusic::new(e, MusicStatus::Downloading, MusicStatusAction::Downloading)),
-        );
-        previous
-            .iter()
-            .rev()
-            .take(3)
-            .enumerate()
-            .rev()
-            .for_each(|e| {
-                music.push(UIMusic::new(
-                    e.1,
-                    MusicStatus::Previous,
-                    MusicStatusAction::Before(e.0 + 1),
-                ));
-            });
-        if let Some(e) = current {
-            music.push(UIMusic::new(
-                e,
-                if sink.is_paused() {
-                    MusicStatus::Paused
-                } else {
-                    MusicStatus::Playing
-                },
-                MusicStatusAction::Current,
-            ));
+) -> Option<MusicStatusAction> {
+    let dw_len = IN_DOWNLOAD.lock().unwrap().len();
+    if index < dw_len {
+        return Some(MusicStatusAction::Downloading);
+    }
+    index -= dw_len;
+    let previous_len = previous.len().min(3);
+    if index < previous_len {
+        return Some(MusicStatusAction::Before(previous_len - index));
+    }
+    index -= previous_len;
+    if current.is_some() {
+        if index == 0 {
+            return Some(MusicStatusAction::Current);
         }
-        music.extend(
-            queue
-                .iter()
-                .take(40)
-                .enumerate()
-                .map(|e| UIMusic::new(e.1, MusicStatus::Next, MusicStatusAction::Skip(e.0 + 1))),
-        );
+        index -= 1;
+    }
+    if queue.len() < index {
+        return None;
+    }
+    return Some(MusicStatusAction::Skip(index + 1));
+}
+
+pub fn generate_music<'a>(
+    queue: &'a VecDeque<Video>,
+    previous: &'a [Video],
+    current: &'a Option<Video>,
+    sink: &'a Player,
+) -> Vec<ListItem<'a>> {
+    let download_style: Style = Style::default()
+        .fg(MusicStatus::Downloading.colors().0)
+        .bg(MusicStatus::Downloading.colors().1);
+
+    let previous_style: Style = Style::default()
+        .fg(MusicStatus::Previous.colors().0)
+        .bg(MusicStatus::Previous.colors().1);
+
+    let paused_style: Style = Style::default()
+        .fg(MusicStatus::Paused.colors().0)
+        .bg(MusicStatus::Paused.colors().1);
+
+    let playing_style: Style = Style::default()
+        .fg(MusicStatus::Playing.colors().0)
+        .bg(MusicStatus::Playing.colors().1);
+    let next_style: Style = Style::default()
+        .fg(MusicStatus::Next.colors().0)
+        .bg(MusicStatus::Next.colors().1);
+    let mut music = Vec::with_capacity(50);
+    {
+        music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
+            ListItem::new(format!(
+                " {} {} | {}",
+                MusicStatus::Downloading.character(),
+                e.author,
+                e.title
+            ))
+            .style(download_style)
+        }));
+        music.extend(previous.iter().rev().take(3).rev().map(|e| {
+            ListItem::new(format!(
+                " {} {} | {}",
+                MusicStatus::Previous.character(),
+                e.author,
+                e.title
+            ))
+            .style(previous_style)
+        }));
+        if let Some(e) = current {
+            let status = if sink.is_paused() {
+                (MusicStatus::Paused.character(), paused_style)
+            } else {
+                (MusicStatus::Playing.character(), playing_style)
+            };
+            music.push(
+                ListItem::new(format!(" {} {} | {}", status.0, e.author, e.title)).style(status.1),
+            );
+        }
+        music.extend(queue.iter().take(40).map(|e| {
+            ListItem::new(format!(
+                " {} {} | {}",
+                MusicStatus::Next.character(),
+                e.author,
+                e.title
+            ))
+            .style(next_style)
+        }));
     }
     music
 }
