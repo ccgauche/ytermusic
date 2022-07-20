@@ -101,6 +101,8 @@ pub enum PlayError {
     DecoderError(decoder::DecoderError),
     /// Stream error
     StreamError(StreamError),
+    /// IO Error
+    Io(std::io::Error),
     /// The output device was lost.
     NoDevice,
 }
@@ -117,6 +119,7 @@ impl fmt::Display for PlayError {
             Self::DecoderError(e) => e.fmt(f),
             Self::NoDevice => write!(f, "NoDevice"),
             Self::StreamError(e) => e.fmt(f),
+            Self::Io(e) => e.fmt(f),
         }
     }
 }
@@ -127,6 +130,7 @@ impl error::Error for PlayError {
             Self::DecoderError(e) => Some(e),
             Self::NoDevice => None,
             Self::StreamError(e) => Some(e),
+            Self::Io(e) => Some(e),
         }
     }
 }

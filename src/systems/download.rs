@@ -55,8 +55,13 @@ const DOWNLOADER_COUNT: usize = 4;
 
 pub fn start_task(s: Arc<Sender<SoundAction>>) {
     HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
+        let mut k = true;
         loop {
-            sleep(Duration::from_millis(200)).await;
+            if !k {
+                sleep(Duration::from_millis(200)).await;
+            } else {
+                k = false;
+            }
             if !DOWNLOAD_MORE.load(std::sync::atomic::Ordering::SeqCst) {
                 continue;
             }
@@ -68,6 +73,7 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
                     PathBuf::from_str(&format!("data/downloads/{}.json", &id.video_id)).unwrap();
                 if download_path_json.exists() {
                     s.send(SoundAction::PlayVideo(id)).unwrap();
+                    k = true;
                     continue;
                 }
                 if download_path_mp4.exists() {
@@ -87,6 +93,7 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
                                 .retain(|x| x.video_id != id.video_id);
                         }
                         s.send(SoundAction::PlayVideo(id)).unwrap();
+                        k = true;
                     }
                     Err(_) => {
                         if download_path_mp4.exists() {
@@ -102,6 +109,50 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
                         // TODO(#1): handle errors
                     }
                 }
+            }
+        }
+    }));
+}
+pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: Video) {
+    HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
+        let download_path_mp4 =
+            PathBuf::from_str(&format!("data/downloads/{}.mp4", &song.video_id)).unwrap();
+        let download_path_json =
+            PathBuf::from_str(&format!("data/downloads/{}.json", &song.video_id)).unwrap();
+        if download_path_json.exists() {
+            s.send(SoundAction::PlayVideoUnary(song.clone())).unwrap();
+            return;
+        }
+        if download_path_mp4.exists() {
+            std::fs::remove_file(&download_path_mp4).unwrap();
+        }
+        {
+            IN_DOWNLOAD.lock().unwrap().push(song.clone());
+        }
+        match handle_download(&song.video_id).await {
+            Ok(_) => {
+                std::fs::write(download_path_json, serde_json::to_string(&song).unwrap()).unwrap();
+                crate::append(song.clone());
+                {
+                    IN_DOWNLOAD
+                        .lock()
+                        .unwrap()
+                        .retain(|x| x.video_id != song.video_id);
+                }
+                s.send(SoundAction::PlayVideoUnary(song)).unwrap();
+            }
+            Err(_) => {
+                if download_path_mp4.exists() {
+                    std::fs::remove_file(download_path_mp4).unwrap();
+                }
+
+                {
+                    IN_DOWNLOAD
+                        .lock()
+                        .unwrap()
+                        .retain(|x| x.video_id != song.video_id);
+                }
+                // TODO(#1): handle errors
             }
         }
     }));

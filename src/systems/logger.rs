@@ -27,6 +27,6 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
 });
 
 #[allow(unused)]
-pub fn log(message: impl Into<String>) {
+pub fn log_(message: impl Into<String>) {
     LOG.send(message.into()).unwrap();
 }

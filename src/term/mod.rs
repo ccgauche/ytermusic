@@ -20,10 +20,7 @@ use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi::Video;
 
-use crate::{
-    systems::{logger::log, player::PlayerState},
-    SoundAction,
-};
+use crate::{systems::player::PlayerState, SoundAction};
 
 use self::{device_lost::DeviceLost, playlist::Chooser, search::Search};
 
@@ -44,6 +41,7 @@ pub enum EventResponse {
 
 #[derive(Debug, Clone)]
 pub enum ManagerMessage {
+    Error(String),
     PassTo(Screens, Box<ManagerMessage>),
     ChangeState(Screens),
     RestartPlayer,
@@ -88,7 +86,7 @@ impl Manager {
             },
             search: Search::new(action_sender).await,
             current_screen: Screens::Playlist,
-            device_lost: DeviceLost,
+            device_lost: DeviceLost(Vec::new()),
         }
     }
     pub fn current_screen(&mut self) -> &mut dyn Screen {
@@ -136,9 +134,12 @@ impl Manager {
                 self.set_current_screen(e);
             }
             e => {
-                log(format!(
-                    "Unexpected message on manager (FORWARD it to a screen): {:?}",
-                    e
+                return self.handle_manager_message(ManagerMessage::PassTo(
+                    Screens::DeviceLost,
+                    Box::new(ManagerMessage::Error(format!(
+                        "Invalid manager message (Forward the message to a screen maybe):\n{:?}",
+                        e
+                    ))),
                 ));
             }
         }
@@ -216,7 +217,7 @@ pub fn split_y_start(f: Rect, start_size: u16) -> [Rect; 2] {
     rectlistvol.height = start_size;
     let mut rectprogress = f;
     rectprogress.y += start_size;
-    rectprogress.height -= start_size * 2;
+    rectprogress.height -= start_size;
     [rectlistvol, rectprogress]
 }
 pub fn split_y(f: Rect, end_size: u16) -> [Rect; 2] {

@@ -59,7 +59,7 @@ fn as_str(value: &Value) -> Result<String, Error> {
         .map(|x| x.to_owned())
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct Video {
     pub title: String,
     pub author: String,

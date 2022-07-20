@@ -17,8 +17,8 @@ use urlencoding::encode;
 use ytpapi::{Video, YTApi};
 
 use crate::{
-    systems::{download, logger::log},
-    SoundAction,
+    systems::{download::start_task_unary, logger::log_},
+    SoundAction, DATABASE,
 };
 
 use super::{
@@ -70,9 +70,7 @@ impl Screen for Search {
         match key.code {
             KeyCode::Enter => {
                 if let Some(a) = self.items.read().unwrap().get(self.selected).cloned() {
-                    self.action_sender.send(SoundAction::Cleanup).unwrap();
-                    download::clean(self.action_sender.clone());
-                    download::add(a.1);
+                    start_task_unary(self.action_sender.clone(), a.1);
                     return ManagerMessage::ChangeState(Screens::MusicPlayer).event();
                 }
             }
@@ -94,6 +92,24 @@ impl Screen for Search {
             handle.abort();
         }
 
+        let text = self.text.to_lowercase();
+
+        let local = DATABASE
+            .read()
+            .unwrap()
+            .iter()
+            .filter(|x| {
+                x.title.to_lowercase().contains(&text) || x.author.to_lowercase().contains(&text)
+            })
+            .cloned()
+            .map(|video| (format!("{} | {}", video.author, video.title), video))
+            .collect::<Vec<_>>();
+        self.items.write().unwrap().clear();
+        self.items
+            .write()
+            .unwrap()
+            .extend(local.clone().into_iter());
+
         if let Some(api) = self.api.clone() {
             let text = self.text.clone();
             let items = self.items.clone();
@@ -108,14 +124,15 @@ impl Screen for Search {
                         }
                     }
                     Err(e) => {
-                        log(format!("{:?}", e));
+                        log_(format!("{:?}", e));
                     }
                 }
                 items.write().unwrap().clear();
+                items.write().unwrap().extend(local.into_iter());
                 items.write().unwrap().extend(item.into_iter());
             }));
         } else {
-            self.set_elements(vec![]);
+            self.set_elements(local);
         }
 
         EventResponse::None

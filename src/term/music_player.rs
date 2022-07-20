@@ -152,7 +152,7 @@ impl Screen for PlayerState {
             Gauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
-                .ratio((self.sink.volume() as f64).min(1.0).max(0.0)),
+                .ratio((self.sink.volume() as f64 / 100.).min(1.0).max(0.0)),
             volume_rect,
         );
         let current_time = self.sink.elapsed().as_secs();
@@ -191,6 +191,7 @@ impl Screen for PlayerState {
         // Create a List from all list items and highlight the currently selected one
         f.render_stateful_widget(
             List::new(generate_music(
+                f.size().height as usize,
                 &self.queue,
                 &self.previous,
                 &self.current,
@@ -213,12 +214,12 @@ impl Screen for PlayerState {
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
-        self.apply_sound_action(SoundAction::ForcePause);
+        //self.apply_sound_action(SoundAction::ForcePause);
         EventResponse::None
     }
 
     fn open(&mut self) -> EventResponse {
-        self.apply_sound_action(SoundAction::ForcePlay);
+        //self.apply_sound_action(SoundAction::ForcePlay);
         EventResponse::None
     }
 }

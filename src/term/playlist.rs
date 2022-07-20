@@ -54,8 +54,11 @@ impl Screen for Chooser {
             KeyCode::Enter => {
                 if let Some(a) = &self.items.get(self.selected) {
                     if a.0 != "Local musics" {
-                        std::fs::write("last-playlist.json", serde_json::to_string(&a).unwrap())
-                            .unwrap();
+                        std::fs::write(
+                            "data/last-playlist.json",
+                            serde_json::to_string(&a).unwrap(),
+                        )
+                        .unwrap();
                     }
                     self.action_sender.send(SoundAction::Cleanup).unwrap();
                     download::clean(self.action_sender.clone());

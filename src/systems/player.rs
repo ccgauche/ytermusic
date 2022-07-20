@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc};
 
 use flume::{unbounded, Receiver, Sender};
-use player::{Guard, Player, StreamError};
+use player::{Guard, PlayError, Player, StreamError};
 use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
 
 use tui::{style::Style, widgets::ListItem};
@@ -12,17 +12,15 @@ use crate::{
         music_player::{MusicStatus, MusicStatusAction},
         ManagerMessage, Screens,
     },
-    SoundAction,
+    SoundAction, DATABASE,
 };
 
-use super::{
-    download::{DOWNLOAD_MORE, IN_DOWNLOAD},
-    logger::log,
-};
+use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
 
 #[cfg(not(target_os = "windows"))]
-fn get_handle() -> Option<MediaControls> {
+fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
     handle_error_option(
+        updater,
         "Can't create media controls",
         MediaControls::new(PlatformConfig {
             dbus_name: "ytermusic",
@@ -33,7 +31,7 @@ fn get_handle() -> Option<MediaControls> {
 }
 
 #[cfg(target_os = "windows")]
-fn get_handle() -> Option<MediaControls> {
+fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
     use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
     use winit::event_loop::EventLoop;
     use winit::{platform::windows::EventLoopExtWindows, window::WindowBuilder};
@@ -42,6 +40,7 @@ fn get_handle() -> Option<MediaControls> {
         dbus_name: "ytermusic",
         display_name: "YTerMusic",
         hwnd: if let RawWindowHandle::Win32(h) = handle_error_option(
+            updater,
             "OS Error while creating media hook window",
             WindowBuilder::new()
                 .with_visible(false)
@@ -51,12 +50,21 @@ fn get_handle() -> Option<MediaControls> {
         {
             Some(h.hwnd)
         } else {
-            log("No window handle found");
+            updater
+                .send(ManagerMessage::PassTo(
+                    Screens::DeviceLost,
+                    Box::new(ManagerMessage::Error(format!("No window handle found"))),
+                ))
+                .unwrap();
             return None;
         },
     };
 
-    handle_error_option("Can't create media controls", MediaControls::new(config))
+    handle_error_option(
+        updater,
+        "Can't create media controls",
+        MediaControls::new(config),
+    )
 }
 
 pub struct PlayerState {
@@ -80,13 +88,15 @@ impl PlayerState {
     ) -> Self {
         let (stream_error_sender, stream_error_receiver) = unbounded();
         let (sink, guard) = handle_error_option(
+            &updater,
             "player creation error",
             Player::new(Arc::new(stream_error_sender)),
         )
         .unwrap();
-        let mut controls = get_handle();
+        let mut controls = get_handle(&updater);
         if let Some(e) = &mut controls {
             handle_error(
+                &updater,
                 "Can't connect media control",
                 connect(e, soundaction_sender.clone()),
             );
@@ -117,11 +127,30 @@ impl PlayerState {
             self.update_controls();
             if let Some(video) = self.queue.pop_front() {
                 let k =
-                    PathBuf::from_str(&format!("data/downloads/{}.mp4", video.video_id)).unwrap();
-                if let Some(e) = self.current.replace(video) {
+                    PathBuf::from_str(&format!("data/downloads/{}.mp4", &video.video_id)).unwrap();
+                if let Some(e) = self.current.replace(video.clone()) {
                     self.previous.push(e);
                 }
-                self.sink.play(k.as_path(), &self.guard);
+                if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
+                    if matches!(e, PlayError::DecoderError(_)) {
+                        // Cleaning the file
+                        DATABASE
+                            .write()
+                            .unwrap()
+                            .retain(|x| x.video_id != video.video_id);
+                        std::fs::remove_file(k);
+                        std::fs::remove_file(format!("data/downloads/{}.json", &video.video_id));
+                        self.current = None;
+                        crate::write();
+                    } else {
+                        self.updater
+                            .send(ManagerMessage::PassTo(
+                                Screens::DeviceLost,
+                                Box::new(ManagerMessage::Error(format!("{:?}", e))),
+                            ))
+                            .unwrap();
+                    }
+                }
             } else {
                 if let Some(e) = self.current.take() {
                     self.previous.push(e);
@@ -135,11 +164,17 @@ impl PlayerState {
             self.updater
                 .send(ManagerMessage::ChangeState(Screens::DeviceLost))
                 .unwrap();
-            log(format!("{:?}", e));
+            self.updater
+                .send(ManagerMessage::PassTo(
+                    Screens::DeviceLost,
+                    Box::new(ManagerMessage::Error(format!("{:?}", e))),
+                ))
+                .unwrap();
         }
     }
     fn update_controls(&mut self) {
         handle_error::<Error>(
+            &self.updater,
             "Can't update finished media control",
             try {
                 if let Some(e) = &mut self.controls {
@@ -175,7 +210,7 @@ impl PlayerState {
                 self.queue.clear();
                 self.previous.clear();
                 self.current = None;
-                handle_error("sink stop", self.sink.stop(&self.guard));
+                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
             }
             SoundAction::Plus => self.sink.volume_up(),
             SoundAction::Minus => self.sink.volume_down(),
@@ -186,7 +221,7 @@ impl PlayerState {
                     }
                 }
 
-                handle_error("sink stop", self.sink.stop(&self.guard));
+                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
             }
             SoundAction::PlayVideo(video) => {
                 self.queue.push_back(video);
@@ -200,11 +235,12 @@ impl PlayerState {
                         self.queue.push_front(e);
                     }
                 }
-                handle_error("sink stop", self.sink.stop(&self.guard));
+                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
             }
             SoundAction::RestartPlayer => {
                 (self.sink, self.guard) =
-                    handle_error_option("update player", self.sink.update()).unwrap();
+                    handle_error_option(&self.updater, "update player", self.sink.update())
+                        .unwrap();
                 if let Some(e) = self.current.clone() {
                     self.apply_sound_action(SoundAction::PlayVideo(e));
                 }
@@ -219,6 +255,9 @@ impl PlayerState {
                     self.sink.pause();
                 }
             }
+            SoundAction::PlayVideoUnary(video) => {
+                self.queue.push_front(video);
+            }
         }
     }
 }
@@ -232,23 +271,32 @@ pub fn player_system(
     (tx, PlayerState::new(k, rx, updater))
 }
 
-fn handle_error_option<T, E>(error_type: &'static str, a: Result<E, T>) -> Option<E>
+fn handle_error_option<T, E>(
+    updater: &Sender<ManagerMessage>,
+    error_type: &'static str,
+    a: Result<E, T>,
+) -> Option<E>
 where
     T: std::fmt::Debug,
 {
     match a {
         Ok(e) => Some(e),
         Err(a) => {
-            log(format!("{}{:?}", error_type, a));
+            updater
+                .send(ManagerMessage::PassTo(
+                    Screens::DeviceLost,
+                    Box::new(ManagerMessage::Error(format!("{}{:?}", error_type, a))),
+                ))
+                .unwrap();
             None
         }
     }
 }
-fn handle_error<T>(error_type: &'static str, a: Result<(), T>)
+fn handle_error<T>(updater: &Sender<ManagerMessage>, error_type: &'static str, a: Result<(), T>)
 where
     T: std::fmt::Debug,
 {
-    let _ = handle_error_option(error_type, a);
+    let _ = handle_error_option(updater, error_type, a);
 }
 
 // https://docs.rs/souvlaki/latest/souvlaki/
@@ -316,6 +364,7 @@ pub fn get_action(
 }
 
 pub fn generate_music<'a>(
+    lines: usize,
     queue: &'a VecDeque<Video>,
     previous: &'a [Video],
     current: &'a Option<Video>,
@@ -369,7 +418,11 @@ pub fn generate_music<'a>(
                 ListItem::new(format!(" {} {} | {}", status.0, e.author, e.title)).style(status.1),
             );
         }
-        music.extend(queue.iter().take(40).map(|e| {
+        DOWNLOAD_MORE.store(
+            queue.len() < lines * 2 + 4,
+            std::sync::atomic::Ordering::SeqCst,
+        );
+        music.extend(queue.iter().take(lines + 4).map(|e| {
             ListItem::new(format!(
                 " {} {} | {}",
                 MusicStatus::Next.character(),

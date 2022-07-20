@@ -149,13 +149,15 @@ impl Player {
     pub fn is_finished(&self) -> bool {
         self.sink.is_empty() || self.sink.sleep_until_end()
     }
-    pub fn play(&mut self, path: &Path, guard: &Guard) {
+    pub fn play(&mut self, path: &Path, guard: &Guard) -> Result<(), PlayError> {
         self.stop(guard);
-        let file = File::open(path).unwrap();
+        let file = File::open(path).map_err(PlayError::Io)?;
         //println!("{:?}", path);
-        let decoder = Decoder::new_decoder(BufReader::new(file)).unwrap();
+        let decoder =
+            Decoder::new_decoder(BufReader::new(file)).map_err(PlayError::DecoderError)?;
         self.data.total_duration = decoder.total_duration();
         self.sink.append(decoder);
+        Ok(())
     }
     pub fn stop(&mut self, guard: &Guard) -> Result<(), PlayError> {
         self.sink.destroy();
@@ -207,9 +209,8 @@ impl Player {
 }
 
 impl Player {
-    pub fn add_and_play(&mut self, song: &str, guard: &Guard) {
-        let p = Path::new(song);
-        self.play(p, guard);
+    pub fn add_and_play(&mut self, song: &str, guard: &Guard) -> Result<(), PlayError> {
+        self.play(Path::new(song), guard)
     }
 
     pub fn volume(&self) -> i32 {

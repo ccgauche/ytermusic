@@ -8,7 +8,8 @@ use tui::{
 
 use super::{EventResponse, ManagerMessage, Screen, Screens};
 
-pub struct DeviceLost;
+// Audio device not connected!
+pub struct DeviceLost(pub Vec<String>);
 
 impl Screen for DeviceLost {
     fn on_mouse_press(&mut self, _: crossterm::event::MouseEvent, _: &Rect) -> EventResponse {
@@ -27,9 +28,10 @@ impl Screen for DeviceLost {
 
     fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
         frame.render_widget(
-            Paragraph::new(
-                "Audio device not connected!\nPress [Enter] or [Space] to retry.\nOr [Esc] to exit",
-            )
+            Paragraph::new(format!(
+                "{}\nPress [Enter] or [Space] to retry.\nOr [Esc] to exit",
+                self.0.join("\n")
+            ))
             .style(Style::default().fg(Color::Red))
             .alignment(Alignment::Center)
             .block(
@@ -43,11 +45,18 @@ impl Screen for DeviceLost {
         );
     }
 
-    fn handle_global_message(&mut self, _: ManagerMessage) -> EventResponse {
-        EventResponse::None
+    fn handle_global_message(&mut self, m: ManagerMessage) -> EventResponse {
+        match m {
+            ManagerMessage::Error(a) => {
+                self.0.push(a);
+                EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::DeviceLost)])
+            }
+            _ => EventResponse::None,
+        }
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
+        self.0.clear();
         EventResponse::None
     }
 
