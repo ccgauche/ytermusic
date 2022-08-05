@@ -22,6 +22,11 @@ mod errors;
 mod systems;
 mod term;
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 #[derive(Debug, Clone)]
 pub enum SoundAction {
     Cleanup,

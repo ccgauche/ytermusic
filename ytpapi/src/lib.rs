@@ -13,7 +13,7 @@ use reqwest::{
 
 use serde_json::Value;
 use string_utils::StringUtils;
-use structs::{playlists_from_json, search_results, videos_from_playlist};
+use structs::{playlists_from_json, playlists_from_json_hub, search_results, videos_from_playlist};
 
 pub use structs::{Playlist, Video};
 
@@ -115,6 +115,26 @@ async fn get_visitor_id(
         .ok_or_else(|| Error::InvalidHTMLFile(response.to_string()))
 }
 
+async fn get_user_playlists(
+    request_func: &reqwest::Client,
+    headers: &HeaderMap,
+) -> Result<Vec<Playlist>, Error> {
+    let response: String = request_func
+        .get(format!("{YTM_DOMAIN}/library/playlists"))
+        .headers(headers.clone())
+        .send()
+        .await
+        .map_err(Error::Reqwest)?
+        .text()
+        .await
+        .map_err(Error::Reqwest)?;
+    std::fs::write("out.html", &response).unwrap();
+    //Ok((String::new(), Vec::new()))
+    let json = extract_json(&response)?;
+    std::fs::write("out.json", &json).unwrap();
+    playlists_from_json_hub(&json)
+}
+
 fn extract_json(string: &str) -> Result<String, Error> {
     let json = string
         .between(
@@ -183,10 +203,6 @@ impl YTApi {
         }
         Self::from_headers(&headers).await
     }
-    pub async fn update_playlists(&mut self) -> Result<(), Error> {
-        self.playlists = get_visitor_id(&self.client, &HeaderMap::new()).await?.1;
-        Ok(())
-    }
     pub async fn search(&self, search: &str) -> Result<Vec<Video>, Error> {
         let k = extract_json_search(
             &self
@@ -207,19 +223,21 @@ impl YTApi {
         &self.playlists
     }
     pub async fn from_headers_map(mut headers: HeaderMap) -> Result<Self, Error> {
-        let (xgoo, playlists) = get_visitor_id(&Client::new(), &headers).await?;
+        let (xgoo, mut playlists) = get_visitor_id(&Client::new(), &headers).await?;
         headers.insert(
             "x-goog-visitor-id",
             HeaderValue::from_str(&xgoo).map_err(Error::InvalidHeaderValue)?,
         );
         /* let sapi = sapisid_from_cookie(headers.get("cookie").unwrap().to_str().unwrap()).unwrap(); */
+        let k = ClientBuilder::default()
+            .cookie_store(true)
+            .default_headers(headers)
+            .build()
+            .map_err(Error::Reqwest)?;
+        playlists.append(&mut get_user_playlists(&k, &HeaderMap::new()).await?);
         Ok(Self {
             /* sapi, */
-            client: ClientBuilder::default()
-                .cookie_store(true)
-                .default_headers(headers)
-                .build()
-                .map_err(Error::Reqwest)?,
+            client: k,
             /* headers: headers, */
             playlists,
         })

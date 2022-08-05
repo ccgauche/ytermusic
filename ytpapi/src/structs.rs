@@ -35,6 +35,7 @@ pub fn extract_meaninfull<'a>(value: &'a Value, path: &str) -> Result<&'a Value,
     }
     Ok(current_value)
 }
+const PATH_PLAYLIST_HUB: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.1.itemSectionRenderer.contents.0.gridRenderer.items";
 const PATH: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.0.musicCarouselShelfRenderer.contents";
 const PLAYLIST_PATH: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.0.musicPlaylistShelfRenderer.contents";
 // contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents
@@ -44,6 +45,17 @@ pub(crate) fn playlists_from_json(string: &str) -> Result<Vec<Playlist>, Error> 
         .iter()
         .map(get_playlist)
         .collect()
+}
+
+pub(crate) fn playlists_from_json_hub(string: &str) -> Result<Vec<Playlist>, Error> {
+    let jason = serde_json::from_str(string).map_err(Error::SerdeJson)?;
+    Ok(as_array(extract_meaninfull(&jason, PATH_PLAYLIST_HUB)?)?
+        .iter()
+        .map(get_playlist_hubendpoint)
+        .collect::<Result<Vec<Option<_>>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect())
 }
 
 fn as_array(value: &Value) -> Result<&Vec<Value>, Error> {
@@ -181,16 +193,46 @@ pub struct Playlist {
     pub browse_id: String,
 }
 
+pub fn get_playlist_hubendpoint(value: &Value) -> Result<Option<Playlist>, Error> {
+    let music_two_item_renderer = &extract_meaninfull(value, "musicTwoRowItemRenderer")?;
+    let subtitle = extract_meaninfull(music_two_item_renderer, "subtitle.runs")
+        .ok()
+        .map(|x| {
+            Ok(as_array(x)?
+                .iter()
+                .map(|x| as_str(extract_meaninfull(x, "text")?))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(""))
+        })
+        .unwrap_or(Ok(String::new()))?;
+    let title_div = extract_meaninfull(music_two_item_renderer, "title.runs.0")?;
+    let browse_id = as_str(
+        if let Ok(e) = extract_meaninfull(title_div, "navigationEndpoint.browseEndpoint.browseId") {
+            e
+        } else {
+            return Ok(None);
+        },
+    )?;
+    let name = as_str(extract_meaninfull(title_div, "text")?)?;
+    Ok(Some(Playlist {
+        name,
+        subtitle,
+        browse_id,
+    }))
+}
+
 pub fn get_playlist(value: &Value) -> Result<Playlist, Error> {
     let music_two_item_renderer = &extract_meaninfull(value, "musicTwoRowItemRenderer")?;
-    let subtitle = as_array(extract_meaninfull(
-        music_two_item_renderer,
-        "subtitle.runs",
-    )?)?
-    .iter()
-    .map(|x| as_str(extract_meaninfull(x, "text")?))
-    .collect::<Result<Vec<_>, _>>()?
-    .join("");
+    let subtitle = extract_meaninfull(music_two_item_renderer, "subtitle.runs")
+        .ok()
+        .map(|x| {
+            Ok(as_array(x)?
+                .iter()
+                .map(|x| as_str(extract_meaninfull(x, "text")?))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(""))
+        })
+        .unwrap_or(Ok(String::new()))?;
     let title_div = extract_meaninfull(music_two_item_renderer, "title.runs.0")?;
     let browse_id = as_str(extract_meaninfull(
         title_div,

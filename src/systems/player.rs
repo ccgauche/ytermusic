@@ -119,7 +119,6 @@ impl PlayerState {
     pub fn update(&mut self) {
         self.update_controls();
         self.handle_stream_errors();
-        DOWNLOAD_MORE.store(self.queue.len() < 30, std::sync::atomic::Ordering::SeqCst);
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             self.apply_sound_action(e);
         }
@@ -393,10 +392,6 @@ pub fn generate_music<'a>(
                 ListItem::new(format!(" {} {} | {}", status.0, e.author, e.title)).style(status.1),
             );
         }
-        DOWNLOAD_MORE.store(
-            queue.len() < lines * 2 + 4,
-            std::sync::atomic::Ordering::SeqCst,
-        );
         music.extend(queue.iter().take(lines + 4).map(|e| {
             ListItem::new(format!(
                 " {} {} | {}",
