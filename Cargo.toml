@@ -47,5 +47,5 @@ raw-window-handle = "0.4.3"
 [profile.release]
 lto = true
 opt-level = 3
-debug = false
+debug = true
 codegen-units = 1

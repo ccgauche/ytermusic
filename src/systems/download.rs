@@ -93,6 +93,7 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
                     Ok(_) => {
                         std::fs::write(download_path_json, serde_json::to_string(&id).unwrap())
                             .unwrap();
+                        crate::append(id.clone());
                         {
                             IN_DOWNLOAD
                                 .lock()

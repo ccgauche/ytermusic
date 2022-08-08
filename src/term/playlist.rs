@@ -10,14 +10,47 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::{systems::download, SoundAction};
+use crate::{systems::download, SoundAction, DATABASE};
 
 use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 
 pub struct Chooser {
     pub selected: usize,
-    pub items: Vec<(String, Vec<Video>)>,
+    pub items: Vec<PlayListEntry>,
     pub action_sender: Arc<Sender<SoundAction>>,
+}
+
+pub struct PlayListEntry {
+    pub name: String,
+    pub videos: Vec<Video>,
+    pub local_videos: usize,
+    pub text_to_show: String,
+}
+
+impl PlayListEntry {
+    pub fn new(name: String, videos: Vec<Video>) -> Self {
+        let db = DATABASE.read().unwrap();
+        let local_videos = videos
+            .iter()
+            .filter(|x| db.iter().any(|y| x.video_id == y.video_id))
+            .count();
+        Self {
+            text_to_show: format!(
+                "{}     ({}/{} {}%)",
+                name,
+                local_videos,
+                videos.len(),
+                (local_videos as f32 / videos.len() as f32 * 100.0) as u8
+            ),
+            name,
+            local_videos,
+            videos,
+        }
+    }
+
+    pub fn tupplelize(&self) -> (&String, &Vec<Video>) {
+        (&self.name, &self.videos)
+    }
 }
 impl Screen for Chooser {
     fn on_mouse_press(
@@ -53,16 +86,16 @@ impl Screen for Chooser {
             KeyCode::Char('f') => return ManagerMessage::ChangeState(Screens::Search).event(),
             KeyCode::Enter => {
                 if let Some(a) = &self.items.get(self.selected) {
-                    if a.0 != "Local musics" {
+                    if a.name != "Local musics" {
                         std::fs::write(
                             "data/last-playlist.json",
-                            serde_json::to_string(&a).unwrap(),
+                            serde_json::to_string(&a.tupplelize()).unwrap(),
                         )
                         .unwrap();
                     }
                     self.action_sender.send(SoundAction::Cleanup).unwrap();
                     download::clean(self.action_sender.clone());
-                    for video in self.items.get(self.selected).unwrap().1.iter() {
+                    for video in self.items.get(self.selected).unwrap().videos.iter() {
                         download::add(video.clone(), &self.action_sender);
                     }
                 }
@@ -85,7 +118,7 @@ impl Screen for Chooser {
                     .enumerate()
                     .skip(self.selected.saturating_sub(1))
                     .map(|(index, i)| {
-                        ListItem::new(i.0.as_str()).style(
+                        ListItem::new(i.text_to_show.as_str()).style(
                             Style::default()
                                 .fg(if index == self.selected {
                                     Color::Black
@@ -137,6 +170,6 @@ impl Chooser {
         }
     }
     fn add_element(&mut self, element: (String, Vec<Video>)) {
-        self.items.push(element);
+        self.items.push(PlayListEntry::new(element.0, element.1));
     }
 }

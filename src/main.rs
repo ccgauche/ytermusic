@@ -66,6 +66,7 @@ pub fn append(video: Video) {
         .open("data/db.bin")
         .unwrap();
     write_video(&mut file, &video);
+    log_(format!("Appended {} to database", video.title));
     DATABASE.write().unwrap().push(video);
 }
 
