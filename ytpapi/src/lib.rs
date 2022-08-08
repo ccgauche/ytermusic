@@ -128,10 +128,7 @@ async fn get_user_playlists(
         .text()
         .await
         .map_err(Error::Reqwest)?;
-    std::fs::write("out.html", &response).unwrap();
-    //Ok((String::new(), Vec::new()))
     let json = extract_json(&response)?;
-    std::fs::write("out.json", &json).unwrap();
     playlists_from_json_hub(&json)
 }
 
@@ -274,33 +271,4 @@ impl YTApi {
                 .map_err(Error::Reqwest)?,
         )?)
     }
-    /* fn send_request(&self, endpoint: &str, body: serde_json::Map<String, Value>) {
-        let mut context: serde_json::Map<String, Value> = serde_json::from_str(
-            r#"{"context":{"client":{"hl":"en","clientName":"WEB_REMIX","clientVersion":"0.1"},"user":{}}}"#,
-        ).unwrap();
-        context.extend(body.into_iter());
-        let body = serde_json::to_string(&context).unwrap();
-        let origin = self
-            .headers
-            .get("origin")
-            .or_else(|| self.headers.get("x-origin"))
-            .unwrap()
-            .to_str()
-            .unwrap();
-        let reponse = self
-            .client
-            .post(format!("{YTM_BASE_API}{endpoint}{YTM_PARAMS}"))
-            .body(body)
-            .header("content-type", "application/json")
-            .header(
-                "Authorization",
-                HeaderValue::from_str(&format!("{} {origin}", self.sapi)).unwrap(),
-            )
-            .send()
-            .unwrap()
-            .text()
-            .unwrap();
-
-        std::fs::write("reponse.html", reponse).unwrap();
-    } */
 }
