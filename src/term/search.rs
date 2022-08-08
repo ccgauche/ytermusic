@@ -28,10 +28,15 @@ use super::{
 pub struct Search {
     pub text: String,
     pub selected: usize,
-    pub items: Arc<RwLock<Vec<(String, Video)>>>,
+    pub items: Arc<RwLock<Vec<(String, Video, Status)>>>,
     pub search_handle: Option<JoinHandle<()>>,
     pub api: Option<Arc<ytpapi::YTApi>>,
     pub action_sender: Arc<Sender<SoundAction>>,
+}
+#[derive(Clone, Debug, PartialEq)]
+pub enum Status {
+    Local,
+    Unknown,
 }
 impl Screen for Search {
     fn on_mouse_press(
@@ -53,7 +58,7 @@ impl Screen for Search {
                 if self.items.read().unwrap().len() > y as usize {
                     self.selected = y as usize;
                     return self.on_key_press(
-                        KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+                        KeyEvent::new(KeyCode::Enter, mouse_event.modifiers),
                         frame_data,
                     );
                 }
@@ -71,7 +76,11 @@ impl Screen for Search {
             KeyCode::Enter => {
                 if let Some(a) = self.items.read().unwrap().get(self.selected).cloned() {
                     start_task_unary(self.action_sender.clone(), a.1);
-                    return ManagerMessage::ChangeState(Screens::MusicPlayer).event();
+                    return if key.modifiers.contains(KeyModifiers::CONTROL) {
+                        EventResponse::None
+                    } else {
+                        ManagerMessage::ChangeState(Screens::MusicPlayer).event()
+                    };
                 }
             }
             KeyCode::Char('+') | KeyCode::Up => self.selected(self.selected as isize - 1),
@@ -102,7 +111,13 @@ impl Screen for Search {
                 x.title.to_lowercase().contains(&text) || x.author.to_lowercase().contains(&text)
             })
             .cloned()
-            .map(|video| (format!("{} | {}", video.author, video.title), video))
+            .map(|video| {
+                (
+                    format!("{} | {}", video.author, video.title),
+                    video,
+                    Status::Local,
+                )
+            })
             .collect::<Vec<_>>();
         self.items.write().unwrap().clear();
         self.items
@@ -120,7 +135,16 @@ impl Screen for Search {
                 match api.search(&encode(&text).replace("%20", "+")).await {
                     Ok(e) => {
                         for video in e.into_iter() {
-                            item.push((format!("{} | {}", video.author, video.title), video));
+                            let id = video.video_id.clone();
+                            item.push((
+                                format!("{} | {}", video.author, video.title),
+                                video,
+                                if DATABASE.read().unwrap().iter().any(|x| &x.video_id == &id) {
+                                    Status::Local
+                                } else {
+                                    Status::Unknown
+                                },
+                            ));
                         }
                     }
                     Err(e) => {
@@ -166,8 +190,10 @@ impl Screen for Search {
                             Style::default()
                                 .fg(if index == self.selected {
                                     Color::Black
-                                } else {
+                                } else if i.2 == Status::Local {
                                     Color::White
+                                } else {
+                                    Color::LightBlue
                                 })
                                 .bg(if index != self.selected {
                                     Color::Black
@@ -228,7 +254,7 @@ impl Search {
             self.selected = selected as usize;
         }
     }
-    fn set_elements(&mut self, element: Vec<(String, Video)>) {
+    fn set_elements(&mut self, element: Vec<(String, Video, Status)>) {
         *self.items.write().unwrap() = element;
         self.selected = 0;
     }
