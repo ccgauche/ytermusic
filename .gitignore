@@ -6,4 +6,5 @@ headers.txt
 /ytpapi/target
 /rustube/target
 /log.txt
+/music_renamer
 last-playlist.json

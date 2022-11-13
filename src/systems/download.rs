@@ -52,9 +52,16 @@ pub fn add(video: Video, s: &Sender<SoundAction>) {
 async fn handle_download(id: &str) -> Result<PathBuf, Error> {
     rustube::Video::from_id(Id::from_str(id)?.into_owned())
         .await?
-        .best_audio()
+        .streams()
+        .iter()
+        .filter(|stream| {
+            stream.mime.to_string() == "audio/mp4"
+                && stream.includes_audio_track
+                && !stream.includes_video_track
+        })
+        .max_by_key(|stream| stream.bitrate)
         .ok_or(Error::NoStreams)?
-        .download(Path::new("data/downloads"))
+        .download_to_dir(Path::new("data/downloads"))
         .await
 }
 

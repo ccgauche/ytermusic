@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 #  --- YT Download ---
-rustube = { path = "./rustube", features = [
+rustube = { version = "0.6.0", features = [
     "download",
     "std",
     "rustls-tls",
