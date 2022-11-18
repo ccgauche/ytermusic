@@ -27,7 +27,8 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
             dbus_name: "ytermusic",
             display_name: "YTerMusic",
             hwnd: None,
-        }),
+        })
+        .map_err(|e| format!("{:?}", e)),
     )
 }
 
