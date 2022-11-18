@@ -1,5 +1,8 @@
 # YTerMusic
 
+![index](https://user-images.githubusercontent.com/16625987/202790566-9b114019-63f9-4c4b-965d-820fd0d80a17.png)
+
+
 YTerMusic is a terminal based Youtube Music Player.
 It's aims to be as fast and simple as possible.
 
