@@ -43,7 +43,7 @@ pub fn add(video: Video, s: &Sender<SoundAction>) {
     let download_path_json =
         PathBuf::from_str(&format!("data/downloads/{}.json", &video.video_id)).unwrap();
     if download_path_json.exists() {
-        s.send(SoundAction::PlayVideo(video.clone())).unwrap();
+        s.send(SoundAction::PlayVideo(video)).unwrap();
     } else {
         DOWNLOAD_QUEUE.lock().unwrap().push_back(video);
     }
@@ -55,7 +55,7 @@ async fn handle_download(id: &str) -> Result<PathBuf, Error> {
         .streams()
         .iter()
         .filter(|stream| {
-            stream.mime.to_string() == "audio/mp4"
+            stream.mime == "audio/mp4"
                 && stream.includes_audio_track
                 && !stream.includes_video_track
         })

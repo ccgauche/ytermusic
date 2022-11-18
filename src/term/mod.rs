@@ -24,6 +24,7 @@ use crate::{systems::player::PlayerState, SoundAction};
 
 use self::{device_lost::DeviceLost, playlist::Chooser, search::Search};
 
+// A trait to handle the different screens
 pub trait Screen {
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
     fn on_key_press(&mut self, mouse_event: KeyEvent, frame_data: &Rect) -> EventResponse;
@@ -39,6 +40,7 @@ pub enum EventResponse {
     None,
 }
 
+// A message that can be sent to the manager
 #[derive(Debug, Clone)]
 pub enum ManagerMessage {
     Error(String),
@@ -58,6 +60,7 @@ impl ManagerMessage {
     }
 }
 
+// The different screens
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Screens {
@@ -67,6 +70,7 @@ pub enum Screens {
     DeviceLost = 0x3,
 }
 
+// The screen manager that handles the different screens
 pub struct Manager {
     music_player: PlayerState,
     chooser: Chooser,
@@ -145,6 +149,9 @@ impl Manager {
         }
         false
     }
+    /**
+     * The main loop of the manager
+     */
     pub fn run(&mut self, updater: &Receiver<ManagerMessage>) -> Result<(), io::Error> {
         // setup terminal
         enable_raw_mode()?;
@@ -211,6 +218,8 @@ impl Manager {
         Ok(())
     }
 }
+
+// UTILS SECTION TO SPLIT THE TERMINAL INTO DIFFERENT PARTS
 
 pub fn split_y_start(f: Rect, start_size: u16) -> [Rect; 2] {
     let mut rectlistvol = f;

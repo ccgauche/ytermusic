@@ -198,6 +198,9 @@ impl YTApi {
             })?;
             headers.insert(key.to_owned(), value.to_owned());
         }
+        headers.insert("User-Agent".to_string(), "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0".to_string());
+        headers.insert("Accept".to_string(), "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8".to_string());
+        headers.insert("Accept-Language".to_string(), "en-US,en;q=0.5".to_string());
         Self::from_headers(&headers).await
     }
     pub async fn search(&self, search: &str) -> Result<Vec<Video>, Error> {

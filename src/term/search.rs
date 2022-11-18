@@ -139,7 +139,7 @@ impl Screen for Search {
                             item.push((
                                 format!("{} | {}", video.author, video.title),
                                 video,
-                                if DATABASE.read().unwrap().iter().any(|x| &x.video_id == &id) {
+                                if DATABASE.read().unwrap().iter().any(|x| x.video_id == id) {
                                     Status::Local
                                 } else {
                                     Status::Unknown

@@ -2,6 +2,9 @@ use flume::Sender;
 
 use crate::term::{ManagerMessage, Screens};
 
+/**
+ * Utils to handle errors
+ */
 pub fn handle_error_option<T, E>(
     updater: &Sender<ManagerMessage>,
     error_type: &'static str,
@@ -24,6 +27,9 @@ where
     }
 }
 
+/**
+ * Utils to handle errors
+ */
 pub fn handle_error<T>(updater: &Sender<ManagerMessage>, error_type: &'static str, a: Result<(), T>)
 where
     T: std::fmt::Display,

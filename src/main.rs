@@ -24,9 +24,13 @@ mod term;
 
 use mimalloc::MiMalloc;
 
+// Changes the allocator to improve performance especially on Windows
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+/**
+ * Actions that can be sent to the player from other services
+ */
 #[derive(Debug, Clone)]
 pub enum SoundAction {
     Cleanup,
@@ -44,8 +48,12 @@ pub enum SoundAction {
     PlayVideoUnary(Video),
 }
 
+// A global variable to store the current musical Database
 pub static DATABASE: Lazy<RwLock<Vec<Video>>> = Lazy::new(|| RwLock::new(Vec::new()));
 
+/**
+ * Writes the database to the disk
+ */
 fn write() {
     let db = DATABASE.read().unwrap();
     let mut file = OpenOptions::new()
@@ -58,6 +66,9 @@ fn write() {
         write_video(&mut file, video)
     }
 }
+/**
+ * append a video to the database
+ */
 pub fn append(video: Video) {
     let mut file = OpenOptions::new()
         .write(true)
@@ -70,6 +81,9 @@ pub fn append(video: Video) {
     DATABASE.write().unwrap().push(video);
 }
 
+/**
+ * Writes a video to a file
+ */
 fn write_video(buffer: &mut impl Write, video: &Video) {
     write_str(buffer, &video.title);
     write_str(buffer, &video.author);
@@ -78,6 +92,9 @@ fn write_video(buffer: &mut impl Write, video: &Video) {
     write_str(buffer, &video.duration);
 }
 
+/**
+ * Reads the database
+ */
 fn read() -> Option<Vec<Video>> {
     let mut buffer = Cursor::new(std::fs::read("data/db.bin").ok()?);
     let mut videos = HashSet::new();
@@ -87,6 +104,9 @@ fn read() -> Option<Vec<Video>> {
     Some(videos.into_iter().collect::<Vec<_>>())
 }
 
+/**
+ * Reads a video from the cursor
+ */
 fn read_video(buffer: &mut Cursor<Vec<u8>>) -> Option<Video> {
     Some(Video {
         title: read_str(buffer)?,
@@ -97,21 +117,33 @@ fn read_video(buffer: &mut Cursor<Vec<u8>>) -> Option<Video> {
     })
 }
 
+/**
+ * Writes a string from the cursor
+ */
 fn write_str(cursor: &mut impl Write, value: &str) {
     write_u32(cursor, value.len() as u32);
     cursor.write_all(value.as_bytes()).unwrap();
 }
 
+/**
+ * Reads a string from the cursor
+ */
 fn read_str(cursor: &mut Cursor<Vec<u8>>) -> Option<String> {
     let mut buf = vec![0u8; read_u32(cursor)? as usize];
     cursor.read_exact(&mut buf).ok()?;
     String::from_utf8(buf).ok()
 }
 
+/**
+ * Writes a u32 from the cursor
+ */
 fn write_u32(cursor: &mut impl Write, value: u32) {
     cursor.write_varint(value).unwrap();
 }
 
+/**
+ * Reads a u32 from the cursor
+ */
 fn read_u32(cursor: &mut Cursor<Vec<u8>>) -> Option<u32> {
     ReadVarint::<u32>::read_varint(cursor).ok()
 }
@@ -121,18 +153,44 @@ async fn main() -> Result<(), Error> {
     std::fs::create_dir_all("data/downloads").unwrap();
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");
-        println!("This file should contain your headers separated by `: `.");
+        println!("To configure the YTerMusic:");
+        println!("1. Open the YouTube Music website in your browser");
+        println!("2. Open the developer tools (F12)");
+        println!("3. Go to the Network tab");
+        println!("4. Go to https://music.youtube.com");
+        println!("5. Copy the `cookie` header from the associated request");
+        println!("6. Paste it in the `headers.txt` file as `Cookie: <cookie>`");
+        println!("7. Restart YterMusic");
         return Ok(());
     }
+    if !std::fs::read_to_string("headers.txt")
+        .unwrap()
+        .contains("Cookie: ")
+    {
+        println!("The `headers.txt` file is not configured correctly.");
+        println!("To configure the YTerMusic:");
+        println!("1. Open the YouTube Music website in your browser");
+        println!("2. Open the developer tools (F12)");
+        println!("3. Go to the Network tab");
+        println!("4. Go to https://music.youtube.com");
+        println!("5. Copy the `cookie` header from the associated request");
+        println!("6. Paste it in the `headers.txt` file as `Cookie: <cookie>`");
+        println!("7. Restart YterMusic");
+        return Ok(());
+    }
+    // Spawn the clean task
     let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
     tokio::task::spawn(async {
         clean();
     });
     let updater_s = Arc::new(updater_s);
+    // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
+    // Spawn the downloader task
     downloader(sa.clone());
     {
         let updater_s = updater_s.clone();
+        // Spawn playlist updater task
         tokio::task::spawn(async move {
             let playlist = std::fs::read_to_string("data/last-playlist.json").ok()?;
             let mut playlist: (String, Vec<Video>) = serde_json::from_str(&playlist).ok()?;
@@ -147,6 +205,7 @@ async fn main() -> Result<(), Error> {
     }
     {
         let updater_s = updater_s.clone();
+        // Spawn the API task
         tokio::task::spawn(async move {
             match YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).await
             {
@@ -187,6 +246,7 @@ async fn main() -> Result<(), Error> {
     }
     {
         let updater_s = updater_s.clone();
+        // Spawn the database getter task
         tokio::task::spawn(async move {
             if let Some(e) = read() {
                 *DATABASE.write().unwrap() = e.clone();
@@ -228,6 +288,9 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
+/**
+ * This function is called on strat to clean the database and the files that are incompletly downloaded due to a crash.
+ */
 fn clean() {
     for i in std::fs::read_dir("data/downloads").unwrap() {
         let path = i.unwrap().path();

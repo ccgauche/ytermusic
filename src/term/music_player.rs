@@ -152,7 +152,7 @@ impl Screen for PlayerState {
             Gauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
-                .ratio((self.sink.volume() as f64 / 100.).min(1.0).max(0.0)),
+                .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
             volume_rect,
         );
         let current_time = self.sink.elapsed().as_secs();
@@ -176,8 +176,7 @@ impl Screen for PlayerState {
                     } else {
                         self.sink.percentage().min(100.)
                     }
-                    .min(1.0)
-                    .max(0.0),
+                    .clamp(0.0, 1.0),
                 )
                 .label(format!(
                     "{}:{:02} / {}:{:02}",

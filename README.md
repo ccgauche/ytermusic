@@ -5,20 +5,23 @@ It's aims to be as fast and simple as possible.
 
 ## Features
 
-- Play your Youtube Music SuperMix in the terminal
+- Play your Youtube Music Playlist and Supermix.
 - Memory efficient (Around 20MB of RAM while fully loaded)
 - Cache all downloads and store them
 - Work even without connection (If musics were already downloaded)
 - Automic background download manager
 
-## Installation
+## Setup
 
-- Download the lastest version from `releases`
+- Download the latest version from `releases`
 - Create a `headers.txt` file and copy your headers from the nav when browsing https://music.youtube.com/
-  - Your headers should be in the following format:
-  ```
-  HeaderName: HeaderValue
-  ```
+  - Open the YouTube Music website in your browser");
+  - Open the developer tools (F12)
+  - Go to the Network tab
+  - Go to https://music.youtube.com
+  - Copy the `cookie` header from the associated request
+  - Paste it in the `headers.txt` file as `Cookie: <cookie>`
+  - Restart YterMusic
 - Run `ytermusic.exe`
 
 ## Screenshots
@@ -29,7 +32,7 @@ It's aims to be as fast and simple as possible.
 ## Building from source
 
 - Clone the repository
-- Install rust `https://rustup.rs`
+- Install rust `https://rustup.rs` nightly
 - Run `cargo build --release`
 - The executable is in `target/release/ytermusic.exe` or `target/release/ytermusic`
 
@@ -55,6 +58,8 @@ It's aims to be as fast and simple as possible.
 - [ ] Cache limit to not exceed some given disk space
 - [x] A download limit to stop downloading after the queue is full
 - [x] Mouse support
+- [x] Search
+- [ ] Custom theming
 
 ## Changelog
 

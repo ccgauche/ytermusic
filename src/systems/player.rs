@@ -16,7 +16,7 @@ use crate::{
     SoundAction, DATABASE,
 };
 
-use super::download::{DOWNLOAD_MORE, IN_DOWNLOAD};
+use super::download::IN_DOWNLOAD;
 
 #[cfg(not(target_os = "windows"))]
 fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
@@ -54,7 +54,7 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
             updater
                 .send(ManagerMessage::PassTo(
                     Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error(format!("No window handle found"))),
+                    Box::new(ManagerMessage::Error("No window handle found".to_string())),
                 ))
                 .unwrap();
             return None;
@@ -162,17 +162,15 @@ impl PlayerState {
                             .unwrap();
                     }
                 }
-            } else {
-                if let Some(e) = self.current.take() {
-                    self.previous.push(e);
-                }
+            } else if let Some(e) = self.current.take() {
+                self.previous.push(e);
             }
         }
     }
 
     fn handle_stream_errors(&self) {
         while let Ok(e) = self.stream_error_receiver.try_recv() {
-            let _ = handle_error(&self.updater, "audio device stream error", Err(e));
+            handle_error(&self.updater, "audio device stream error", Err(e));
         }
     }
     fn update_controls(&mut self) {
@@ -198,7 +196,6 @@ impl PlayerState {
                         })?;
                     }
                 }
-                ()
             };
             k.map_err(|x| format!("{:?}", x))
         });
@@ -332,9 +329,10 @@ pub fn get_action(
         index -= 1;
     }
     if queue.len() < index {
-        return None;
+        None
+    } else {
+        Some(MusicStatusAction::Skip(index + 1))
     }
-    return Some(MusicStatusAction::Skip(index + 1));
 }
 
 pub fn generate_music<'a>(
