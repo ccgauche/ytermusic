@@ -95,6 +95,8 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
 
 #[cfg(not(target_os = "windows"))]
 fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
+    use crate::errors::handle_error_option;
+    use souvlaki::PlatformConfig;
     handle_error_option(
         updater,
         "Can't create media controls",
