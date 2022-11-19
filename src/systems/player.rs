@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, path::PathBuf, process::exit, str::FromStr, sync::Arc};
+use std::{collections::VecDeque, process::exit, sync::Arc};
 
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, StreamError};
