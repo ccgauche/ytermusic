@@ -25,6 +25,7 @@ serde = { version = "1.0.136", features = ["derive"] }
 bincode = { version = "1.0.8" }
 urlencoding = "2.1.0"
 varuint = "0.6.0"
+directories = "4.0.1"
 
 #  --- UI ---
 crossterm = "0.23.2"

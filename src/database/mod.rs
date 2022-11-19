@@ -9,7 +9,7 @@ mod writer;
 pub use reader::read;
 pub use writer::{write, write_video};
 
-use crate::systems::logger::log_;
+use crate::{consts::CACHE_DIR, systems::logger::log_};
 
 // A global variable to store the current musical Database
 pub static DATABASE: Lazy<RwLock<Vec<Video>>> = Lazy::new(|| RwLock::new(Vec::new()));
@@ -22,7 +22,7 @@ pub fn append(video: Video) {
         .write(true)
         .append(true)
         .create(true)
-        .open("data/db.bin")
+        .open(CACHE_DIR.join("db.bin"))
         .unwrap();
     write_video(&mut file, &video);
     log_(format!("Appended {} to database", video.title));

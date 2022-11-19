@@ -52,10 +52,10 @@ impl MusicStatus {
     pub fn character(&self) -> char {
         match self {
             MusicStatus::Playing => '▶',
-            MusicStatus::Paused => '⋈',
+            MusicStatus::Paused => '⏸',
             MusicStatus::Previous => ' ',
             MusicStatus::Next => ' ',
-            MusicStatus::Downloading => '⮁',
+            MusicStatus::Downloading => '⭳',
         }
     }
 

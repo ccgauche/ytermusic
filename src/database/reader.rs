@@ -1,21 +1,20 @@
-use std::{
-    collections::HashSet,
-    io::{Cursor, Read},
-};
+use std::io::{Cursor, Read};
 
 use varuint::ReadVarint;
 use ytpapi::Video;
+
+use crate::consts::CACHE_DIR;
 
 /**
  * Reads the database
  */
 pub fn read() -> Option<Vec<Video>> {
-    let mut buffer = Cursor::new(std::fs::read("data/db.bin").ok()?);
-    let mut videos = HashSet::new();
+    let mut buffer = Cursor::new(std::fs::read(CACHE_DIR.join("db.bin")).ok()?);
+    let mut videos = Vec::new();
     while buffer.get_mut().len() > buffer.position() as usize {
-        videos.insert(read_video(&mut buffer)?);
+        videos.push(read_video(&mut buffer)?);
     }
-    Some(videos.into_iter().collect::<Vec<_>>())
+    Some(videos)
 }
 
 /**

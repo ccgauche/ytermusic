@@ -3,6 +3,8 @@ use std::{fs::OpenOptions, io::Write};
 use varuint::WriteVarint;
 use ytpapi::Video;
 
+use crate::consts::CACHE_DIR;
+
 /**
  * Writes the database to the disk
  */
@@ -12,7 +14,7 @@ pub fn write() {
         .write(true)
         .append(false)
         .create(true)
-        .open("data/db.bin")
+        .open(CACHE_DIR.join("db.bin"))
         .unwrap();
     for video in db.iter() {
         write_video(&mut file, video)

@@ -10,7 +10,7 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::{systems::download, SoundAction, DATABASE};
+use crate::{consts::CACHE_DIR, systems::download, SoundAction, DATABASE};
 
 use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 
@@ -88,7 +88,7 @@ impl Screen for Chooser {
                 if let Some(a) = &self.items.get(self.selected) {
                     if a.name != "Local musics" {
                         std::fs::write(
-                            "data/last-playlist.json",
+                            CACHE_DIR.join("last-playlist.json"),
                             serde_json::to_string(&a.tupplelize()).unwrap(),
                         )
                         .unwrap();

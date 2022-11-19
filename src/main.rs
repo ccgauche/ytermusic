@@ -1,3 +1,4 @@
+use consts::CACHE_DIR;
 use rustube::Error;
 use term::{Manager, ManagerMessage, Screens};
 
@@ -8,8 +9,10 @@ use systems::player::player_system;
 
 use ytpapi::{Video, YTApi};
 
+use crate::consts::HEADER_TUTORIAL;
 use crate::systems::logger::log_;
 
+mod consts;
 mod database;
 mod errors;
 mod systems;
@@ -46,17 +49,10 @@ pub enum SoundAction {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
-    std::fs::create_dir_all("data/downloads").unwrap();
+    std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");
-        println!("To configure the YTerMusic:");
-        println!("1. Open the YouTube Music website in your browser");
-        println!("2. Open the developer tools (F12)");
-        println!("3. Go to the Network tab");
-        println!("4. Go to https://music.youtube.com");
-        println!("5. Copy the `cookie` header from the associated request");
-        println!("6. Paste it in the `headers.txt` file as `Cookie: <cookie>`");
-        println!("7. Restart YterMusic");
+        println!("{}", HEADER_TUTORIAL);
         return Ok(());
     }
     if !std::fs::read_to_string("headers.txt")
@@ -64,14 +60,7 @@ async fn main() -> Result<(), Error> {
         .contains("Cookie: ")
     {
         println!("The `headers.txt` file is not configured correctly.");
-        println!("To configure the YTerMusic:");
-        println!("1. Open the YouTube Music website in your browser");
-        println!("2. Open the developer tools (F12)");
-        println!("3. Go to the Network tab");
-        println!("4. Go to https://music.youtube.com");
-        println!("5. Copy the `cookie` header from the associated request");
-        println!("6. Paste it in the `headers.txt` file as `Cookie: <cookie>`");
-        println!("7. Restart YterMusic");
+        println!("{}", HEADER_TUTORIAL);
         return Ok(());
     }
 
@@ -93,7 +82,7 @@ async fn main() -> Result<(), Error> {
         // Spawn playlist updater task
         tokio::task::spawn(async move {
             log_("Last playlist task on");
-            let playlist = std::fs::read_to_string("data/last-playlist.json").ok()?;
+            let playlist = std::fs::read_to_string(CACHE_DIR.join("last-playlist.json")).ok()?;
             let mut playlist: (String, Vec<Video>) = serde_json::from_str(&playlist).ok()?;
             if !playlist.0.starts_with("Last playlist: ") {
                 playlist.0 = format!("Last playlist: {}", playlist.0);
@@ -162,7 +151,7 @@ async fn main() -> Result<(), Error> {
                     .unwrap();
             } else {
                 let mut videos = HashSet::new();
-                for files in std::fs::read_dir("data/downloads").unwrap() {
+                for files in std::fs::read_dir(CACHE_DIR.join("downloads")).unwrap() {
                     let path = files.unwrap().path();
                     if path.as_os_str().to_string_lossy().ends_with(".json") {
                         let video =
@@ -197,7 +186,7 @@ async fn main() -> Result<(), Error> {
  * This function is called on start to clean the database and the files that are incompletly downloaded due to a crash.
  */
 fn clean() {
-    for i in std::fs::read_dir("data/downloads").unwrap() {
+    for i in std::fs::read_dir(CACHE_DIR.join("downloads")).unwrap() {
         let path = i.unwrap().path();
         if path.ends_with(".mp4") {
             let mut path1 = path.clone();
