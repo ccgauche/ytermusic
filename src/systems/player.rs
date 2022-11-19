@@ -128,7 +128,7 @@ impl PlayerState {
             self.handle_stream_errors();
             self.update_controls();
             if let Some(video) = self.queue.pop_front() {
-                let k = CACHE_DIR.join(&format!("downloads/{}.mp4", &video.video_id));
+                let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
                 if let Some(e) = self.current.replace(video.clone()) {
                     self.previous.push(e);
                 }
@@ -148,7 +148,7 @@ impl PlayerState {
                             &self.updater,
                             "invalid cleaning JSON",
                             std::fs::remove_file(
-                                CACHE_DIR.join(&format!("downloads/{}.json", &video.video_id)),
+                                CACHE_DIR.join(format!("downloads/{}.json", &video.video_id)),
                             ),
                         );
                         self.current = None;

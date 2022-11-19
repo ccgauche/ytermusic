@@ -39,7 +39,7 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
 }
 
 pub fn add(video: Video, s: &Sender<SoundAction>) {
-    let download_path_json = CACHE_DIR.join(&format!("downloads/{}.json", &video.video_id));
+    let download_path_json = CACHE_DIR.join(format!("downloads/{}.json", &video.video_id));
     if download_path_json.exists() {
         s.send(SoundAction::PlayVideo(video)).unwrap();
     } else {
@@ -79,9 +79,8 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
             }
             if let Some(id) = take() {
                 // TODO(#1): handle errors
-                let download_path_mp4 = CACHE_DIR.join(&format!("downloads/{}.mp4", &id.video_id));
-                let download_path_json =
-                    CACHE_DIR.join(&format!("downloads/{}.json", &id.video_id));
+                let download_path_mp4 = CACHE_DIR.join(format!("downloads/{}.mp4", &id.video_id));
+                let download_path_json = CACHE_DIR.join(format!("downloads/{}.json", &id.video_id));
                 if download_path_json.exists() {
                     s.send(SoundAction::PlayVideo(id)).unwrap();
                     k = true;
@@ -127,8 +126,8 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
 }
 pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: Video) {
     HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
-        let download_path_mp4 = CACHE_DIR.join(&format!("downloads/{}.mp4", &song.video_id));
-        let download_path_json = CACHE_DIR.join(&format!("downloads/{}.json", &song.video_id));
+        let download_path_mp4 = CACHE_DIR.join(format!("downloads/{}.mp4", &song.video_id));
+        let download_path_json = CACHE_DIR.join(format!("downloads/{}.json", &song.video_id));
         if download_path_json.exists() {
             s.send(SoundAction::PlayVideoUnary(song.clone())).unwrap();
             return;
