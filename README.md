@@ -66,6 +66,17 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
+Alpha a0.0.7
+ - Major changes in the API
+ - Fixed log file bloat issue
+
+Alpha a0.0.6
+ - Fix: Fix a bug where the app would crash when trying to play a song that was not downloaded
+ - Fix: Improve the logger to not print the same error twice
+ - Improved startup time
+ - Fixed linux build
+ - Changed how task are distributed to the thread pool
+
 Alpha a0.0.5
 
 - Added local database cache to improve IO accesses
