@@ -48,6 +48,7 @@ pub enum SoundAction {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    std::fs::write("log.txt", "# YTerMusic log file").unwrap();
     std::fs::create_dir_all("data/downloads").unwrap();
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");
@@ -76,9 +77,13 @@ async fn main() -> Result<(), Error> {
         println!("7. Restart YterMusic");
         return Ok(());
     }
+
+    log_("Starting YTerMusic");
+
     // Spawn the clean task
     let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
-    tokio::task::spawn(async {
+    std::thread::spawn(move || {
+        log_("Cleaning service on");
         clean();
     });
     let updater_s = Arc::new(updater_s);
@@ -90,6 +95,7 @@ async fn main() -> Result<(), Error> {
         let updater_s = updater_s.clone();
         // Spawn playlist updater task
         tokio::task::spawn(async move {
+            log_("Last playlist task on");
             let playlist = std::fs::read_to_string("data/last-playlist.json").ok()?;
             let mut playlist: (String, Vec<Video>) = serde_json::from_str(&playlist).ok()?;
             if !playlist.0.starts_with("Last playlist: ") {
@@ -105,6 +111,7 @@ async fn main() -> Result<(), Error> {
         let updater_s = updater_s.clone();
         // Spawn the API task
         tokio::task::spawn(async move {
+            log_("API task on");
             match YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).await
             {
                 Ok(api) => {
@@ -146,6 +153,7 @@ async fn main() -> Result<(), Error> {
         let updater_s = updater_s.clone();
         // Spawn the database getter task
         tokio::task::spawn(async move {
+            log_("Database getter task on");
             if let Some(e) = read() {
                 *DATABASE.write().unwrap() = e.clone();
 
@@ -181,6 +189,8 @@ async fn main() -> Result<(), Error> {
             }
         });
     }
+
+    log_("Running the manager");
     let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
     Ok(())
