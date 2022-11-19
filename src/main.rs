@@ -1,15 +1,10 @@
 #![feature(try_blocks)]
 #![feature(cursor_remaining)]
 
-use once_cell::sync::Lazy;
 use rustube::Error;
 use term::{Manager, ManagerMessage, Screens};
-use varuint::{ReadVarint, WriteVarint};
 
 use std::collections::HashSet;
-use std::fs::OpenOptions;
-use std::io::{Cursor, Read, Write};
-use std::sync::RwLock;
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use systems::download::downloader;
 use systems::player::player_system;
@@ -18,9 +13,12 @@ use ytpapi::{Video, YTApi};
 
 use crate::systems::logger::log_;
 
+mod database;
 mod errors;
 mod systems;
 mod term;
+
+pub use database::*;
 
 use mimalloc::MiMalloc;
 
@@ -46,106 +44,6 @@ pub enum SoundAction {
     Next(usize),
     PlayVideo(Video),
     PlayVideoUnary(Video),
-}
-
-// A global variable to store the current musical Database
-pub static DATABASE: Lazy<RwLock<Vec<Video>>> = Lazy::new(|| RwLock::new(Vec::new()));
-
-/**
- * Writes the database to the disk
- */
-fn write() {
-    let db = DATABASE.read().unwrap();
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(false)
-        .create(true)
-        .open("data/db.bin")
-        .unwrap();
-    for video in db.iter() {
-        write_video(&mut file, video)
-    }
-}
-/**
- * append a video to the database
- */
-pub fn append(video: Video) {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open("data/db.bin")
-        .unwrap();
-    write_video(&mut file, &video);
-    log_(format!("Appended {} to database", video.title));
-    DATABASE.write().unwrap().push(video);
-}
-
-/**
- * Writes a video to a file
- */
-fn write_video(buffer: &mut impl Write, video: &Video) {
-    write_str(buffer, &video.title);
-    write_str(buffer, &video.author);
-    write_str(buffer, &video.album);
-    write_str(buffer, &video.video_id);
-    write_str(buffer, &video.duration);
-}
-
-/**
- * Reads the database
- */
-fn read() -> Option<Vec<Video>> {
-    let mut buffer = Cursor::new(std::fs::read("data/db.bin").ok()?);
-    let mut videos = HashSet::new();
-    while !buffer.is_empty() {
-        videos.insert(read_video(&mut buffer)?);
-    }
-    Some(videos.into_iter().collect::<Vec<_>>())
-}
-
-/**
- * Reads a video from the cursor
- */
-fn read_video(buffer: &mut Cursor<Vec<u8>>) -> Option<Video> {
-    Some(Video {
-        title: read_str(buffer)?,
-        author: read_str(buffer)?,
-        album: read_str(buffer)?,
-        video_id: read_str(buffer)?,
-        duration: read_str(buffer)?,
-    })
-}
-
-/**
- * Writes a string from the cursor
- */
-fn write_str(cursor: &mut impl Write, value: &str) {
-    write_u32(cursor, value.len() as u32);
-    cursor.write_all(value.as_bytes()).unwrap();
-}
-
-/**
- * Reads a string from the cursor
- */
-fn read_str(cursor: &mut Cursor<Vec<u8>>) -> Option<String> {
-    let mut buf = vec![0u8; read_u32(cursor)? as usize];
-    cursor.read_exact(&mut buf).ok()?;
-    String::from_utf8(buf).ok()
-}
-
-/**
- * Writes a u32 from the cursor
- */
-fn write_u32(cursor: &mut impl Write, value: u32) {
-    cursor.write_varint(value).unwrap();
-}
-
-/**
- * Reads a u32 from the cursor
- */
-fn read_u32(cursor: &mut Cursor<Vec<u8>>) -> Option<u32> {
-    ReadVarint::<u32>::read_varint(cursor).ok()
 }
 
 #[tokio::main]

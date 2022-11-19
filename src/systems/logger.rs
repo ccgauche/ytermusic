@@ -14,9 +14,9 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
             .unwrap();
         while let Ok(e) = rx.recv() {
             buffer.clear();
-            buffer.push_str(&(e + '\n'));
+            buffer.push_str(&(e + "\n"));
             while let Ok(e) = rx.try_recv() {
-                buffer.push_str(&(e + '\n'));
+                buffer.push_str(&(e + "\n"));
             }
             file.write_all(buffer.as_bytes()).unwrap();
         }
