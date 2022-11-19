@@ -1,7 +1,6 @@
 use std::{
     collections::VecDeque,
-    path::{Path, PathBuf},
-    str::FromStr,
+    path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
     time::Duration,
 };
@@ -12,7 +11,7 @@ use rustube::{Error, Id};
 use tokio::{task::JoinHandle, time::sleep};
 use ytpapi::Video;
 
-use crate::SoundAction;
+use crate::{consts::CACHE_DIR, SoundAction};
 
 pub static IN_DOWNLOAD: Lazy<Mutex<Vec<ytpapi::Video>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
@@ -40,8 +39,7 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
 }
 
 pub fn add(video: Video, s: &Sender<SoundAction>) {
-    let download_path_json =
-        PathBuf::from_str(&format!("data/downloads/{}.json", &video.video_id)).unwrap();
+    let download_path_json = CACHE_DIR.join(&format!("downloads/{}.json", &video.video_id));
     if download_path_json.exists() {
         s.send(SoundAction::PlayVideo(video)).unwrap();
     } else {
@@ -61,7 +59,7 @@ async fn handle_download(id: &str) -> Result<PathBuf, Error> {
         })
         .max_by_key(|stream| stream.bitrate)
         .ok_or(Error::NoStreams)?
-        .download_to_dir(Path::new("data/downloads"))
+        .download_to_dir(CACHE_DIR.join("downloads"))
         .await
 }
 
@@ -81,10 +79,9 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
             }
             if let Some(id) = take() {
                 // TODO(#1): handle errors
-                let download_path_mp4 =
-                    PathBuf::from_str(&format!("data/downloads/{}.mp4", &id.video_id)).unwrap();
+                let download_path_mp4 = CACHE_DIR.join(&format!("downloads/{}.mp4", &id.video_id));
                 let download_path_json =
-                    PathBuf::from_str(&format!("data/downloads/{}.json", &id.video_id)).unwrap();
+                    CACHE_DIR.join(&format!("downloads/{}.json", &id.video_id));
                 if download_path_json.exists() {
                     s.send(SoundAction::PlayVideo(id)).unwrap();
                     k = true;
@@ -130,10 +127,8 @@ pub fn start_task(s: Arc<Sender<SoundAction>>) {
 }
 pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: Video) {
     HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
-        let download_path_mp4 =
-            PathBuf::from_str(&format!("data/downloads/{}.mp4", &song.video_id)).unwrap();
-        let download_path_json =
-            PathBuf::from_str(&format!("data/downloads/{}.json", &song.video_id)).unwrap();
+        let download_path_mp4 = CACHE_DIR.join(&format!("downloads/{}.mp4", &song.video_id));
+        let download_path_json = CACHE_DIR.join(&format!("downloads/{}.json", &song.video_id));
         if download_path_json.exists() {
             s.send(SoundAction::PlayVideoUnary(song.clone())).unwrap();
             return;

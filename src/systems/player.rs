@@ -8,6 +8,7 @@ use tui::{style::Style, widgets::ListItem};
 use ytpapi::Video;
 
 use crate::{
+    consts::CACHE_DIR,
     errors::{handle_error, handle_error_option},
     term::{
         music_player::{MusicStatus, MusicStatusAction},
@@ -127,8 +128,7 @@ impl PlayerState {
             self.handle_stream_errors();
             self.update_controls();
             if let Some(video) = self.queue.pop_front() {
-                let k =
-                    PathBuf::from_str(&format!("data/downloads/{}.mp4", &video.video_id)).unwrap();
+                let k = CACHE_DIR.join(&format!("downloads/{}.mp4", &video.video_id));
                 if let Some(e) = self.current.replace(video.clone()) {
                     self.previous.push(e);
                 }
@@ -147,10 +147,9 @@ impl PlayerState {
                         handle_error(
                             &self.updater,
                             "invalid cleaning JSON",
-                            std::fs::remove_file(format!(
-                                "data/downloads/{}.json",
-                                &video.video_id
-                            )),
+                            std::fs::remove_file(
+                                CACHE_DIR.join(&format!("downloads/{}.json", &video.video_id)),
+                            ),
                         );
                         self.current = None;
                         crate::write();
