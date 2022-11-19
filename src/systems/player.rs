@@ -215,13 +215,14 @@ impl PlayerState {
             SoundAction::Plus => self.sink.volume_up(),
             SoundAction::Minus => self.sink.volume_down(),
             SoundAction::Next(a) => {
-                for _ in 1..a {
-                    if let Some(e) = self.queue.pop_front() {
-                        self.previous.push(e);
-                    }
-                }
-
                 handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
+
+                if let Some(e) = self.current.take() {
+                    self.previous.push(e);
+                }
+                for _ in 1..a {
+                    self.previous.push(self.queue.pop_front().unwrap());
+                }
             }
             SoundAction::PlayVideo(video) => {
                 self.queue.push_back(video);
