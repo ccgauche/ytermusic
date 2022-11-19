@@ -5,14 +5,13 @@ use term::{Manager, ManagerMessage};
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 use systems::player::player_system;
 
-use ytpapi::Video;
-
 use crate::consts::HEADER_TUTORIAL;
 use crate::systems::logger::log_;
 
 mod consts;
 mod database;
 mod errors;
+mod structures;
 mod systems;
 mod term;
 
@@ -25,26 +24,6 @@ use mimalloc::MiMalloc;
 // Changes the allocator to improve performance especially on Windows
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-
-/**
- * Actions that can be sent to the player from other services
- */
-#[derive(Debug, Clone)]
-pub enum SoundAction {
-    Cleanup,
-    PlayPause,
-    ForcePause,
-    ForcePlay,
-    RestartPlayer,
-    Plus,
-    Minus,
-    Previous(usize),
-    Forward,
-    Backward,
-    Next(usize),
-    PlayVideo(Video),
-    PlayVideoUnary(Video),
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

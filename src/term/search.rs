@@ -16,7 +16,7 @@ use tui::{
 use urlencoding::encode;
 use ytpapi::{Video, YTApi};
 
-use crate::{systems::logger::log_, tasks, SoundAction, DATABASE};
+use crate::{structures::sound_action::SoundAction, systems::logger::log_, tasks, DATABASE};
 
 use super::{
     rect_contains, relative_pos, split_y_start, EventResponse, ManagerMessage, Screen, Screens,

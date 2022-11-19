@@ -20,7 +20,7 @@ use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi::Video;
 
-use crate::{systems::player::PlayerState, SoundAction};
+use crate::{structures::sound_action::SoundAction, systems::player::PlayerState};
 
 use self::{device_lost::DeviceLost, playlist::Chooser, search::Search};
 

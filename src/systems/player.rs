@@ -9,12 +9,13 @@ use ytpapi::Video;
 
 use crate::{
     consts::CACHE_DIR,
+    database,
     errors::{handle_error, handle_error_option},
+    structures::sound_action::SoundAction,
     term::{
         music_player::{MusicStatus, MusicStatusAction},
         ManagerMessage, Screens,
     },
-    SoundAction, DATABASE,
 };
 
 use super::download::IN_DOWNLOAD;
@@ -122,7 +123,7 @@ impl PlayerState {
         self.update_controls();
         self.handle_stream_errors();
         while let Ok(e) = self.soundaction_receiver.try_recv() {
-            self.apply_sound_action(e);
+            e.apply_sound_action(self);
         }
         if self.sink.is_finished() {
             self.handle_stream_errors();
@@ -135,10 +136,8 @@ impl PlayerState {
                 if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
                     if matches!(e, PlayError::DecoderError(_)) {
                         // Cleaning the file
-                        DATABASE
-                            .write()
-                            .unwrap()
-                            .retain(|x| x.video_id != video.video_id);
+
+                        database::remove_video(&video);
                         handle_error(
                             &self.updater,
                             "invalid cleaning MP4",
@@ -199,66 +198,6 @@ impl PlayerState {
             }
         }
         Ok(())
-    }
-    pub fn apply_sound_action(&mut self, e: SoundAction) {
-        match e {
-            SoundAction::Backward => self.sink.seek_bw(),
-            SoundAction::Forward => self.sink.seek_fw(),
-            SoundAction::PlayPause => self.sink.toggle_playback(),
-            SoundAction::Cleanup => {
-                self.queue.clear();
-                self.previous.clear();
-                self.current = None;
-                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
-            }
-            SoundAction::Plus => self.sink.volume_up(),
-            SoundAction::Minus => self.sink.volume_down(),
-            SoundAction::Next(a) => {
-                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
-
-                if let Some(e) = self.current.take() {
-                    self.previous.push(e);
-                }
-                for _ in 1..a {
-                    self.previous.push(self.queue.pop_front().unwrap());
-                }
-            }
-            SoundAction::PlayVideo(video) => {
-                self.queue.push_back(video);
-            }
-            SoundAction::Previous(a) => {
-                for _ in 0..a {
-                    if let Some(e) = self.previous.pop() {
-                        if let Some(c) = self.current.take() {
-                            self.queue.push_front(c);
-                        }
-                        self.queue.push_front(e);
-                    }
-                }
-                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
-            }
-            SoundAction::RestartPlayer => {
-                (self.sink, self.guard) =
-                    handle_error_option(&self.updater, "update player", self.sink.update())
-                        .unwrap();
-                if let Some(e) = self.current.clone() {
-                    self.apply_sound_action(SoundAction::PlayVideo(e));
-                }
-            }
-            SoundAction::ForcePause => {
-                if !self.sink.is_paused() && !self.sink.is_finished() {
-                    self.sink.pause();
-                }
-            }
-            SoundAction::ForcePlay => {
-                if self.sink.is_paused() && !self.sink.is_finished() {
-                    self.sink.pause();
-                }
-            }
-            SoundAction::PlayVideoUnary(video) => {
-                self.queue.push_front(video);
-            }
-        }
     }
 }
 

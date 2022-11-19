@@ -9,7 +9,9 @@ use once_cell::sync::Lazy;
 use tokio::{task::JoinHandle, time::sleep};
 use ytpapi::Video;
 
-use crate::{consts::CACHE_DIR, tasks::download::start_download, SoundAction};
+use crate::{
+    consts::CACHE_DIR, structures::sound_action::SoundAction, tasks::download::start_download,
+};
 
 pub static IN_DOWNLOAD: Lazy<Mutex<Vec<ytpapi::Video>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));

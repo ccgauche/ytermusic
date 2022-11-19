@@ -6,8 +6,8 @@ use tui::{
 };
 
 use crate::{
+    structures::sound_action::SoundAction,
     systems::player::{generate_music, get_action, PlayerState},
-    SoundAction,
 };
 
 use super::{
@@ -85,13 +85,13 @@ impl Screen for PlayerState {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
                 match get_action(y as usize, &self.queue, &self.previous, &self.current) {
                     Some(MusicStatusAction::Skip(a)) => {
-                        self.apply_sound_action(SoundAction::Next(a));
+                        SoundAction::Next(a).apply_sound_action(self);
                     }
                     Some(MusicStatusAction::Current) => {
-                        self.apply_sound_action(SoundAction::PlayPause);
+                        SoundAction::PlayPause.apply_sound_action(self);
                     }
                     Some(MusicStatusAction::Before(a)) => {
-                        self.apply_sound_action(SoundAction::Previous(a));
+                        SoundAction::Previous(a).apply_sound_action(self);
                     }
                     None | Some(MusicStatusAction::Downloading) => (),
                 }
@@ -105,30 +105,30 @@ impl Screen for PlayerState {
             KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
             KeyCode::Char('f') => ManagerMessage::ChangeState(Screens::Search).event(),
             KeyCode::Char(' ') => {
-                self.apply_sound_action(SoundAction::PlayPause);
+                SoundAction::PlayPause.apply_sound_action(self);
                 EventResponse::None
             }
             KeyCode::Char('+') | KeyCode::Up => {
-                self.apply_sound_action(SoundAction::Plus);
+                SoundAction::Plus.apply_sound_action(self);
                 EventResponse::None
             }
             KeyCode::Char('-') | KeyCode::Down => {
-                self.apply_sound_action(SoundAction::Minus);
+                SoundAction::Minus.apply_sound_action(self);
                 EventResponse::None
             }
             KeyCode::Char('<') | KeyCode::Left => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.apply_sound_action(SoundAction::Previous(1));
+                    SoundAction::Previous(1).apply_sound_action(self);
                 } else {
-                    self.apply_sound_action(SoundAction::Backward);
+                    SoundAction::Backward.apply_sound_action(self);
                 }
                 EventResponse::None
             }
             KeyCode::Char('>') | KeyCode::Right => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
-                    self.apply_sound_action(SoundAction::Next(1));
+                    SoundAction::Next(1).apply_sound_action(self);
                 } else {
-                    self.apply_sound_action(SoundAction::Forward);
+                    SoundAction::Forward.apply_sound_action(self);
                 }
                 EventResponse::None
             }
@@ -205,7 +205,7 @@ impl Screen for PlayerState {
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {
         match message {
             ManagerMessage::RestartPlayer => {
-                self.apply_sound_action(SoundAction::RestartPlayer);
+                SoundAction::RestartPlayer.apply_sound_action(self);
                 ManagerMessage::ChangeState(Screens::MusicPlayer).event()
             }
             _ => EventResponse::None,
@@ -213,12 +213,12 @@ impl Screen for PlayerState {
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
-        //self.apply_sound_action(SoundAction::ForcePause);
+        //SoundAction::ForcePause.apply_sound_action(self);
         EventResponse::None
     }
 
     fn open(&mut self) -> EventResponse {
-        //self.apply_sound_action(SoundAction::ForcePlay);
+        //SoundAction::ForcePlay.apply_sound_action(self);
         EventResponse::None
     }
 }

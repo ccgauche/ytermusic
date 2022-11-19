@@ -10,7 +10,9 @@ use tui::{
 };
 use ytpapi::Video;
 
-use crate::{consts::CACHE_DIR, systems::download, SoundAction, DATABASE};
+use crate::{
+    consts::CACHE_DIR, structures::sound_action::SoundAction, systems::download, DATABASE,
+};
 
 use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 

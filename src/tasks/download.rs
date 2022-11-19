@@ -6,11 +6,12 @@ use ytpapi::Video;
 
 use crate::{
     consts::CACHE_DIR,
+    structures::sound_action::SoundAction,
     systems::{
         download::{add_to_in_download, remove_from_in_download, HANDLES},
         logger::log_,
     },
-    Error, SoundAction,
+    Error,
 };
 
 async fn handle_download(id: &str) -> Result<(), Error> {
