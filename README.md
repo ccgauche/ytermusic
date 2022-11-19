@@ -66,6 +66,11 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
+Alpha a0.0.8
+ - Fixed scrolling
+ - Fixed audio-glitches
+ - Removed nightly flag use 
+
 Alpha a0.0.7
  - Major changes in the API
  - Fixed log file bloat issue
