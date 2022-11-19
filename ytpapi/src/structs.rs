@@ -5,70 +5,46 @@ use serde_json::Value;
 
 use crate::Error;
 
-/// Will parse a path and a json value to a Value
-/// # Example
-/// `test.tabs.#0.value`
-///
-
-pub fn extract_meaninfull<'a>(value: &'a Value, path: &str) -> Result<&'a Value, Error> {
-    let mut current_value = value;
-    for path_part in path.split('.') {
-        if let Ok(a) = path_part.parse::<usize>() {
-            let array = current_value.as_array().ok_or_else(|| {
-                Error::InvalidJsonCantFind(path_part.to_string(), current_value.to_string())
-            })?;
-            if array.len() < a {
-                return Err(Error::InvalidJsonCantFind(
-                    path_part.to_string(),
-                    current_value.to_string(),
-                ));
+/**
+ * Applies recursively the `transformer` function to the given json value and returns the transformed values.
+ */
+pub(crate) fn from_json<T: PartialEq>(
+    json: &str,
+    transformer: impl Fn(&Value) -> Option<T>,
+) -> Result<Vec<T>, Error> {
+    /**
+     * Execute a function on each element of a json value recursively.
+     * When the function returns something, the value is added to the result.
+     */
+    pub(crate) fn inner_crawl<T: PartialEq>(
+        value: &Value,
+        playlists: &mut Vec<T>,
+        transformer: &impl Fn(&Value) -> Option<T>,
+    ) {
+        if let Some(e) = transformer(value) {
+            // Maybe an hashset would be better
+            if !playlists.contains(&e) {
+                playlists.push(e);
             }
-            current_value = &array[a];
-        } else if let Some(v) = current_value.get(path_part) {
-            current_value = v;
-        } else {
-            return Err(Error::InvalidJsonCantFind(
-                path_part.to_string(),
-                current_value.to_string(),
-            ));
+            return;
+        }
+        match value {
+            Value::Array(a) => a
+                .iter()
+                .for_each(|x| inner_crawl(x, playlists, transformer)),
+            Value::Object(a) => a
+                .values()
+                .for_each(|x| inner_crawl(x, playlists, transformer)),
+            _ => (),
         }
     }
-    Ok(current_value)
-}
-const PATH_PLAYLIST_HUB: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.1.itemSectionRenderer.contents.0.gridRenderer.items";
-const PATH: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.0.musicCarouselShelfRenderer.contents";
-const PLAYLIST_PATH: &str = "contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents.0.musicPlaylistShelfRenderer.contents";
-// contents.singleColumnBrowseResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents
-pub(crate) fn playlists_from_json(string: &str) -> Result<Vec<Playlist>, Error> {
-    let jason = serde_json::from_str(string).map_err(Error::SerdeJson)?;
-    as_array(extract_meaninfull(&jason, PATH)?)?
-        .iter()
-        .map(get_playlist)
-        .collect()
-}
-
-pub(crate) fn playlists_from_json_hub(string: &str) -> Result<Vec<Playlist>, Error> {
-    let jason = serde_json::from_str(string).map_err(Error::SerdeJson)?;
-    Ok(as_array(extract_meaninfull(&jason, PATH_PLAYLIST_HUB)?)?
-        .iter()
-        .map(get_playlist_hubendpoint)
-        .collect::<Result<Vec<Option<_>>, _>>()?
-        .into_iter()
-        .flatten()
-        .collect())
-}
-
-fn as_array(value: &Value) -> Result<&Vec<Value>, Error> {
-    value
-        .as_array()
-        .ok_or_else(|| Error::InvalidJsonCantFind("Not an array".to_owned(), value.to_string()))
-}
-
-fn as_str(value: &Value) -> Result<String, Error> {
-    value
-        .as_str()
-        .ok_or_else(|| Error::InvalidJsonCantFind("Not a string".to_owned(), value.to_string()))
-        .map(|x| x.to_owned())
+    let mut playlists = Vec::new();
+    inner_crawl(
+        &serde_json::from_str(json).map_err(Error::SerdeJson)?,
+        &mut playlists,
+        &transformer,
+    );
+    Ok(playlists)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -89,159 +65,102 @@ impl Display for Video {
         )
     }
 }
-fn get_video_titles(value: &Value) -> Result<Video, Error> {
-    let value = extract_meaninfull(value, "musicResponsiveListItemRenderer")?;
-    let texts: Vec<String> = as_array(extract_meaninfull(value, "flexColumns")?)?
-        .iter()
-        .map(get_text_from_flexcolumn)
-        .collect();
-    let author = texts.get(1).cloned().unwrap_or_default();
-    let begin = author.find('•').map(|x| x + "•".len()).unwrap_or(0);
-    let end = author.rfind('•').unwrap_or_else(|| author.len());
-    let author = author[begin.min(end)..end.max(begin)].trim().to_owned();
-    let k = author
-        .rfind('•')
-        .unwrap_or_else(|| author.len() - "•".len());
-    let album = author[k + "•".len()..].trim().to_owned();
-    let author = author[..k].trim().to_owned();
-    Ok(Video {
-        title: texts.get(0).cloned().unwrap_or_default(),
-        author,
-        album,
-        video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
-        duration: String::new(),
-    })
-}
-fn get_video(value: &Value) -> Result<Video, Error> {
-    let value = extract_meaninfull(value, "musicResponsiveListItemRenderer")?;
-    let texts: Vec<String> = as_array(extract_meaninfull(value, "flexColumns")?)?
-        .iter()
-        .map(get_text_from_flexcolumn)
-        .collect();
-    let k: Result<String, Error> = (|| {
-        as_str(extract_meaninfull(
-            value,
-            "fixedColumns.0.musicResponsiveListItemFixedColumnRenderer.text.runs.0.text",
-        )?)
-    })();
-    Ok(Video {
-        title: texts.get(0).cloned().unwrap_or_default(),
-        author: texts.get(1).cloned().unwrap_or_default(),
-        album: texts.get(2).cloned().unwrap_or_default(),
-        video_id: as_str(extract_meaninfull(value, "playlistItemData.videoId")?)?,
-        duration: k.unwrap_or_default(),
-    })
-}
 
-const ALLOWED: &[&str] = &[
-    "Video", "Vidéo", "Title", "Song", "Titre", "Meilleur", "Best",
-];
-
-pub fn search_results(json: Value) -> Result<Vec<Video>, Error> {
-    let json = extract_meaninfull(&json, "contents.tabbedSearchResultsRenderer.tabs.0.tabRenderer.content.sectionListRenderer.contents")?;
-    let mut list: Vec<Video> = Vec::new();
-    for i in as_array(json)?.iter() {
-        let title = if let Ok(e) = extract_meaninfull(i, "musicShelfRenderer.title.runs.0.text") {
-            e
-        } else {
-            continue;
-        };
-        let title = as_str(title)?;
-        if ALLOWED.iter().any(|x| title.contains(x)) {
-            for k in as_array(extract_meaninfull(i, "musicShelfRenderer.contents")?)?
-                .iter()
-                .flat_map(get_video_titles)
-                .collect::<Vec<_>>()
-            {
-                if list.iter().any(|w| w.video_id == k.video_id) {
-                    continue;
-                }
-                list.push(k);
-            }
-        }
-    }
-    Ok(list)
-}
-
-fn get_text_from_flexcolumn(value: &Value) -> String {
-    let k: Option<String> = (|| {
-        let value = value.as_object()?.values().next()?;
-
-        Some(
-            as_array(extract_meaninfull(value, "text.runs").ok()?)
-                .ok()?
-                .iter()
-                .flat_map(|x| as_str(extract_meaninfull(x, "text").ok()?).ok())
-                .collect::<Vec<_>>()
-                .join(""),
-        )
-    })();
-    k.unwrap_or_default()
-}
-
-pub fn videos_from_playlist(string: &str) -> Result<Vec<Video>, Error> {
-    let jason = serde_json::from_str(string).map_err(Error::SerdeJson)?;
-    let out = extract_meaninfull(&jason, PLAYLIST_PATH)?;
-
-    as_array(out)?.iter().map(get_video).collect()
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, Ord, PartialEq, Hash)]
 pub struct Playlist {
     pub name: String,
     pub subtitle: String,
     pub browse_id: String,
 }
 
-pub fn get_playlist_hubendpoint(value: &Value) -> Result<Option<Playlist>, Error> {
-    let music_two_item_renderer = &extract_meaninfull(value, "musicTwoRowItemRenderer")?;
-    let subtitle = extract_meaninfull(music_two_item_renderer, "subtitle.runs")
-        .ok()
-        .map(|x| {
-            Ok(as_array(x)?
-                .iter()
-                .map(|x| as_str(extract_meaninfull(x, "text")?))
-                .collect::<Result<Vec<_>, _>>()?
-                .join(""))
-        })
-        .unwrap_or(Ok(String::new()))?;
-    let title_div = extract_meaninfull(music_two_item_renderer, "title.runs.0")?;
-    let browse_id = as_str(
-        if let Ok(e) = extract_meaninfull(title_div, "navigationEndpoint.browseEndpoint.browseId") {
-            e
-        } else {
-            return Ok(None);
-        },
-    )?;
-    let name = as_str(extract_meaninfull(title_div, "text")?)?;
-    Ok(Some(Playlist {
-        name,
-        subtitle,
-        browse_id,
-    }))
+/**
+ * Tries to extract a playlist from a json value.
+ * Quite flexible to reduce odds of API change breaking this.
+ */
+pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
+    let object = value.as_object()?;
+    let title_text = get_text(object.get("title")?, true)?;
+    let subtitle = object.get("subtitle").and_then(|x| get_text(x, false));
+    let browse_id = &object
+        .get("navigationEndpoint")
+        .and_then(|x| x.get("browseEndpoint"))
+        .and_then(|x| x.get("browseId"))
+        .and_then(Value::as_str)?;
+    Some(Playlist {
+        name: title_text,
+        subtitle: subtitle.unwrap_or_default(),
+        browse_id: browse_id.strip_prefix("VL")?.to_string(),
+    })
 }
 
-pub fn get_playlist(value: &Value) -> Result<Playlist, Error> {
-    let music_two_item_renderer = &extract_meaninfull(value, "musicTwoRowItemRenderer")?;
-    let subtitle = extract_meaninfull(music_two_item_renderer, "subtitle.runs")
-        .ok()
-        .map(|x| {
-            Ok(as_array(x)?
+/**
+ * Tries to extract the text from a json value.
+ * text_clean: Weather to include singleton text.
+ */
+fn get_text(value: &Value, text_clean: bool) -> Option<String> {
+    if let Some(e) = value.as_str() {
+        Some(e.to_string())
+    } else {
+        let obj = value.as_object()?;
+        if let Some(e) = obj.get("text") {
+            if text_clean && obj.values().count() == 1 {
+                return None;
+            }
+            get_text(e, text_clean)
+        } else if let Some(e) = obj.get("runs") {
+            let k = e
+                .as_array()?
                 .iter()
-                .map(|x| as_str(extract_meaninfull(x, "text")?))
-                .collect::<Result<Vec<_>, _>>()?
-                .join(""))
-        })
-        .unwrap_or(Ok(String::new()))?;
-    let title_div = extract_meaninfull(music_two_item_renderer, "title.runs.0")?;
-    let browse_id = as_str(extract_meaninfull(
-        title_div,
-        "navigationEndpoint.browseEndpoint.browseId",
-    )?)?;
-    let name = as_str(extract_meaninfull(title_div, "text")?)?;
-    Ok(Playlist {
-        name,
-        subtitle,
-        browse_id,
+                .flat_map(|x| get_text(x, text_clean))
+                .collect::<Vec<_>>();
+            if k.is_empty() {
+                None
+            } else {
+                Some(k.join(""))
+            }
+        } else {
+            None
+        }
+    }
+}
+
+/**
+ * Tries to find a video id in the json
+ */
+pub fn get_videoid(value: &Value) -> Option<String> {
+    match value {
+        Value::Array(e) => e.iter().find_map(get_videoid),
+        Value::Object(e) => e
+            .get("videoId")
+            .and_then(Value::as_str)
+            .map(|x| x.to_string())
+            .or_else(|| e.values().find_map(get_videoid)),
+        _ => None,
+    }
+}
+
+/**
+ * Tries to extract a video from a json value.
+ * Quite flexible to reduce odds of API change breaking this.
+ */
+pub(crate) fn get_video(value: &Value) -> Option<Video> {
+    // Extract the text part (title, author, album) from a json value.
+    let mut texts = value
+        .as_object()?
+        .get("flexColumns")?
+        .as_array()?
+        .iter()
+        .flat_map(|x| {
+            x.as_object()
+                .and_then(|x| x.values().next())
+                .and_then(|x| get_text(x, true))
+        });
+
+    Some(Video {
+        video_id: get_videoid(value)?,
+        title: texts.next()?,
+        author: texts.next()?,
+        album: texts.next().unwrap_or_default(),
+        duration: String::new(),
     })
 }

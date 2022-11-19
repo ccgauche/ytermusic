@@ -11,36 +11,15 @@ use reqwest::{
     Client, ClientBuilder,
 };
 
-use serde_json::Value;
 use string_utils::StringUtils;
-use structs::{playlists_from_json, playlists_from_json_hub, search_results, videos_from_playlist};
 
+use structs::{get_playlist, from_json, get_video};
 pub use structs::{Playlist, Video};
 
 const YTM_DOMAIN: &str = "https://music.youtube.com";
 
 mod string_utils;
 mod structs;
-
-/* fn sapisid_from_cookie(string: &str) -> Option<String> {
-    string.find("__Secure-3PAPISID=").map(|i| {
-        let string = &string[i + "__Secure-3PAPISID=".len()..];
-        let string = &string[..string.find(';').unwrap()];
-        string.to_owned()
-    })
-} */
-
-/* fn get_authorization(auth: &str) -> Option<String> {
-    let mut hasher = Sha1::new();
-    let unix = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("Time went backwards!")
-        .as_secs();
-
-    hasher.update(format!("{unix} + ' ' + {auth}").as_bytes());
-
-    Some(format!("SAPISIDHASH {unix}_{:x}", hasher.finalize()))
-} */
 
 fn unescape(inp: &str) -> Result<String, Error> {
     let mut string = String::with_capacity(inp.len());
@@ -107,12 +86,12 @@ async fn get_visitor_id(
         .text()
         .await
         .map_err(Error::Reqwest)?;
-    let playlist = playlists_from_json(&extract_json(&response)?)?;
+    let playlist = from_json(&extract_json(&response)?, get_playlist)?;
     response
         .between("VISITOR_DATA\":\"", "\"")
         .to_owned_()
         .map(|x| (x, playlist))
-        .ok_or_else(|| Error::InvalidHTMLFile(response.to_string()))
+        .ok_or_else(|| Error::InvalidHTMLFile(0,response.to_string()))
 }
 
 async fn get_user_playlists(
@@ -128,8 +107,7 @@ async fn get_user_playlists(
         .text()
         .await
         .map_err(Error::Reqwest)?;
-    let json = extract_json(&response)?;
-    playlists_from_json_hub(&json)
+    from_json(&extract_json(&response)?, get_playlist)
 }
 
 fn extract_json(string: &str) -> Result<String, Error> {
@@ -140,7 +118,7 @@ fn extract_json(string: &str) -> Result<String, Error> {
         )
         .after("data: '")
         .to_owned_()
-        .ok_or_else(|| Error::InvalidHTMLFile(string.to_string()))?;
+        .ok_or_else(|| Error::InvalidHTMLFile(1,string.to_string()))?;
     unescape(&json)
 }
 fn extract_json_search(string: &str) -> Result<String, Error> {
@@ -151,23 +129,18 @@ fn extract_json_search(string: &str) -> Result<String, Error> {
         )
         .after("data: '")
         .to_owned_()
-        .ok_or_else(|| Error::InvalidHTMLFile(string.to_string()))?;
+        .ok_or_else(|| Error::InvalidHTMLFile(2,string.to_string()))?;
     unescape(&json)
 }
 
-/* const YTM_BASE_API: &'static str = "https://music.youtube.com/youtubei/v1/";
-const YTM_PARAMS: &'static str = "?alt=json&key=AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30"; */
-
 pub struct YTApi {
-    /* headers: HeaderMap, */
-    /* sapi: String, */
     client: Client,
     playlists: Vec<Playlist>,
 }
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidHTMLFile(String),
+    InvalidHTMLFile(u32,String),
     Reqwest(reqwest::Error),
     SerdeJson(serde_json::Error),
     InvalidHeaderValue(InvalidHeaderValue),
@@ -215,9 +188,7 @@ impl YTApi {
                 .await
                 .map_err(Error::Reqwest)?,
         )?;
-        let json: Value = serde_json::from_str(&k).map_err(Error::SerdeJson)?;
-        //std::fs::write("search.json", k).map_err(Error::Io)?;
-        search_results(json)
+        from_json(&k, get_video)
     }
     pub fn playlists(&self) -> &Vec<Playlist> {
         &self.playlists
@@ -228,17 +199,16 @@ impl YTApi {
             "x-goog-visitor-id",
             HeaderValue::from_str(&xgoo).map_err(Error::InvalidHeaderValue)?,
         );
-        /* let sapi = sapisid_from_cookie(headers.get("cookie").unwrap().to_str().unwrap()).unwrap(); */
         let k = ClientBuilder::default()
             .cookie_store(true)
             .default_headers(headers)
             .build()
             .map_err(Error::Reqwest)?;
         playlists.append(&mut get_user_playlists(&k, &HeaderMap::new()).await?);
+        playlists.sort();
+        playlists.dedup();
         Ok(Self {
-            /* sapi, */
             client: k,
-            /* headers: headers, */
             playlists,
         })
     }
@@ -252,14 +222,8 @@ impl YTApi {
         }
         Self::from_headers_map(headers).await
     }
-    /* fn browse_home(&self) {
-        self.send_request(
-            "browse",
-            serde_json::from_str("{\"browseId\":\"FEmusic_home\"}").unwrap(),
-        )
-    } */
     pub async fn browse_playlist(&self, playlistid: &str) -> Result<Vec<Video>, Error> {
-        videos_from_playlist(&extract_json(
+        let playlist = extract_json(
             &self
                 .client
                 .get(&format!(
@@ -272,6 +236,7 @@ impl YTApi {
                 .text()
                 .await
                 .map_err(Error::Reqwest)?,
-        )?)
+        )?;
+        from_json(&playlist, get_video)
     }
 }
