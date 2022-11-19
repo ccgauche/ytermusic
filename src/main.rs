@@ -289,7 +289,7 @@ async fn main() -> Result<(), Error> {
 }
 
 /**
- * This function is called on strat to clean the database and the files that are incompletly downloaded due to a crash.
+ * This function is called on start to clean the database and the files that are incompletly downloaded due to a crash.
  */
 fn clean() {
     for i in std::fs::read_dir("data/downloads").unwrap() {
