@@ -9,7 +9,7 @@ use crate::consts::CACHE_DIR;
  * Reads the database
  */
 pub fn read() -> Option<Vec<Video>> {
-    let mut buffer = Cursor::new(std::fs::read(CACHE_DIR.join("/db.bin")).ok()?);
+    let mut buffer = Cursor::new(std::fs::read(CACHE_DIR.join("db.bin")).ok()?);
     let mut videos = Vec::new();
     while buffer.get_mut().len() > buffer.position() as usize {
         videos.push(read_video(&mut buffer)?);
