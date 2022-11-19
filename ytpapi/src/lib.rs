@@ -1,5 +1,3 @@
-#![feature(try_blocks)]
-
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},

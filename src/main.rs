@@ -1,6 +1,3 @@
-#![feature(try_blocks)]
-#![feature(cursor_remaining)]
-
 use rustube::Error;
 use term::{Manager, ManagerMessage, Screens};
 
@@ -48,7 +45,7 @@ pub enum SoundAction {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    std::fs::write("log.txt", "# YTerMusic log file").unwrap();
+    std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
     std::fs::create_dir_all("data/downloads").unwrap();
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");

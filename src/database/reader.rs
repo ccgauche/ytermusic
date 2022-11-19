@@ -12,7 +12,7 @@ use ytpapi::Video;
 pub fn read() -> Option<Vec<Video>> {
     let mut buffer = Cursor::new(std::fs::read("data/db.bin").ok()?);
     let mut videos = HashSet::new();
-    while !buffer.is_empty() {
+    while buffer.get_mut().len() > buffer.position() as usize {
         videos.insert(read_video(&mut buffer)?);
     }
     Some(videos.into_iter().collect::<Vec<_>>())

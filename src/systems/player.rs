@@ -175,31 +175,31 @@ impl PlayerState {
         }
     }
     fn update_controls(&mut self) {
-        handle_error::<String>(&self.updater, "Can't update finished media control", {
-            let k: Result<_, Error> = try {
-                if let Some(e) = &mut self.controls {
-                    e.set_metadata(MediaMetadata {
-                        title: self.current.as_ref().map(|video| video.title.as_str()),
-                        album: self.current.as_ref().map(|video| video.album.as_str()),
-                        artist: self.current.as_ref().map(|video| video.author.as_str()),
-                        cover_url: None,
-                        duration: None,
-                    })?;
-                    if self.sink.is_finished() {
-                        e.set_playback(MediaPlayback::Stopped)?;
-                    } else if self.sink.is_paused() {
-                        e.set_playback(MediaPlayback::Paused {
-                            progress: Some(MediaPosition(self.sink.elapsed())),
-                        })?;
-                    } else {
-                        e.set_playback(MediaPlayback::Playing {
-                            progress: Some(MediaPosition(self.sink.elapsed())),
-                        })?;
-                    }
-                }
-            };
-            k.map_err(|x| format!("{:?}", x))
-        });
+        let result = self.try_update_controls().map_err(|x| format!("{:?}", x));
+        handle_error::<String>(&self.updater, "Can't update finished media control", result);
+    }
+    fn try_update_controls(&mut self) -> Result<(), Error> {
+        if let Some(e) = &mut self.controls {
+            e.set_metadata(MediaMetadata {
+                title: self.current.as_ref().map(|video| video.title.as_str()),
+                album: self.current.as_ref().map(|video| video.album.as_str()),
+                artist: self.current.as_ref().map(|video| video.author.as_str()),
+                cover_url: None,
+                duration: None,
+            })?;
+            if self.sink.is_finished() {
+                e.set_playback(MediaPlayback::Stopped)?;
+            } else if self.sink.is_paused() {
+                e.set_playback(MediaPlayback::Paused {
+                    progress: Some(MediaPosition(self.sink.elapsed())),
+                })?;
+            } else {
+                e.set_playback(MediaPlayback::Playing {
+                    progress: Some(MediaPosition(self.sink.elapsed())),
+                })?;
+            }
+        }
+        Ok(())
     }
     pub fn apply_sound_action(&mut self, e: SoundAction) {
         match e {
