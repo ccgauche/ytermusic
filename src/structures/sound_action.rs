@@ -56,7 +56,7 @@ impl SoundAction {
                 }
             }
             Self::PlayVideo(video) => {
-                player.queue.push_back(video.clone());
+                player.queue.push_back(video);
             }
             Self::Previous(a) => {
                 for _ in 0..a {

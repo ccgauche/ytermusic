@@ -1,74 +1,20 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use tui::{
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, Borders, Gauge, List, ListState},
 };
 
 use crate::{
-    structures::sound_action::SoundAction,
+    structures::{
+        app_status::AppStatus, music_status_action::MusicStatusAction, sound_action::SoundAction,
+    },
     systems::player::{generate_music, get_action, PlayerState},
 };
 
 use super::{
     rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen, Screens,
 };
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum MusicStatusAction {
-    Skip(usize),
-    Current,
-    Before(usize),
-    Downloading,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum AppStatus {
-    Paused,
-    Playing,
-    NoMusic,
-}
-
-impl AppStatus {
-    fn colors(&self) -> (Color, Color) {
-        match self {
-            AppStatus::Paused => (Color::Yellow, Color::Black),
-            AppStatus::Playing => (Color::Green, Color::Black),
-            AppStatus::NoMusic => (Color::White, Color::Black),
-        }
-    }
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum MusicStatus {
-    Playing,
-    Paused,
-    Previous,
-    Next,
-    Downloading,
-}
-
-impl MusicStatus {
-    pub fn character(&self) -> char {
-        match self {
-            MusicStatus::Playing => '▶',
-            MusicStatus::Paused => '⏸',
-            MusicStatus::Previous => ' ',
-            MusicStatus::Next => ' ',
-            MusicStatus::Downloading => '⭳',
-        }
-    }
-
-    pub fn colors(&self) -> (Color, Color) {
-        match self {
-            MusicStatus::Playing => (Color::Green, Color::Black),
-            MusicStatus::Paused => (Color::Yellow, Color::Black),
-            MusicStatus::Previous => (Color::White, Color::Black),
-            MusicStatus::Next => (Color::White, Color::Black),
-            MusicStatus::Downloading => (Color::Blue, Color::Black),
-        }
-    }
-}
 
 impl Screen for PlayerState {
     fn on_mouse_press(

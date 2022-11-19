@@ -11,11 +11,11 @@ use crate::{
     consts::CACHE_DIR,
     database,
     errors::{handle_error, handle_error_option},
-    structures::sound_action::SoundAction,
-    term::{
-        music_player::{MusicStatus, MusicStatusAction},
-        ManagerMessage, Screens,
+    structures::{
+        music_status::MusicStatus, music_status_action::MusicStatusAction,
+        sound_action::SoundAction,
     },
+    term::{ManagerMessage, Screens},
 };
 
 use super::download::IN_DOWNLOAD;
