@@ -2,7 +2,9 @@ use std::{process::exit, sync::Arc};
 
 use flume::Sender;
 use player::Player;
-use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition};
+use souvlaki::{
+    Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
+};
 use ytpapi::Video;
 
 use crate::{systems::logger::log_, term::ManagerMessage};
@@ -61,21 +63,19 @@ impl Media {
 
 fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Result<(), Error> {
     mpris.attach(move |e| match e {
-        souvlaki::MediaControlEvent::Toggle
-        | souvlaki::MediaControlEvent::Play
-        | souvlaki::MediaControlEvent::Pause => {
+        MediaControlEvent::Toggle | MediaControlEvent::Play | MediaControlEvent::Pause => {
             sender.send(SoundAction::PlayPause).unwrap();
         }
-        souvlaki::MediaControlEvent::Next => {
+        MediaControlEvent::Next => {
             sender.send(SoundAction::Next(1)).unwrap();
         }
-        souvlaki::MediaControlEvent::Previous => {
+        MediaControlEvent::Previous => {
             sender.send(SoundAction::Previous(1)).unwrap();
         }
-        souvlaki::MediaControlEvent::Stop => {
+        MediaControlEvent::Stop => {
             sender.send(SoundAction::Cleanup).unwrap();
         }
-        souvlaki::MediaControlEvent::Seek(a) => match a {
+        MediaControlEvent::Seek(a) => match a {
             souvlaki::SeekDirection::Forward => {
                 sender.send(SoundAction::Forward).unwrap();
             }
@@ -83,11 +83,11 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
                 sender.send(SoundAction::Backward).unwrap();
             }
         },
-        souvlaki::MediaControlEvent::SeekBy(_, _) => todo!(),
-        souvlaki::MediaControlEvent::SetPosition(_) => todo!(),
-        souvlaki::MediaControlEvent::OpenUri(_) => todo!(),
-        souvlaki::MediaControlEvent::Raise => todo!(),
-        souvlaki::MediaControlEvent::Quit => {
+        MediaControlEvent::SeekBy(_, _) => todo!(),
+        MediaControlEvent::SetPosition(_) => todo!(),
+        MediaControlEvent::OpenUri(_) => todo!(),
+        MediaControlEvent::Raise => todo!(),
+        MediaControlEvent::Quit => {
             exit(0);
         }
     })
