@@ -7,6 +7,9 @@ edition = "2021"
 
 [dependencies]
 cpal = { version = "0.13.5" }
-symphonia = { version = "0.5.1", features = ["aac", "isomp4"] }
+symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = [
+    "aac",
+    "isomp4",
+] }
 flume = "0.10.12"
 tokio = "1.17.0"
