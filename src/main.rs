@@ -3,7 +3,6 @@ use rustube::Error;
 use term::{Manager, ManagerMessage};
 
 use std::{path::PathBuf, str::FromStr, sync::Arc};
-use systems::download::downloader;
 use systems::player::player_system;
 
 use ytpapi::Video;
@@ -73,8 +72,8 @@ async fn main() -> Result<(), Error> {
     let updater_s = Arc::new(updater_s);
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
-    // Spawn the downloader task
-    downloader(sa.clone());
+    // Spawn the downloader system
+    systems::download::spawn_system(sa.clone());
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     // Spawn the API task
     tasks::api::spawn_api_task(updater_s.clone());

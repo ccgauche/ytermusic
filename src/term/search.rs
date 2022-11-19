@@ -16,10 +16,7 @@ use tui::{
 use urlencoding::encode;
 use ytpapi::{Video, YTApi};
 
-use crate::{
-    systems::{download::start_task_unary, logger::log_},
-    SoundAction, DATABASE,
-};
+use crate::{systems::logger::log_, tasks, SoundAction, DATABASE};
 
 use super::{
     rect_contains, relative_pos, split_y_start, EventResponse, ManagerMessage, Screen, Screens,
@@ -75,7 +72,7 @@ impl Screen for Search {
         match key.code {
             KeyCode::Enter => {
                 if let Some(a) = self.items.read().unwrap().get(self.selected).cloned() {
-                    start_task_unary(self.action_sender.clone(), a.1);
+                    tasks::download::start_task_unary(self.action_sender.clone(), a.1);
                     return if key.modifiers.contains(KeyModifiers::CONTROL) {
                         EventResponse::None
                     } else {
