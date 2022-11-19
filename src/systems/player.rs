@@ -1,8 +1,7 @@
-use std::{collections::VecDeque, process::exit, sync::Arc};
+use std::{collections::VecDeque, sync::Arc};
 
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, StreamError};
-use souvlaki::{Error, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig};
 
 use tui::{style::Style, widgets::ListItem};
 use ytpapi::Video;
@@ -12,7 +11,7 @@ use crate::{
     database,
     errors::{handle_error, handle_error_option},
     structures::{
-        music_status::MusicStatus, music_status_action::MusicStatusAction,
+        media::Media, music_status::MusicStatus, music_status_action::MusicStatusAction,
         sound_action::SoundAction,
     },
     term::{ManagerMessage, Screens},
@@ -20,62 +19,11 @@ use crate::{
 
 use super::download::IN_DOWNLOAD;
 
-#[cfg(not(target_os = "windows"))]
-fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
-    handle_error_option(
-        updater,
-        "Can't create media controls",
-        MediaControls::new(PlatformConfig {
-            dbus_name: "ytermusic",
-            display_name: "YTerMusic",
-            hwnd: None,
-        })
-        .map_err(|e| format!("{:?}", e)),
-    )
-}
-
-#[cfg(target_os = "windows")]
-fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
-    use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-    use winit::event_loop::EventLoop;
-    use winit::{platform::windows::EventLoopExtWindows, window::WindowBuilder};
-
-    let config = PlatformConfig {
-        dbus_name: "ytermusic",
-        display_name: "YTerMusic",
-        hwnd: if let RawWindowHandle::Win32(h) = handle_error_option(
-            updater,
-            "OS Error while creating media hook window",
-            WindowBuilder::new()
-                .with_visible(false)
-                .build(&EventLoop::<()>::new_any_thread()),
-        )?
-        .raw_window_handle()
-        {
-            Some(h.hwnd)
-        } else {
-            updater
-                .send(ManagerMessage::PassTo(
-                    Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error("No window handle found".to_string())),
-                ))
-                .unwrap();
-            return None;
-        },
-    };
-
-    handle_error_option(
-        updater,
-        "Can't create media controls",
-        MediaControls::new(config).map_err(|x| format!("{:?}", x)),
-    )
-}
-
 pub struct PlayerState {
     pub queue: VecDeque<Video>,
     pub current: Option<Video>,
     pub previous: Vec<Video>,
-    pub controls: Option<MediaControls>,
+    pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
     pub updater: Arc<Sender<ManagerMessage>>,
@@ -97,20 +45,12 @@ impl PlayerState {
             Player::new(Arc::new(stream_error_sender)),
         )
         .unwrap();
-        let mut controls = get_handle(&updater);
-        if let Some(e) = &mut controls {
-            handle_error(
-                &updater,
-                "Can't connect media control",
-                connect(e, soundaction_sender.clone()).map_err(|x| format!("{:?}", x)),
-            );
-        }
         Self {
+            controls: Media::new(updater.clone(), soundaction_sender.clone()),
             soundaction_receiver,
             updater,
             stream_error_receiver,
             soundaction_sender,
-            controls,
             sink,
             guard,
             queue: Default::default(),
@@ -173,31 +113,11 @@ impl PlayerState {
         }
     }
     fn update_controls(&mut self) {
-        let result = self.try_update_controls().map_err(|x| format!("{:?}", x));
+        let result = self
+            .controls
+            .update(&self.current, &self.sink)
+            .map_err(|x| format!("{:?}", x));
         handle_error::<String>(&self.updater, "Can't update finished media control", result);
-    }
-    fn try_update_controls(&mut self) -> Result<(), Error> {
-        if let Some(e) = &mut self.controls {
-            e.set_metadata(MediaMetadata {
-                title: self.current.as_ref().map(|video| video.title.as_str()),
-                album: self.current.as_ref().map(|video| video.album.as_str()),
-                artist: self.current.as_ref().map(|video| video.author.as_str()),
-                cover_url: None,
-                duration: None,
-            })?;
-            if self.sink.is_finished() {
-                e.set_playback(MediaPlayback::Stopped)?;
-            } else if self.sink.is_paused() {
-                e.set_playback(MediaPlayback::Paused {
-                    progress: Some(MediaPosition(self.sink.elapsed())),
-                })?;
-            } else {
-                e.set_playback(MediaPlayback::Playing {
-                    progress: Some(MediaPosition(self.sink.elapsed())),
-                })?;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -211,40 +131,6 @@ pub fn player_system(
 }
 
 // https://docs.rs/souvlaki/latest/souvlaki/
-
-fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Result<(), Error> {
-    mpris.attach(move |e| match e {
-        souvlaki::MediaControlEvent::Toggle
-        | souvlaki::MediaControlEvent::Play
-        | souvlaki::MediaControlEvent::Pause => {
-            sender.send(SoundAction::PlayPause).unwrap();
-        }
-        souvlaki::MediaControlEvent::Next => {
-            sender.send(SoundAction::Next(1)).unwrap();
-        }
-        souvlaki::MediaControlEvent::Previous => {
-            sender.send(SoundAction::Previous(1)).unwrap();
-        }
-        souvlaki::MediaControlEvent::Stop => {
-            sender.send(SoundAction::Cleanup).unwrap();
-        }
-        souvlaki::MediaControlEvent::Seek(a) => match a {
-            souvlaki::SeekDirection::Forward => {
-                sender.send(SoundAction::Forward).unwrap();
-            }
-            souvlaki::SeekDirection::Backward => {
-                sender.send(SoundAction::Backward).unwrap();
-            }
-        },
-        souvlaki::MediaControlEvent::SeekBy(_, _) => todo!(),
-        souvlaki::MediaControlEvent::SetPosition(_) => todo!(),
-        souvlaki::MediaControlEvent::OpenUri(_) => todo!(),
-        souvlaki::MediaControlEvent::Raise => todo!(),
-        souvlaki::MediaControlEvent::Quit => {
-            exit(0);
-        }
-    })
-}
 
 pub fn get_action(
     mut index: usize,
