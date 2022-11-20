@@ -5,12 +5,14 @@ use ytpapi::Video;
 
 use crate::{
     consts::CACHE_DIR,
+    structures::performance,
     systems::logger::log_,
     term::{ManagerMessage, Screens},
 };
 
 pub fn spawn_last_playlist_task(updater_s: Arc<Sender<ManagerMessage>>) {
     tokio::task::spawn(async move {
+        let guard = performance::guard("Last playlist");
         log_("Last playlist task on");
         let playlist = std::fs::read_to_string(CACHE_DIR.join("last-playlist.json")).ok()?;
         let mut playlist: (String, Vec<Video>) = serde_json::from_str(&playlist).ok()?;
@@ -20,6 +22,7 @@ pub fn spawn_last_playlist_task(updater_s: Arc<Sender<ManagerMessage>>) {
         updater_s
             .send(ManagerMessage::AddElementToChooser(playlist).pass_to(Screens::Playlist))
             .unwrap();
+        drop(guard);
         Some(())
     });
 }

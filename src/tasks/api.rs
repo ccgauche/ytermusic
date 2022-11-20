@@ -4,6 +4,7 @@ use flume::Sender;
 use ytpapi::{Playlist, YTApi};
 
 use crate::{
+    structures::performance,
     systems::logger::log_,
     term::{ManagerMessage, Screens},
 };
@@ -11,6 +12,7 @@ use crate::{
 pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
     tokio::task::spawn(async move {
         log_("API task on");
+        let guard = performance::guard("API task");
         match YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).await {
             Ok(api) => {
                 let api = Arc::new(api);
@@ -22,6 +24,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 log_(format!("{:?}", e));
             }
         }
+        drop(guard);
     });
 }
 
@@ -31,6 +34,8 @@ fn spawn_browse_playlist_task(
     updater_s: Arc<Sender<ManagerMessage>>,
 ) {
     tokio::task::spawn(async move {
+        let guard = format!("Browse playlist {}", playlist.name);
+        let guard = performance::guard(&guard);
         match api.browse_playlist(&playlist.browse_id).await {
             Ok(videos) => {
                 updater_s
@@ -47,5 +52,7 @@ fn spawn_browse_playlist_task(
                 log_(format!("{:?}", e));
             }
         }
+
+        drop(guard);
     });
 }

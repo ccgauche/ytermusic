@@ -7,6 +7,7 @@ use ytpapi::Video;
 use crate::{
     consts::CACHE_DIR,
     read,
+    structures::performance,
     systems::logger::log_,
     term::{ManagerMessage, Screens},
     DATABASE,
@@ -15,6 +16,7 @@ use crate::{
 pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
     tokio::task::spawn(async move {
         log_("Database getter task on");
+        let guard = performance::guard("Local musics");
         if let Some(videos) = read() {
             shuffle_and_send(videos, &updater_s);
         } else {
@@ -32,6 +34,7 @@ pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
 
             crate::write();
         }
+        drop(guard);
     });
 }
 
