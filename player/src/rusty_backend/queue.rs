@@ -47,7 +47,7 @@ where
 pub struct SourcesQueueInput<S> {
     next_sounds: Mutex<Vec<(Box<dyn Source<Item = S> + Send>, Option<flume::Sender<()>>)>>,
 
-    // See constructor.
+    /// See constructor.
     keep_alive_if_empty: AtomicBool,
 }
 
@@ -95,13 +95,13 @@ where
 
 /// The output of the queue. Implements `Source`.
 pub struct SourcesQueueOutput<S> {
-    // The current iterator that produces samples.
+    /// The current iterator that produces samples.
     current: Box<dyn Source<Item = S> + Send>,
 
-    // Signal this sender before picking from `next`.
+    /// Signal this sender before picking from `next`.
     signal_after_end: Option<flume::Sender<()>>,
 
-    // The next sounds.
+    /// The next sounds.
     input: Arc<SourcesQueueInput<S>>,
     sample_cache: VecDeque<Option<S>>,
 }
@@ -203,10 +203,10 @@ impl<S> SourcesQueueOutput<S>
 where
     S: Sample + Send + 'static,
 {
-    // Called when `current` is empty and we must jump to the next element.
-    // Returns `Ok` if the sound should continue playing, or an error if it should stop.
-    //
-    // This method is separate so that it is not inlined.
+    /// Called when `current` is empty and we must jump to the next element.
+    /// Returns `Ok` if the sound should continue playing, or an error if it should stop.
+    ///
+    /// This method is separate so that it is not inlined.
     fn go_next(&mut self) -> Result<(), ()> {
         if let Some(signal_after_end) = self.signal_after_end.take() {
             let _ = signal_after_end.send(());

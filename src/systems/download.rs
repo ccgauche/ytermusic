@@ -24,9 +24,7 @@ fn take() -> Option<Video> {
     DOWNLOAD_QUEUE.lock().unwrap().pop_front()
 }
 
-/**
- * A worker of this system that downloads pending songs
- */
+/// A worker of this system that downloads pending songs
 fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
     HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
         let mut k = true;
@@ -46,9 +44,7 @@ fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
     }));
 }
 
-/**
- * Destroy all the worker and task getting processed and starts back the system
- */
+/// Destroy all the worker and task getting processed and starts back the system
 pub fn clean(sender: Arc<Sender<SoundAction>>) {
     DOWNLOAD_QUEUE.lock().unwrap().clear();
     {
@@ -63,9 +59,7 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
     spawn_system(sender);
 }
 
-/**
- * Append a video to the download queue to be processed by the system
- */
+/// Append a video to the download queue to be processed by the system
 pub fn add(video: Video, s: &Sender<SoundAction>) {
     let download_path_json = CACHE_DIR.join(format!("downloads/{}.json", &video.video_id));
     if download_path_json.exists() {

@@ -11,20 +11,17 @@ pub use writer::{write, write_video};
 
 use crate::{consts::CACHE_DIR, systems::logger::log_};
 
-// A global variable to store the current musical Database
+/// A global variable to store the current musical Database
 pub static DATABASE: Lazy<RwLock<Vec<Video>>> = Lazy::new(|| RwLock::new(Vec::new()));
 
-/**
- * Remove a video from the database
- */
+/// Remove a video from the database
 pub fn remove_video(video: &Video) {
     let mut database = DATABASE.write().unwrap();
     database.retain(|v| v.video_id != video.video_id);
     write();
 }
-/**
- * append a video to the database
- */
+
+/// Append a video to the database
 pub fn append(video: Video) {
     let mut file = OpenOptions::new()
         .write(true)

@@ -26,16 +26,16 @@ where
 #[derive(Clone, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct PeriodicAccess<I, F> {
-    // The inner source.
+    /// The inner source.
     input: I,
 
-    // Closure that gets access to `inner`.
+    /// Closure that gets access to `inner`.
     modifier: F,
 
-    // The frequency with which local_volume should be updated by remote_volume
+    /// The frequency with which local_volume should be updated by remote_volume
     update_frequency: u32,
 
-    // How many samples remain until it is time to update local_volume with remote_volume.
+    /// How many samples remain until it is time to update local_volume with remote_volume.
     samples_until_update: u32,
 }
 

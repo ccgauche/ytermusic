@@ -5,17 +5,16 @@ use serde_json::Value;
 
 use crate::Error;
 
-/**
- * Applies recursively the `transformer` function to the given json value and returns the transformed values.
- */
+
+/// Applies recursively the `transformer` function to the given json value
+/// and returns the transformed values.
 pub(crate) fn from_json<T: PartialEq>(
     json: &str,
     transformer: impl Fn(&Value) -> Option<T>,
 ) -> Result<Vec<T>, Error> {
-    /**
-     * Execute a function on each element of a json value recursively.
-     * When the function returns something, the value is added to the result.
-     */
+
+    /// Execute a function on each element of a json value recursively.
+    /// When the function returns something, the value is added to the result.
     pub(crate) fn inner_crawl<T: PartialEq>(
         value: &Value,
         playlists: &mut Vec<T>,
@@ -73,10 +72,9 @@ pub struct Playlist {
     pub browse_id: String,
 }
 
-/**
- * Tries to extract a playlist from a json value.
- * Quite flexible to reduce odds of API change breaking this.
- */
+
+/// Tries to extract a playlist from a json value.
+/// Quite flexible to reduce odds of API change breaking this.
 pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
     let object = value.as_object()?;
     let title_text = get_text(object.get("title")?, true)?;
@@ -93,10 +91,9 @@ pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
     })
 }
 
-/**
- * Tries to extract the text from a json value.
- * text_clean: Weather to include singleton text.
- */
+
+/// Tries to extract the text from a json value.
+/// text_clean: Weather to include singleton text.
 fn get_text(value: &Value, text_clean: bool) -> Option<String> {
     if let Some(e) = value.as_str() {
         Some(e.to_string())
@@ -124,9 +121,8 @@ fn get_text(value: &Value, text_clean: bool) -> Option<String> {
     }
 }
 
-/**
- * Tries to find a video id in the json
- */
+
+/// Tries to find a video id in the json
 pub fn get_videoid(value: &Value) -> Option<String> {
     match value {
         Value::Array(e) => e.iter().find_map(get_videoid),
@@ -139,10 +135,9 @@ pub fn get_videoid(value: &Value) -> Option<String> {
     }
 }
 
-/**
- * Tries to extract a video from a json value.
- * Quite flexible to reduce odds of API change breaking this.
- */
+
+/// Tries to extract a video from a json value.
+/// Quite flexible to reduce odds of API change breaking this.
 pub(crate) fn get_video(value: &Value) -> Option<Video> {
     // Extract the text part (title, author, album) from a json value.
     let mut texts = value
