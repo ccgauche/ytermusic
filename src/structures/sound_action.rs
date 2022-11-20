@@ -5,9 +5,7 @@ use crate::{
     systems::player::PlayerState,
 };
 
-/**
- * Actions that can be sent to the player from other services
- */
+/// Actions that can be sent to the player from other services
 #[derive(Debug, Clone)]
 pub enum SoundAction {
     Cleanup,

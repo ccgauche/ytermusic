@@ -68,19 +68,19 @@ where
 
 /// The output of the mixer. Implements `Source`.
 pub struct DynamicMixer<S> {
-    // The current iterator that produces samples.
+    /// The current iterator that produces samples.
     current_sources: Vec<Box<dyn Source<Item = S> + Send>>,
 
-    // The pending sounds.
+    /// The pending sounds.
     input: Arc<DynamicMixerController<S>>,
 
-    // The number of samples produced so far.
+    /// The number of samples produced so far.
     sample_count: usize,
 
-    // A temporary vec used in start_pending_sources.
+    /// A temporary vec used in start_pending_sources.
     still_pending: Vec<Box<dyn Source<Item = S> + Send>>,
 
-    // A temporary vec used in sum_current_sources.
+    /// A temporary vec used in sum_current_sources.
     still_current: Vec<Box<dyn Source<Item = S> + Send>>,
 }
 
@@ -151,10 +151,10 @@ impl<S> DynamicMixer<S>
 where
     S: Sample + Send + 'static,
 {
-    // Samples from the #next() function are interlaced for each of the channels.
-    // We need to ensure we start playing sources so that their samples are
-    // in-step with the modulo of the samples produced so far. Otherwise, the
-    // sound will play on the wrong channels, e.g. left / right will be reversed.
+    /// Samples from the #next() function are interlaced for each of the channels.
+    /// We need to ensure we start playing sources so that their samples are
+    /// in-step with the modulo of the samples produced so far. Otherwise, the
+    /// sound will play on the wrong channels, e.g. left / right will be reversed.
     fn start_pending_sources(&mut self) {
         let mut pending = self.input.pending_sources.lock().unwrap(); // TODO: relax ordering?
 

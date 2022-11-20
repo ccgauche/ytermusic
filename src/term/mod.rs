@@ -149,9 +149,8 @@ impl Manager {
         }
         false
     }
-    /**
-     * The main loop of the manager
-     */
+
+    /// The main loop of the manager
     pub fn run(&mut self, updater: &Receiver<ManagerMessage>) -> Result<(), io::Error> {
         // setup terminal
         enable_raw_mode()?;

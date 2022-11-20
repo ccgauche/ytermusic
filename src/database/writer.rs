@@ -5,9 +5,7 @@ use ytpapi::Video;
 
 use crate::consts::CACHE_DIR;
 
-/**
- * Writes the database to the disk
- */
+/// Writes the database to the disk
 pub fn write() {
     let db = super::DATABASE.read().unwrap();
     let mut file = OpenOptions::new()
@@ -21,9 +19,7 @@ pub fn write() {
     }
 }
 
-/**
- * Writes a video to a file
- */
+/// Writes a video to a file
 pub fn write_video(buffer: &mut impl Write, video: &Video) {
     write_str(buffer, &video.title);
     write_str(buffer, &video.author);
@@ -32,17 +28,13 @@ pub fn write_video(buffer: &mut impl Write, video: &Video) {
     write_str(buffer, &video.duration);
 }
 
-/**
- * Writes a string from the cursor
- */
+/// Writes a string from the cursor
 fn write_str(cursor: &mut impl Write, value: &str) {
     write_u32(cursor, value.len() as u32);
     cursor.write_all(value.as_bytes()).unwrap();
 }
 
-/**
- * Writes a u32 from the cursor
- */
+/// Writes a u32 from the cursor
 fn write_u32(cursor: &mut impl Write, value: u32) {
     cursor.write_varint(value).unwrap();
 }
