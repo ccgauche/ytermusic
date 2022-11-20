@@ -127,8 +127,9 @@ impl Screen for Search {
             let items = self.items.clone();
             self.selected = 0;
             self.search_handle = Some(tokio::task::spawn(async move {
+                // Sleep to prevent spamming the api
+                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 let mut item = Vec::new();
-                // HANDLE ERRORS
                 match api.search(&encode(&text).replace("%20", "+")).await {
                     Ok(e) => {
                         for video in e.into_iter() {
