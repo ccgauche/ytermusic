@@ -134,6 +134,7 @@ pub fn player_system(
 
 pub fn get_action(
     mut index: usize,
+    lines: usize,
     queue: &VecDeque<Video>,
     previous: &[Video],
     current: &Option<Video>,
@@ -143,7 +144,8 @@ pub fn get_action(
         return Some(MusicStatusAction::Downloading);
     }
     index -= dw_len;
-    let previous_len = previous.len().min(3);
+    let (previous_max, _) = generate_music_repartition(lines, queue, previous, current);
+    let previous_len = previous.len().min(previous_max);
     if index < previous_len {
         return Some(MusicStatusAction::Before(previous_len - index));
     }
@@ -159,6 +161,22 @@ pub fn get_action(
     } else {
         Some(MusicStatusAction::Skip(index + 1))
     }
+}
+
+pub fn generate_music_repartition<'a>(
+    lines: usize,
+    queue: &'a VecDeque<Video>,
+    previous: &'a [Video],
+    current: &'a Option<Video>,
+) -> (usize, usize) {
+    let left =
+        lines - current.as_ref().map(|_| 1).unwrap_or(0) - IN_DOWNLOAD.lock().unwrap().len() - 2;
+    let before = previous.len().min(3);
+    let left = left - before;
+    let after = queue.len().min(left);
+    let left = left - after;
+    let before = before.max(left);
+    (before, after)
 }
 
 pub fn generate_music<'a>(
@@ -187,6 +205,7 @@ pub fn generate_music<'a>(
         .fg(MusicStatus::Next.colors().0)
         .bg(MusicStatus::Next.colors().1);
     let mut music = Vec::with_capacity(50);
+    let (before, after) = generate_music_repartition(lines, queue, previous, current);
     {
         music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
             ListItem::new(format!(
@@ -197,7 +216,7 @@ pub fn generate_music<'a>(
             ))
             .style(download_style)
         }));
-        music.extend(previous.iter().rev().take(3).rev().map(|e| {
+        music.extend(previous.iter().rev().take(before).rev().map(|e| {
             ListItem::new(format!(
                 " {} {} | {}",
                 MusicStatus::Previous.character(),
@@ -216,7 +235,7 @@ pub fn generate_music<'a>(
                 ListItem::new(format!(" {} {} | {}", status.0, e.author, e.title)).style(status.1),
             );
         }
-        music.extend(queue.iter().take(lines + 4).map(|e| {
+        music.extend(queue.iter().take(after + 4).map(|e| {
             ListItem::new(format!(
                 " {} {} | {}",
                 MusicStatus::Next.character(),

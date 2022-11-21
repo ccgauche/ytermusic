@@ -47,19 +47,26 @@ impl Screen for Search {
             let y = mouse_event.row;
             if rect_contains(&splitted[1], x, y, 1) {
                 let (_, y) = relative_pos(&splitted[1], x, y, 1);
-                let y = if self.selected == 0 {
-                    y
+                let before = get_before(
+                    frame_data.height as usize,
+                    self.selected,
+                    self.items.read().unwrap().len(),
+                ) as u16;
+                if y < before {
+                    self.selected = self.selected.saturating_sub((before - y) as usize);
                 } else {
-                    y + self.selected as u16 - 1
-                };
-                if self.items.read().unwrap().len() > y as usize {
-                    self.selected = y as usize;
-                    return self.on_key_press(
-                        KeyEvent::new(KeyCode::Enter, mouse_event.modifiers),
-                        frame_data,
-                    );
+                    self.selected = self.selected.saturating_add((y - before) as usize)
+                        % self.items.read().unwrap().len();
                 }
+                return self.on_key_press(
+                    KeyEvent::new(KeyCode::Enter, mouse_event.modifiers),
+                    frame_data,
+                );
             }
+        } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
+            self.selected(self.selected.saturating_add(1) as isize);
+        } else if let MouseEventKind::ScrollDown = &mouse_event.kind {
+            self.selected(self.selected.saturating_sub(1) as isize);
         }
         EventResponse::None
     }
@@ -175,14 +182,17 @@ impl Screen for Search {
                 ),
             splitted[0],
         );
+        let items = self.items.read().unwrap();
         frame.render_stateful_widget(
             List::new(
-                self.items
-                    .read()
-                    .unwrap()
+                items
                     .iter()
                     .enumerate()
-                    .skip(self.selected.saturating_sub(1))
+                    .skip(self.selected.saturating_sub(get_before(
+                        frame.size().height as usize,
+                        self.selected,
+                        items.len(),
+                    )))
                     .map(|(index, i)| {
                         ListItem::new(i.0.as_str()).style(
                             Style::default()
@@ -256,4 +266,9 @@ impl Search {
         *self.items.write().unwrap() = element;
         self.selected = 0;
     }
+}
+
+fn get_before(lines: usize, current: usize, size: usize) -> usize {
+    // Remove the margin
+    ((lines - 5).saturating_add(current).saturating_sub(size)).max(2)
 }

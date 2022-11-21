@@ -78,6 +78,10 @@ impl Screen for Chooser {
                     );
                 }
             }
+        } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
+            self.selected(self.selected.saturating_add(1) as isize);
+        } else if let MouseEventKind::ScrollDown = &mouse_event.kind {
+            self.selected(self.selected.saturating_sub(1) as isize);
         }
         EventResponse::None
     }

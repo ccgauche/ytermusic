@@ -29,7 +29,13 @@ impl Screen for PlayerState {
             let [list_rect, _] = split_x(top_rect, 10);
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
-                match get_action(y as usize, &self.queue, &self.previous, &self.current) {
+                match get_action(
+                    y as usize,
+                    frame_data.height as usize,
+                    &self.queue,
+                    &self.previous,
+                    &self.current,
+                ) {
                     Some(MusicStatusAction::Skip(a)) => {
                         SoundAction::Next(a).apply_sound_action(self);
                     }
@@ -42,6 +48,10 @@ impl Screen for PlayerState {
                     None | Some(MusicStatusAction::Downloading) => (),
                 }
             }
+        } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
+            SoundAction::Previous(1).apply_sound_action(self);
+        } else if let MouseEventKind::ScrollDown = &mouse_event.kind {
+            SoundAction::Next(1).apply_sound_action(self);
         }
         EventResponse::None
     }
