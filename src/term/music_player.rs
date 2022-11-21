@@ -23,11 +23,11 @@ impl Screen for PlayerState {
         mouse_event: crossterm::event::MouseEvent,
         frame_data: &tui::layout::Rect,
     ) -> EventResponse {
+        let x = mouse_event.column;
+        let y = mouse_event.row;
+        let [top_rect, bottom] = split_y(*frame_data, 3);
+        let [list_rect, volume_rect] = split_x(top_rect, 10);
         if let MouseEventKind::Down(_) = &mouse_event.kind {
-            let x = mouse_event.column;
-            let y = mouse_event.row;
-            let [top_rect, bottom] = split_y(*frame_data, 3);
-            let [list_rect, volume_rect] = split_x(top_rect, 10);
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
                 match get_action(
@@ -66,9 +66,21 @@ impl Screen for PlayerState {
                 self.sink.set_volume(percent as i32)
             }
         } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
-            SoundAction::Previous(1).apply_sound_action(self);
+            if rect_contains(&volume_rect, x, y, 1) {
+                SoundAction::Plus.apply_sound_action(self);
+            } else if rect_contains(&bottom, x, y, 1) {
+                SoundAction::Forward.apply_sound_action(self);
+            } else {
+                SoundAction::Previous(1).apply_sound_action(self);
+            }
         } else if let MouseEventKind::ScrollDown = &mouse_event.kind {
-            SoundAction::Next(1).apply_sound_action(self);
+            if rect_contains(&volume_rect, x, y, 1) {
+                SoundAction::Minus.apply_sound_action(self);
+            } else if rect_contains(&bottom, x, y, 1) {
+                SoundAction::Backward.apply_sound_action(self);
+            } else {
+                SoundAction::Next(1).apply_sound_action(self);
+            }
         }
         EventResponse::None
     }
