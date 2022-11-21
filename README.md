@@ -66,6 +66,13 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
+Alpha 0.0.9 (To be released):
+ - Mouse support on time bar
+ - Improved the scrolling action
+ - Fixed the bug where the time bar would not update
+ - Debouncing the search input
+ - Changed the location of the cache folder to follow the XDG Base Directory Specification (By @FerrahWolfeh #20)
+
 Alpha a0.0.8
  - Fixed scrolling
  - Fixed audio-glitches
