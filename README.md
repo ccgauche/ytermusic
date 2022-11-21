@@ -65,7 +65,7 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
-Alpha 0.0.9 (To be released):
+Alpha 0.0.9:
 
 - Mouse support on time bar
 - Vertical volume bar
