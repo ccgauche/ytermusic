@@ -2,6 +2,7 @@ pub mod device_lost;
 pub mod music_player;
 pub mod playlist;
 pub mod search;
+pub mod vertical_gauge;
 
 use std::{
     io::{self, Stdout},

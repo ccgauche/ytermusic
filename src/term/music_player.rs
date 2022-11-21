@@ -13,7 +13,8 @@ use crate::{
 };
 
 use super::{
-    rect_contains, relative_pos, split_x, split_y, EventResponse, ManagerMessage, Screen, Screens,
+    rect_contains, relative_pos, split_x, split_y, vertical_gauge::VerticalGauge, EventResponse,
+    ManagerMessage, Screen, Screens,
 };
 
 impl Screen for PlayerState {
@@ -115,7 +116,7 @@ impl Screen for PlayerState {
         }
         .colors();
         f.render_widget(
-            Gauge::default()
+            VerticalGauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
                 .gauge_style(Style::default().fg(colors.0).bg(colors.1))
                 .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
