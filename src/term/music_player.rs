@@ -25,7 +25,7 @@ impl Screen for PlayerState {
         if let MouseEventKind::Down(_) = &mouse_event.kind {
             let x = mouse_event.column;
             let y = mouse_event.row;
-            let [top_rect, _] = split_y(*frame_data, 3);
+            let [top_rect, bottom] = split_y(*frame_data, 3);
             let [list_rect, _] = split_x(top_rect, 10);
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
@@ -46,6 +46,16 @@ impl Screen for PlayerState {
                         SoundAction::Previous(a).apply_sound_action(self);
                     }
                     None | Some(MusicStatusAction::Downloading) => (),
+                }
+            }
+            if rect_contains(&bottom, x, y, 1) {
+                let (x, _) = relative_pos(&bottom, x, y, 1);
+                let size = bottom.width as usize - 2;
+                let percent = x as f64 / size as f64;
+                if let Some(duration) = self.sink.duration() {
+                    let new_position = (duration * 1000. * percent) as u64;
+                    self.sink
+                        .seek_to(std::time::Duration::from_millis(new_position));
                 }
             }
         } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
