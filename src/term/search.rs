@@ -268,7 +268,9 @@ impl Search {
     }
 }
 
-fn get_before(lines: usize, current: usize, size: usize) -> usize {
+pub fn get_before(lines: usize, current: usize, size: usize) -> usize {
     // Remove the margin
-    ((lines - 5).saturating_add(current).saturating_sub(size)).max(2)
+    ((lines - 5).saturating_add(current).saturating_sub(size))
+        .max(2)
+        .min(current)
 }

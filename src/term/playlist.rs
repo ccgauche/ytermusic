@@ -11,10 +11,15 @@ use tui::{
 use ytpapi::Video;
 
 use crate::{
-    consts::CACHE_DIR, structures::sound_action::SoundAction, systems::download, DATABASE,
+    consts::CACHE_DIR,
+    structures::sound_action::SoundAction,
+    systems::{download, logger::log_},
+    DATABASE,
 };
 
-use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
+use super::{
+    rect_contains, relative_pos, search::get_before, EventResponse, ManagerMessage, Screen, Screens,
+};
 
 pub struct Chooser {
     pub selected: usize,
@@ -65,18 +70,19 @@ impl Screen for Chooser {
             let y = mouse_event.row;
             if rect_contains(frame_data, x, y, 1) {
                 let (_, y) = relative_pos(frame_data, x, y, 1);
-                let y = if self.selected == 0 {
-                    y
+                let before =
+                    get_before(frame_data.height as usize, self.selected, self.items.len()) as u16;
+                if y < before {
+                    self.selected = self.selected.saturating_sub((before - y) as usize);
                 } else {
-                    y + self.selected as u16 - 1
-                };
-                if self.items.len() > y as usize {
-                    self.selected = y as usize;
-                    return self.on_key_press(
-                        KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
-                        frame_data,
-                    );
+                    self.selected =
+                        self.selected.saturating_add((y - before) as usize) % self.items.len();
                 }
+                log_(format!("before: {} {} {}", before, y, self.selected));
+                return self.on_key_press(
+                    KeyEvent::new(KeyCode::Enter, mouse_event.modifiers),
+                    frame_data,
+                );
             }
         } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
             self.selected(self.selected.saturating_add(1) as isize);
@@ -122,7 +128,11 @@ impl Screen for Chooser {
                 self.items
                     .iter()
                     .enumerate()
-                    .skip(self.selected.saturating_sub(1))
+                    .skip(self.selected.saturating_sub(get_before(
+                        frame.size().height as usize,
+                        self.selected,
+                        self.items.len(),
+                    )))
                     .map(|(index, i)| {
                         ListItem::new(i.text_to_show.as_str()).style(
                             Style::default()
