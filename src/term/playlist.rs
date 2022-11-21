@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 use flume::Sender;
 use tui::{
     layout::Rect,
