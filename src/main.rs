@@ -14,6 +14,7 @@ mod errors;
 mod structures;
 mod systems;
 mod term;
+mod utils;
 
 mod tasks;
 

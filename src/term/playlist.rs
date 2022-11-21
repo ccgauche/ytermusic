@@ -14,12 +14,11 @@ use crate::{
     consts::CACHE_DIR,
     structures::sound_action::SoundAction,
     systems::{download, logger::log_},
+    utils::get_before,
     DATABASE,
 };
 
-use super::{
-    rect_contains, relative_pos, search::get_before, EventResponse, ManagerMessage, Screen, Screens,
-};
+use super::{rect_contains, relative_pos, EventResponse, ManagerMessage, Screen, Screens};
 
 pub struct Chooser {
     pub selected: usize,
