@@ -15,6 +15,7 @@ use crate::{
         sound_action::SoundAction,
     },
     term::{ManagerMessage, Screens},
+    utils::generate_music_repartition,
 };
 
 use super::download::IN_DOWNLOAD;
@@ -161,22 +162,6 @@ pub fn get_action(
     } else {
         Some(MusicStatusAction::Skip(index + 1))
     }
-}
-
-pub fn generate_music_repartition<'a>(
-    lines: usize,
-    queue: &'a VecDeque<Video>,
-    previous: &'a [Video],
-    current: &'a Option<Video>,
-) -> (usize, usize) {
-    let left =
-        lines - current.as_ref().map(|_| 1).unwrap_or(0) - IN_DOWNLOAD.lock().unwrap().len() - 2;
-    let before = previous.len().min(3);
-    let left = left - before;
-    let after = queue.len().min(left);
-    let left = left - after;
-    let before = before.max(left);
-    (before, after)
 }
 
 pub fn generate_music<'a>(
