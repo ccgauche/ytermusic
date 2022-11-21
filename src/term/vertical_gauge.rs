@@ -2,7 +2,6 @@ use tui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    symbols,
     widgets::{Block, Widget},
 };
 
@@ -93,15 +92,6 @@ impl<'a> VerticalGauge<'a> {
         self
     }
 
-    pub fn percent(mut self, percent: u16) -> VerticalGauge<'a> {
-        assert!(
-            percent <= 100,
-            "Percentage should be between 0 and 100 inclusively."
-        );
-        self.ratio = f64::from(percent) / 100.0;
-        self
-    }
-
     /// Sets ratio ([0.0, 1.0]) directly.
     pub fn ratio(mut self, ratio: f64) -> VerticalGauge<'a> {
         assert!(
@@ -109,11 +99,6 @@ impl<'a> VerticalGauge<'a> {
             "Ratio should be between 0 and 1 inclusively."
         );
         self.ratio = ratio;
-        self
-    }
-
-    pub fn style(mut self, style: Style) -> VerticalGauge<'a> {
-        self.style = style;
         self
     }
 

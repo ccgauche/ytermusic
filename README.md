@@ -68,6 +68,7 @@ It's aims to be as fast and simple as possible.
 
 Alpha 0.0.9 (To be released):
  - Mouse support on time bar
+ - Vertical volume bar
  - Improved the scrolling action
  - Fixed the bug where the time bar would not update
  - Debouncing the search input
