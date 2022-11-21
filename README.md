@@ -2,7 +2,6 @@
 
 ![index](https://user-images.githubusercontent.com/16625987/202790566-9b114019-63f9-4c4b-965d-820fd0d80a17.png)
 
-
 YTerMusic is a terminal based Youtube Music Player.
 It's aims to be as fast and simple as possible.
 
@@ -67,28 +66,33 @@ It's aims to be as fast and simple as possible.
 ## Changelog
 
 Alpha 0.0.9 (To be released):
- - Mouse support on time bar
- - Vertical volume bar
- - Improved the scrolling action
- - Fixed the bug where the time bar would not update
- - Debouncing the search input
- - Changed the location of the cache folder to follow the XDG Base Directory Specification (By @FerrahWolfeh #20)
+
+- Mouse support on time bar
+- Vertical volume bar
+- Vertical volume bar supports mouse click
+- Improved the scrolling action
+- Fixed the bug where the time bar would not update
+- Debouncing the search input
+- Changed the location of the cache folder to follow the XDG Base Directory Specification (By @FerrahWolfeh #20)
 
 Alpha a0.0.8
- - Fixed scrolling
- - Fixed audio-glitches
- - Removed nightly flag use 
+
+- Fixed scrolling
+- Fixed audio-glitches
+- Removed nightly flag use
 
 Alpha a0.0.7
- - Major changes in the API
- - Fixed log file bloat issue
+
+- Major changes in the API
+- Fixed log file bloat issue
 
 Alpha a0.0.6
- - Fix: Fix a bug where the app would crash when trying to play a song that was not downloaded
- - Fix: Improve the logger to not print the same error twice
- - Improved startup time
- - Fixed linux build
- - Changed how task are distributed to the thread pool
+
+- Fix: Fix a bug where the app would crash when trying to play a song that was not downloaded
+- Fix: Improve the logger to not print the same error twice
+- Improved startup time
+- Fixed linux build
+- Changed how task are distributed to the thread pool
 
 Alpha a0.0.5
 
