@@ -27,7 +27,7 @@ impl Screen for PlayerState {
             let x = mouse_event.column;
             let y = mouse_event.row;
             let [top_rect, bottom] = split_y(*frame_data, 3);
-            let [list_rect, _] = split_x(top_rect, 10);
+            let [list_rect, volume_rect] = split_x(top_rect, 10);
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
                 match get_action(
@@ -58,6 +58,12 @@ impl Screen for PlayerState {
                     self.sink
                         .seek_to(std::time::Duration::from_millis(new_position));
                 }
+            }
+            if rect_contains(&volume_rect, x, y, 1) {
+                let (_, y) = relative_pos(&volume_rect, x, y, 1);
+                let size = volume_rect.height as usize - 2;
+                let percent = 100. - y as f64 / size as f64 * 100.;
+                self.sink.set_volume(percent as i32)
             }
         } else if let MouseEventKind::ScrollUp = &mouse_event.kind {
             SoundAction::Previous(1).apply_sound_action(self);

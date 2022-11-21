@@ -60,7 +60,7 @@ impl<'a> Widget for VerticalGauge<'a> {
             }
         }
         for x in label_col..label_col + clamped_label_width {
-            if gauge_area.height / 2 > end - 2 {
+            if gauge_area.height / 2 > end.saturating_sub(2) {
                 buf.get_mut(x, label_row)
                     .set_symbol(&label[(x - label_col) as usize..(x - label_col + 1) as usize])
                     .set_bg(self.gauge_style.fg.unwrap_or(Color::Reset))
