@@ -176,24 +176,12 @@ pub fn generate_music<'a>(
     current: &'a Option<Video>,
     sink: &'a Player,
 ) -> Vec<ListItem<'a>> {
-    let download_style: Style = Style::default()
-        .fg(MusicStatus::Downloading.colors().0)
-        .bg(MusicStatus::Downloading.colors().1);
+    let download_style: Style = CONFIG.player.text_downloading_style;
+    let previous_style: Style = CONFIG.player.text_previous_style;
+    let paused_style: Style = CONFIG.player.text_paused_style;
+    let playing_style: Style = CONFIG.player.text_playing_style;
+    let next_style: Style = CONFIG.player.text_next_style;
 
-    let previous_style: Style = Style::default()
-        .fg(MusicStatus::Previous.colors().0)
-        .bg(MusicStatus::Previous.colors().1);
-
-    let paused_style: Style = Style::default()
-        .fg(MusicStatus::Paused.colors().0)
-        .bg(MusicStatus::Paused.colors().1);
-
-    let playing_style: Style = Style::default()
-        .fg(MusicStatus::Playing.colors().0)
-        .bg(MusicStatus::Playing.colors().1);
-    let next_style: Style = Style::default()
-        .fg(MusicStatus::Next.colors().0)
-        .bg(MusicStatus::Next.colors().1);
     let mut music = Vec::with_capacity(50);
     let (before, after) = generate_music_repartition(lines, queue, previous, current);
     {
