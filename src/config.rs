@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tui::style::{Color, Modifier, Style};
 
 use crate::utils::get_project_dirs;

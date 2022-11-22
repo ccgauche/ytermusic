@@ -1,9 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
-use tui::{
-    style::Style,
-    widgets::{Block, Borders, Gauge, List, ListState},
-};
+use tui::widgets::{Block, Borders, Gauge, List, ListState};
 
 use crate::{
     structures::{
