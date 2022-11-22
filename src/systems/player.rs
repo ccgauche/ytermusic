@@ -1,13 +1,13 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use flume::{unbounded, Receiver, Sender};
-use player::{Guard, PlayError, Player, StreamError};
+use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
 
 use tui::{style::Style, widgets::ListItem};
 use ytpapi::Video;
 
 use crate::{
-    consts::CACHE_DIR,
+    consts::{CACHE_DIR, CONFIG},
     database,
     errors::{handle_error, handle_error_option},
     structures::{
@@ -43,7 +43,12 @@ impl PlayerState {
         let (sink, guard) = handle_error_option(
             &updater,
             "player creation error",
-            Player::new(Arc::new(stream_error_sender)),
+            Player::new(
+                Arc::new(stream_error_sender),
+                PlayerOptions {
+                    initial_volume: CONFIG.player.initial_volume,
+                },
+            ),
         )
         .unwrap();
         Self {
