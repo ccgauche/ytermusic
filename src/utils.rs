@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use directories::ProjectDirs;
 use ytpapi::Video;
 
 use crate::systems::download::IN_DOWNLOAD;
@@ -27,4 +28,9 @@ pub fn generate_music_repartition<'a>(
     let left = left - after;
     let before = before.max(left);
     (before, after)
+}
+
+/// Get directories for the project for config, cache, etc.
+pub fn get_project_dirs() -> Option<ProjectDirs> {
+    ProjectDirs::from("com", "ccgauche", "ytermusic")
 }
