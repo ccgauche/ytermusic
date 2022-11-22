@@ -9,9 +9,17 @@ pub struct GlobalConfig {}
 #[derive(Debug, Default, Deserialize)]
 #[non_exhaustive]
 pub struct MusicPlayerConfig {
+    /// Initial volume of the player, in percent.
+    /// Default value is 50, clamped at 100.
+    #[serde(default = "default_volume")]
+    pub initial_volume: u8,
     /// Whether to shuffle playlists before playing
     #[serde(default)]
     pub shuffle: bool,
+}
+
+fn default_volume() -> u8 {
+    50
 }
 
 #[derive(Debug, Default, Deserialize)]

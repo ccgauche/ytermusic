@@ -35,6 +35,7 @@ pub struct Player {
     sink: Sink,
     data: PlayerData,
     error_sender: Arc<Sender<StreamError>>,
+    options: PlayerOptions,
 }
 
 pub struct Guard {
@@ -48,6 +49,14 @@ pub struct PlayerData {
     volume: u8,
     safe_guard: bool,
 }
+
+/// Options to configure the player behavior
+#[derive(Debug, Clone)]
+pub struct PlayerOptions {
+    /// Initial volume of the player, in percent.
+    pub initial_volume: u8,
+}
+
 impl Player {
     /// Returns a new stream & handle using the given output device.
     fn try_from_device(
@@ -90,11 +99,14 @@ impl Player {
                 .ok_or(original_err)
         })
     }
-    pub fn new(error_sender: Arc<Sender<StreamError>>) -> Result<(Self, Guard), PlayError> {
+    pub fn new(
+        error_sender: Arc<Sender<StreamError>>,
+        options: PlayerOptions,
+    ) -> Result<(Self, Guard), PlayError> {
         let (stream, handle) =
             Self::try_default(error_sender.clone()).map_err(PlayError::StreamError)?;
         let sink = Sink::try_new(&handle)?;
-        let volume = 50;
+        let volume = options.initial_volume.min(100);
         sink.set_volume(f32::from(volume) / 100.0);
 
         Ok((
@@ -106,6 +118,7 @@ impl Player {
                     volume,
                     safe_guard: false,
                 },
+                options,
             },
             Guard {
                 _stream: stream,
@@ -124,6 +137,7 @@ impl Player {
                 sink,
                 error_sender: self.error_sender.clone(),
                 data: self.data.clone(),
+                options: self.options.clone(),
             },
             Guard {
                 _stream: stream,
