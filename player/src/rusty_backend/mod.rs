@@ -29,7 +29,7 @@ use std::{fs::File, io::BufReader};
 
 use self::stream::CpalDeviceExt;
 
-static VOLUME_STEP: u16 = 5;
+static VOLUME_STEP: u8 = 5;
 
 pub struct Player {
     sink: Sink,
@@ -45,7 +45,7 @@ pub struct Guard {
 #[derive(Clone)]
 pub struct PlayerData {
     total_duration: Option<Duration>,
-    volume: u16,
+    volume: u8,
     safe_guard: bool,
 }
 impl Player {
@@ -203,7 +203,7 @@ impl Player {
             elapsed.as_secs_f64() / duration
         })
     }
-    pub fn volume_percent(&self) -> u16 {
+    pub fn volume_percent(&self) -> u8 {
         self.data.volume
     }
 }
@@ -234,7 +234,7 @@ impl Player {
         } else if volume < 0 {
             volume = 0;
         }
-        self.data.volume = volume as u16;
+        self.data.volume = volume as u8;
         self.sink.set_volume((volume as f32) / 100.0);
     }
 
