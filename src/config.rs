@@ -6,7 +6,7 @@ use crate::utils::get_project_dirs;
 #[non_exhaustive]
 pub struct GlobalConfig {}
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[non_exhaustive]
 pub struct MusicPlayerConfig {
     /// Initial volume of the player, in percent.
@@ -16,6 +16,15 @@ pub struct MusicPlayerConfig {
     /// Whether to shuffle playlists before playing
     #[serde(default)]
     pub shuffle: bool,
+}
+
+impl Default for MusicPlayerConfig {
+    fn default() -> Self {
+        Self {
+            initial_volume: 50,
+            shuffle: Default::default(),
+        }
+    }
 }
 
 fn default_volume() -> u8 {
