@@ -132,11 +132,11 @@ impl Screen for PlayerState {
         } else {
             AppStatus::Playing
         }
-        .colors();
+        .style();
         f.render_widget(
             VerticalGauge::default()
                 .block(Block::default().title(" Volume ").borders(Borders::ALL))
-                .gauge_style(Style::default().fg(colors.0).bg(colors.1))
+                .gauge_style(colors)
                 .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
             volume_rect,
         );
@@ -154,7 +154,7 @@ impl Screen for PlayerState {
                         )
                         .borders(Borders::ALL),
                 )
-                .gauge_style(Style::default().fg(colors.0).bg(colors.1))
+                .gauge_style(colors)
                 .ratio(
                     if self.sink.is_finished() {
                         0.5

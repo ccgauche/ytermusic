@@ -1,4 +1,6 @@
-use tui::style::Color;
+use tui::style::{Color, Style};
+
+use crate::consts::CONFIG;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum AppStatus {
@@ -8,11 +10,11 @@ pub enum AppStatus {
 }
 
 impl AppStatus {
-    pub fn colors(&self) -> (Color, Color) {
+    pub fn style(&self) -> Style {
         match self {
-            AppStatus::Paused => (Color::Yellow, Color::Black),
-            AppStatus::Playing => (Color::Green, Color::Black),
-            AppStatus::NoMusic => (Color::White, Color::Black),
+            AppStatus::Paused => CONFIG.player.paused_style,
+            AppStatus::Playing => CONFIG.player.playing_style,
+            AppStatus::NoMusic => CONFIG.player.nomusic_style,
         }
     }
 }
