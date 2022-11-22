@@ -8,6 +8,7 @@ use systems::player::player_system;
 
 use crate::consts::HEADER_TUTORIAL;
 
+mod config;
 mod consts;
 mod database;
 mod errors;

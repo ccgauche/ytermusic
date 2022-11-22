@@ -41,6 +41,9 @@ souvlaki = "0.5.1"
 #  --- Alloc ---
 mimalloc = {version = "*", default-features = false}
 
+#  --- Config ---
+toml = "0.5.9"
+
 [target."cfg(target_os = \"windows\")".dependencies]
 raw-window-handle = "0.4.3"
 winit = "0.26.1"
