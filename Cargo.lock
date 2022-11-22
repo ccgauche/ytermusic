@@ -2842,6 +2842,7 @@ dependencies = [
  "serde_json",
  "souvlaki",
  "tokio",
+ "toml",
  "tui",
  "urlencoding",
  "varuint",

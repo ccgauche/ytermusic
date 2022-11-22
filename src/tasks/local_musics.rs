@@ -5,7 +5,7 @@ use rand::seq::SliceRandom;
 use ytpapi::Video;
 
 use crate::{
-    consts::CACHE_DIR,
+    consts::{CACHE_DIR, CONFIG},
     read,
     structures::performance,
     systems::logger::log_,
@@ -41,7 +41,9 @@ pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
 fn shuffle_and_send(mut videos: Vec<Video>, updater_s: &Sender<ManagerMessage>) {
     *DATABASE.write().unwrap() = videos.clone();
 
-    videos.shuffle(&mut rand::thread_rng());
+    if CONFIG.player.shuffle {
+        videos.shuffle(&mut rand::thread_rng());
+    }
 
     updater_s
         .send(
