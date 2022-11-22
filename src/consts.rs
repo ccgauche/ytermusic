@@ -22,4 +22,4 @@ pub static CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     PathBuf::from("./data")
 });
 
-pub static CONFIG: Lazy<config::Config> = Lazy::new(|| config::Config::new());
+pub static CONFIG: Lazy<config::Config> = Lazy::new(config::Config::new);

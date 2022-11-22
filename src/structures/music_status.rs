@@ -1,5 +1,3 @@
-use tui::style::Color;
-
 #[derive(PartialEq, Debug, Clone)]
 pub enum MusicStatus {
     Playing,
@@ -17,16 +15,6 @@ impl MusicStatus {
             MusicStatus::Previous => ' ',
             MusicStatus::Next => ' ',
             MusicStatus::Downloading => '⭳',
-        }
-    }
-
-    pub fn colors(&self) -> (Color, Color) {
-        match self {
-            MusicStatus::Playing => (Color::Green, Color::Black),
-            MusicStatus::Paused => (Color::Yellow, Color::Black),
-            MusicStatus::Previous => (Color::White, Color::Black),
-            MusicStatus::Next => (Color::White, Color::Black),
-            MusicStatus::Downloading => (Color::Blue, Color::Black),
         }
     }
 }

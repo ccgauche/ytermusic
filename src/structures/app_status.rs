@@ -1,4 +1,4 @@
-use tui::style::{Color, Style};
+use tui::style::Style;
 
 use crate::consts::CONFIG;
 
