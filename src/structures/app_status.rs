@@ -12,9 +12,9 @@ pub enum AppStatus {
 impl AppStatus {
     pub fn style(&self) -> Style {
         match self {
-            AppStatus::Paused => CONFIG.player.paused_style,
-            AppStatus::Playing => CONFIG.player.playing_style,
-            AppStatus::NoMusic => CONFIG.player.nomusic_style,
+            AppStatus::Paused => CONFIG.player.gauge_paused_style,
+            AppStatus::Playing => CONFIG.player.gauge_playing_style,
+            AppStatus::NoMusic => CONFIG.player.gauge_nomusic_style,
         }
     }
 }
