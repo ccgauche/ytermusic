@@ -1,20 +1,21 @@
 use std::sync::Arc;
 
 use flume::Sender;
-use rustube::Id;
+use rustube::{Callback, Id};
 use ytpapi::Video;
 
 use crate::{
     consts::CACHE_DIR,
     structures::sound_action::SoundAction,
     systems::{
-        download::{add_to_in_download, remove_from_in_download, HANDLES},
+        download::{add_to_in_download, remove_from_in_download, update_in_download, HANDLES},
         logger::log_,
     },
     Error,
 };
 
 async fn handle_download(id: &str) -> Result<(), Error> {
+    let idc = id.to_string();
     rustube::Video::from_id(Id::from_str(id)?.into_owned())
         .await?
         .streams()
@@ -26,7 +27,19 @@ async fn handle_download(id: &str) -> Result<(), Error> {
         })
         .max_by_key(|stream| stream.bitrate)
         .ok_or(Error::NoStreams)?
-        .download_to_dir(CACHE_DIR.join("downloads"))
+        .download_to_dir_with_callback(
+            CACHE_DIR.join("downloads"),
+            Callback::new().connect_on_progress_closure(move |progress| {
+                update_in_download(
+                    &idc,
+                    progress
+                        .content_length
+                        .as_ref()
+                        .map(|x| progress.current_chunk * 100 / *x as usize)
+                        .unwrap_or(0),
+                );
+            }),
+        )
         .await?;
     Ok(())
 }

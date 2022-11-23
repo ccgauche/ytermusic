@@ -13,7 +13,8 @@ use crate::{
     consts::CACHE_DIR, structures::sound_action::SoundAction, tasks::download::start_download,
 };
 
-pub static IN_DOWNLOAD: Lazy<Mutex<Vec<ytpapi::Video>>> = Lazy::new(|| Mutex::new(Vec::new()));
+pub static IN_DOWNLOAD: Lazy<Mutex<Vec<(ytpapi::Video, usize)>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
 pub static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static DOWNLOAD_MORE: AtomicBool = AtomicBool::new(true);
 // TODO Maybe switch to a channel
@@ -72,13 +73,20 @@ pub fn add(video: Video, s: &Sender<SoundAction>) {
 const DOWNLOADER_COUNT: usize = 4;
 
 pub fn add_to_in_download(video: Video) {
-    IN_DOWNLOAD.lock().unwrap().push(video);
+    IN_DOWNLOAD.lock().unwrap().push((video, 0));
+}
+pub fn update_in_download(id: &str, percentage: usize) {
+    IN_DOWNLOAD.lock().unwrap().iter_mut().for_each(|(v, p)| {
+        if v.video_id == id {
+            *p = percentage;
+        }
+    });
 }
 pub fn remove_from_in_download(video: &Video) {
     IN_DOWNLOAD
         .lock()
         .unwrap()
-        .retain(|x| x.video_id != video.video_id);
+        .retain(|x| x.0.video_id != video.video_id);
 }
 
 pub fn spawn_system(s: Arc<Sender<SoundAction>>) {

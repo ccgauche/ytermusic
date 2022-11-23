@@ -187,10 +187,11 @@ pub fn generate_music<'a>(
     {
         music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
             ListItem::new(format!(
-                " {} {} | {}",
+                " {} [{:02}%] {} | {}",
                 MusicStatus::Downloading.character(),
-                e.author,
-                e.title
+                e.1.max(1).min(99),
+                e.0.author,
+                e.0.title,
             ))
             .style(download_style)
         }));

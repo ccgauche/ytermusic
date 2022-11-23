@@ -11,6 +11,7 @@ rustube = { version = "0.6.0", features = [
   "download",
   "std",
   "rustls-tls",
+  "callback",
 ], default-features = false }
 ytpapi = { path = "./ytpapi" }
 
