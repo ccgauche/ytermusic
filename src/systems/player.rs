@@ -189,7 +189,7 @@ pub fn generate_music<'a>(
             ListItem::new(format!(
                 " {} [{:02}%] {} | {}",
                 MusicStatus::Downloading.character(),
-                e.1.max(1).min(99),
+                e.1.clamp(1, 99),
                 e.0.author,
                 e.0.title,
             ))
