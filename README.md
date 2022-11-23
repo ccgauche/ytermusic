@@ -67,6 +67,7 @@ It's aims to be as fast and simple as possible.
 
 Alpha 0.0.9:
 
+- Progress info for downloads
 - Mouse support on time bar
 - Vertical volume bar
 - Vertical volume bar supports mouse click
