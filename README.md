@@ -28,7 +28,7 @@ It's aims to be as fast and simple as possible.
 
 ## Screenshots
 
-![https://user-images.githubusercontent.com/16625987/163998193-8c5557e5-3d97-489d-b678-0a5b8db1c523.png](https://user-images.githubusercontent.com/16625987/163998193-8c5557e5-3d97-489d-b678-0a5b8db1c523.png)
+![Screenshot 2022-11-23 145422](https://user-images.githubusercontent.com/16625987/203564779-d3ae13f9-b262-41c0-8deb-0a486124cdca.png)
 ![https://user-images.githubusercontent.com/16625987/163998477-0feb87a0-dfde-4940-a5d1-09807968ec6d.png](https://user-images.githubusercontent.com/16625987/163998477-0feb87a0-dfde-4940-a5d1-09807968ec6d.png)
 
 ## Building from source
