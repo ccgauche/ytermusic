@@ -65,7 +65,7 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
-Alpha 0.0.9:
+Alpha a0.0.9:
 
 - Progress info for downloads
 - Mouse support on time bar
