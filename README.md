@@ -65,6 +65,14 @@ It's aims to be as fast and simple as possible.
 
 ## Changelog
 
+Alpha a0.0.10
+- Speed up the download process
+- Fix the download limit
+- Fix music artists getting smashed together
+- Fix the download manager not downloading all musics
+- Improved stability
+- Improved logs and added timmings to better debug
+
 Alpha a0.0.9:
 
 - Progress info for downloads
