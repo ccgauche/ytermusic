@@ -5,14 +5,12 @@ use serde_json::Value;
 
 use crate::Error;
 
-
 /// Applies recursively the `transformer` function to the given json value
 /// and returns the transformed values.
 pub(crate) fn from_json<T: PartialEq>(
     json: &str,
     transformer: impl Fn(&Value) -> Option<T>,
 ) -> Result<Vec<T>, Error> {
-
     /// Execute a function on each element of a json value recursively.
     /// When the function returns something, the value is added to the result.
     pub(crate) fn inner_crawl<T: PartialEq>(
@@ -72,13 +70,14 @@ pub struct Playlist {
     pub browse_id: String,
 }
 
-
 /// Tries to extract a playlist from a json value.
 /// Quite flexible to reduce odds of API change breaking this.
 pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
     let object = value.as_object()?;
-    let title_text = get_text(object.get("title")?, true)?;
-    let subtitle = object.get("subtitle").and_then(|x| get_text(x, false));
+    let title_text = get_text(object.get("title")?, true, false)?;
+    let subtitle = object
+        .get("subtitle")
+        .and_then(|x| get_text(x, false, false));
     let browse_id = &object
         .get("navigationEndpoint")
         .and_then(|x| x.get("browseEndpoint"))
@@ -91,10 +90,10 @@ pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
     })
 }
 
-
 /// Tries to extract the text from a json value.
 /// text_clean: Weather to include singleton text.
-fn get_text(value: &Value, text_clean: bool) -> Option<String> {
+/// dot: Weather to use the dotted text instead of the space
+fn get_text(value: &Value, text_clean: bool, dot: bool) -> Option<String> {
     if let Some(e) = value.as_str() {
         Some(e.to_string())
     } else {
@@ -103,17 +102,17 @@ fn get_text(value: &Value, text_clean: bool) -> Option<String> {
             if text_clean && obj.values().count() == 1 {
                 return None;
             }
-            get_text(e, text_clean)
+            get_text(e, text_clean, dot)
         } else if let Some(e) = obj.get("runs") {
             let k = e
                 .as_array()?
                 .iter()
-                .flat_map(|x| get_text(x, text_clean))
+                .flat_map(|x| get_text(x, text_clean, dot))
                 .collect::<Vec<_>>();
             if k.is_empty() {
                 None
             } else {
-                Some(k.join(""))
+                Some(join_clean(&k, dot))
             }
         } else {
             None
@@ -121,6 +120,14 @@ fn get_text(value: &Value, text_clean: bool) -> Option<String> {
     }
 }
 
+fn join_clean(strings: &[String], dot: bool) -> String {
+    strings
+        .iter()
+        .map(|x| x.trim())
+        .filter(|x| !x.is_empty())
+        .collect::<Vec<_>>()
+        .join(if dot { " • " } else { " " })
+}
 
 /// Tries to find a video id in the json
 pub fn get_videoid(value: &Value) -> Option<String> {
@@ -135,7 +142,6 @@ pub fn get_videoid(value: &Value) -> Option<String> {
     }
 }
 
-
 /// Tries to extract a video from a json value.
 /// Quite flexible to reduce odds of API change breaking this.
 pub(crate) fn get_video(value: &Value) -> Option<Video> {
@@ -148,7 +154,7 @@ pub(crate) fn get_video(value: &Value) -> Option<Video> {
         .flat_map(|x| {
             x.as_object()
                 .and_then(|x| x.values().next())
-                .and_then(|x| get_text(x, true))
+                .and_then(|x| get_text(x, true, true))
         });
 
     Some(Video {
