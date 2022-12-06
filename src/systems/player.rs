@@ -102,7 +102,7 @@ impl PlayerState {
                         self.updater
                             .send(ManagerMessage::PassTo(
                                 Screens::DeviceLost,
-                                Box::new(ManagerMessage::Error(format!("{:?}", e))),
+                                Box::new(ManagerMessage::Error(format!("{}", e))),
                             ))
                             .unwrap();
                     }

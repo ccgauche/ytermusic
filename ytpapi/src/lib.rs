@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    str::FromStr,
+    str::FromStr, fmt::Display,
 };
 
 use reqwest::{
@@ -147,6 +147,23 @@ pub enum Error {
     InvalidHeaderFormat(PathBuf, String),
     Io(std::io::Error),
     InvalidEscapedSequence(String),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+			Error::InvalidHTMLFile(e,s) => write!(f, "Invalid HTML file: {} {}", e,s),
+			Error::Reqwest(e) => write!(f, "Reqwest error: {}", e),
+			Error::SerdeJson(e) => write!(f, "SerdeJson error: {}", e),
+			Error::InvalidHeaderValue(e) => write!(f, "Invalid header value: {}", e),
+			Error::InvalidHeaderName(e) => write!(f, "Invalid header name: {}", e),
+			Error::InvalidJsonCantFind(e, s) => write!(f, "Invalid json: {} {}", e, s),
+			Error::InvalidHeaderFormat(e, s) => write!(f, "Invalid header format: {} {}", e.display(), s),
+			Error::Io(e) => write!(f, "IO error: {}", e),
+			Error::InvalidEscapedSequence(e) => write!(f, "Invalid escaped sequence: {}", e),
+		}
+		
+    }
 }
 
 impl YTApi {

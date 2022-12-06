@@ -21,7 +21,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 }
             }
             Err(e) => {
-                log_(format!("{:?}", e));
+                log_(format!("{}", e));
             }
         }
         drop(guard);
@@ -49,7 +49,7 @@ fn spawn_browse_playlist_task(
                     .unwrap();
             }
             Err(e) => {
-                log_(format!("{:?}", e));
+                log_(format!("{}", e));
             }
         }
 
