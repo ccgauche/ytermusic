@@ -25,7 +25,9 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
             }
             Err(e) => {
                 let k = format!("{}", e);
-                if k.contains("<base href=\"https://accounts.google.com/v3/signin/\">") {
+                if k.contains("<base href=\"https://accounts.google.com/v3/signin/\">")
+                    || k.contains("<base href=\"https://consent.youtube.com/\">")
+                {
                     log_(TEXT_COOKIES_EXPIRED_OR_INVALID);
                     log_(k);
                     updater_s
