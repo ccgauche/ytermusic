@@ -44,7 +44,7 @@ pub enum EventResponse {
 // A message that can be sent to the manager
 #[derive(Debug, Clone)]
 pub enum ManagerMessage {
-    Error(String),
+    Error(String, Box<Option<ManagerMessage>>),
     PassTo(Screens, Box<ManagerMessage>),
     ChangeState(Screens),
     RestartPlayer,
@@ -91,7 +91,7 @@ impl Manager {
             },
             search: Search::new(action_sender).await,
             current_screen: Screens::Playlist,
-            device_lost: DeviceLost(Vec::new()),
+            device_lost: DeviceLost(Vec::new(), None),
         }
     }
     pub fn current_screen(&mut self) -> &mut dyn Screen {
@@ -141,10 +141,13 @@ impl Manager {
             e => {
                 return self.handle_manager_message(ManagerMessage::PassTo(
                     Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error(format!(
+                    Box::new(ManagerMessage::Error(
+                        format!(
                         "Invalid manager message (Forward the message to a screen maybe):\n{:?}",
                         e
-                    ))),
+                    ),
+                        Box::new(None),
+                    )),
                 ));
             }
         }

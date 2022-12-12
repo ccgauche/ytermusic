@@ -9,7 +9,7 @@ use tui::{
 use super::{EventResponse, ManagerMessage, Screen, Screens};
 
 // Audio device not connected!
-pub struct DeviceLost(pub Vec<String>);
+pub struct DeviceLost(pub Vec<String>, pub Option<ManagerMessage>);
 
 impl Screen for DeviceLost {
     fn on_mouse_press(&mut self, _: crossterm::event::MouseEvent, _: &Rect) -> EventResponse {
@@ -18,9 +18,15 @@ impl Screen for DeviceLost {
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         match key.code {
-            KeyCode::Enter | KeyCode::Char(' ') => ManagerMessage::RestartPlayer
-                .pass_to(Screens::MusicPlayer)
-                .event(),
+            KeyCode::Enter | KeyCode::Char(' ') => {
+				if let Some(m) = self.1.take() {
+					EventResponse::Message(vec![m])
+				} else {
+					ManagerMessage::RestartPlayer
+						.pass_to(Screens::MusicPlayer)
+						.event()
+				}
+			},
             KeyCode::Esc => ManagerMessage::Quit.event(),
             _ => EventResponse::None,
         }
@@ -47,7 +53,8 @@ impl Screen for DeviceLost {
 
     fn handle_global_message(&mut self, m: ManagerMessage) -> EventResponse {
         match m {
-            ManagerMessage::Error(a) => {
+            ManagerMessage::Error(a, m) => {
+                self.1 = *m;
                 self.0.push(a);
                 EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::DeviceLost)])
             }

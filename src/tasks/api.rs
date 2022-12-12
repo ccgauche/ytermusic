@@ -9,6 +9,9 @@ use crate::{
     term::{ManagerMessage, Screens},
 };
 
+const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
+    "The `headers.txt` file is not configured correctly. \nThe cookies are expired or invalid.";
+
 pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
     tokio::task::spawn(async move {
         log_("API task on");
@@ -21,7 +24,22 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 }
             }
             Err(e) => {
-                log_(format!("{}", e));
+                let k = format!("{}", e);
+                if k.contains("<base href=\"https://accounts.google.com/v3/signin/\">") {
+                    log_(TEXT_COOKIES_EXPIRED_OR_INVALID);
+                    log_(k);
+                    updater_s
+                        .send(
+                            ManagerMessage::Error(
+                                TEXT_COOKIES_EXPIRED_OR_INVALID.to_string(),
+                                Box::new(Some(ManagerMessage::Quit)),
+                            )
+                            .pass_to(Screens::DeviceLost),
+                        )
+                        .unwrap();
+                } else {
+                    log_(k);
+                }
             }
         }
         drop(guard);

@@ -136,7 +136,10 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
             updater
                 .send(ManagerMessage::PassTo(
                     Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error("No window handle found".to_string())),
+                    Box::new(ManagerMessage::Error(
+                        "No window handle found".to_string(),
+                        Box::new(None),
+                    )),
                 ))
                 .unwrap();
             return None;

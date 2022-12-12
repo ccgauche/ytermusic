@@ -17,7 +17,10 @@ where
             updater
                 .send(ManagerMessage::PassTo(
                     Screens::DeviceLost,
-                    Box::new(ManagerMessage::Error(format!("{} {}", error_type, a))),
+                    Box::new(ManagerMessage::Error(
+                        format!("{} {}", error_type, a),
+                        Box::new(None),
+                    )),
                 ))
                 .unwrap();
             None
