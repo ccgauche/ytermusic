@@ -1,4 +1,5 @@
 pub mod device_lost;
+pub mod list_selector;
 pub mod music_player;
 pub mod playlist;
 pub mod search;

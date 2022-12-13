@@ -1,12 +1,10 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
-use tui::widgets::{Block, Borders, Gauge, List, ListState};
+use tui::widgets::{Block, Borders, Gauge};
 
 use crate::{
-    structures::{
-        app_status::AppStatus, music_status_action::MusicStatusAction, sound_action::SoundAction,
-    },
-    systems::player::{generate_music, get_action, PlayerState},
+    structures::{app_status::AppStatus, sound_action::SoundAction},
+    systems::player::{generate_music, PlayerAction, PlayerState},
 };
 
 use super::{
@@ -27,23 +25,20 @@ impl Screen for PlayerState {
         if let MouseEventKind::Down(_) = &mouse_event.kind {
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
-                match get_action(
-                    y as usize,
-                    frame_data.height as usize,
-                    &self.queue,
-                    &self.previous,
-                    &self.current,
-                ) {
-                    Some(MusicStatusAction::Skip(a)) => {
-                        SoundAction::Next(a).apply_sound_action(self);
-                    }
-                    Some(MusicStatusAction::Current) => {
+                match self
+                    .list_selector
+                    .click_on(y as usize, list_rect.height as usize)
+                {
+                    None | Some((_, PlayerAction::Downloading)) => (),
+                    Some((_, PlayerAction::Current(_))) => {
                         SoundAction::PlayPause.apply_sound_action(self);
                     }
-                    Some(MusicStatusAction::Before(a)) => {
-                        SoundAction::Previous(a).apply_sound_action(self);
+                    Some((_, PlayerAction::Next(a))) => {
+                        SoundAction::Next(*a).apply_sound_action(self);
                     }
-                    None | Some(MusicStatusAction::Downloading) => (),
+                    Some((_, PlayerAction::Previous(a))) => {
+                        SoundAction::Previous(*a).apply_sound_action(self);
+                    }
                 }
             }
             if rect_contains(&bottom, x, y, 1) {
@@ -68,7 +63,7 @@ impl Screen for PlayerState {
             } else if rect_contains(&bottom, x, y, 1) {
                 SoundAction::Forward.apply_sound_action(self);
             } else {
-                SoundAction::Previous(1).apply_sound_action(self);
+                self.list_selector.scroll_up();
             }
         } else if let MouseEventKind::ScrollDown = &mouse_event.kind {
             if rect_contains(&volume_rect, x, y, 1) {
@@ -76,7 +71,7 @@ impl Screen for PlayerState {
             } else if rect_contains(&bottom, x, y, 1) {
                 SoundAction::Backward.apply_sound_action(self);
             } else {
-                SoundAction::Next(1).apply_sound_action(self);
+                self.list_selector.scroll_down();
             }
         }
         EventResponse::None
@@ -90,11 +85,36 @@ impl Screen for PlayerState {
                 SoundAction::PlayPause.apply_sound_action(self);
                 EventResponse::None
             }
-            KeyCode::Char('+') | KeyCode::Up => {
+            KeyCode::Char('+') => {
                 SoundAction::Plus.apply_sound_action(self);
                 EventResponse::None
             }
-            KeyCode::Char('-') | KeyCode::Down => {
+            KeyCode::Up => {
+                self.list_selector.scroll_up();
+                EventResponse::None
+            }
+            KeyCode::Down => {
+                self.list_selector.scroll_down();
+                EventResponse::None
+            }
+            KeyCode::Enter => {
+                if let Some(e) = self.list_selector.play() {
+                    match e {
+                        PlayerAction::Current(_) => {
+                            SoundAction::PlayPause.apply_sound_action(self);
+                        }
+                        PlayerAction::Next(a) => {
+                            SoundAction::Next(*a).apply_sound_action(self);
+                        }
+                        PlayerAction::Previous(a) => {
+                            SoundAction::Previous(*a).apply_sound_action(self);
+                        }
+                        PlayerAction::Downloading => (),
+                    }
+                }
+                EventResponse::None
+            }
+            KeyCode::Char('-') => {
                 SoundAction::Minus.apply_sound_action(self);
                 EventResponse::None
             }
@@ -170,18 +190,11 @@ impl Screen for PlayerState {
             progress_rect,
         );
         // Create a List from all list items and highlight the currently selected one
-        f.render_stateful_widget(
-            List::new(generate_music(
-                f.size().height as usize,
-                &self.queue,
-                &self.previous,
-                &self.current,
-                &self.sink,
-            ))
-            .block(Block::default().borders(Borders::ALL).title(" Playlist ")),
-            list_rect,
-            &mut ListState::default(),
+        self.list_selector.update(
+            generate_music(&self.queue, &self.previous, &self.current, &self.sink),
+            self.previous.len(),
         );
+        f.render_widget(&self.list_selector, list_rect);
     }
 
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {

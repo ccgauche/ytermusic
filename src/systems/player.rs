@@ -3,27 +3,72 @@ use std::{collections::VecDeque, sync::Arc};
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
 
-use tui::{style::Style, widgets::ListItem};
+use tui::style::Style;
 use ytpapi::Video;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
     database,
     errors::{handle_error, handle_error_option},
-    structures::{
-        media::Media, music_status::MusicStatus, music_status_action::MusicStatusAction,
-        sound_action::SoundAction,
+    structures::{media::Media, music_status::MusicStatus, sound_action::SoundAction},
+    term::{
+        list_selector::{ListSelector, ListSelectorAction},
+        ManagerMessage, Screens,
     },
-    term::{ManagerMessage, Screens},
-    utils::generate_music_repartition,
 };
 
 use super::download::IN_DOWNLOAD;
+
+pub enum PlayerAction {
+    Current(bool), // Is paused
+    Next(usize),
+    Previous(usize),
+    Downloading,
+}
+
+fn invert(style: Style) -> Style {
+    Style {
+        fg: style.bg,
+        bg: style.fg,
+        add_modifier: style.add_modifier,
+        sub_modifier: style.sub_modifier,
+    }
+}
+
+impl ListSelectorAction for PlayerAction {
+    fn render_style(&self, _: &str, _: bool, scrolling_on: bool) -> Style {
+        match self {
+            Self::Current(paused) => {
+                if *paused {
+                    CONFIG.player.text_paused_style
+                } else {
+                    CONFIG.player.text_playing_style
+                }
+            }
+            Self::Downloading => CONFIG.player.text_downloading_style,
+            Self::Next(_) => {
+                if scrolling_on {
+                    invert(CONFIG.player.text_next_style)
+                } else {
+                    CONFIG.player.text_next_style
+                }
+            }
+            Self::Previous(_) => {
+                if scrolling_on {
+                    invert(CONFIG.player.text_previous_style)
+                } else {
+                    CONFIG.player.text_previous_style
+                }
+            }
+        }
+    }
+}
 
 pub struct PlayerState {
     pub queue: VecDeque<Video>,
     pub current: Option<Video>,
     pub previous: Vec<Video>,
+    pub list_selector: ListSelector<PlayerAction>,
     pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
@@ -54,6 +99,7 @@ impl PlayerState {
         Self {
             controls: Media::new(updater.clone(), soundaction_sender.clone()),
             soundaction_receiver,
+            list_selector: ListSelector::default(),
             updater,
             stream_error_receiver,
             soundaction_sender,
@@ -136,93 +182,58 @@ pub fn player_system(
     (tx, PlayerState::new(k, rx, updater))
 }
 
-// https://docs.rs/souvlaki/latest/souvlaki/
-
-pub fn get_action(
-    mut index: usize,
-    lines: usize,
-    queue: &VecDeque<Video>,
-    previous: &[Video],
-    current: &Option<Video>,
-) -> Option<MusicStatusAction> {
-    let dw_len = IN_DOWNLOAD.lock().unwrap().len();
-    if index < dw_len {
-        return Some(MusicStatusAction::Downloading);
-    }
-    index -= dw_len;
-    let (previous_max, _) = generate_music_repartition(lines, queue, previous, current);
-    let previous_len = previous.len().min(previous_max);
-    if index < previous_len {
-        return Some(MusicStatusAction::Before(previous_len - index));
-    }
-    index -= previous_len;
-    if current.is_some() {
-        if index == 0 {
-            return Some(MusicStatusAction::Current);
-        }
-        index -= 1;
-    }
-    if queue.len() < index {
-        None
-    } else {
-        Some(MusicStatusAction::Skip(index + 1))
-    }
-}
-
 pub fn generate_music<'a>(
-    lines: usize,
     queue: &'a VecDeque<Video>,
     previous: &'a [Video],
     current: &'a Option<Video>,
     sink: &'a Player,
-) -> Vec<ListItem<'a>> {
-    let download_style: Style = CONFIG.player.text_downloading_style;
-    let previous_style: Style = CONFIG.player.text_previous_style;
-    let paused_style: Style = CONFIG.player.text_paused_style;
-    let playing_style: Style = CONFIG.player.text_playing_style;
-    let next_style: Style = CONFIG.player.text_next_style;
+) -> Vec<(String, PlayerAction)> {
+    let mut music = Vec::with_capacity(10 + queue.len() + previous.len());
 
-    let mut music = Vec::with_capacity(50);
-    let (before, after) = generate_music_repartition(lines, queue, previous, current);
-    {
-        music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
-            ListItem::new(format!(
+    music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
+        (
+            format!(
                 " {} [{:02}%] {} | {}",
                 MusicStatus::Downloading.character(),
                 e.1.clamp(1, 99),
                 e.0.author,
                 e.0.title,
-            ))
-            .style(download_style)
-        }));
-        music.extend(previous.iter().rev().take(before).rev().map(|e| {
-            ListItem::new(format!(
+            ),
+            PlayerAction::Downloading,
+        )
+    }));
+    music.extend(previous.iter().rev().enumerate().rev().map(|(i, e)| {
+        (
+            format!(
                 " {} {} | {}",
                 MusicStatus::Previous.character(),
                 e.author,
                 e.title
-            ))
-            .style(previous_style)
-        }));
-        if let Some(e) = current {
-            let status = if sink.is_paused() {
-                (MusicStatus::Paused.character(), paused_style)
-            } else {
-                (MusicStatus::Playing.character(), playing_style)
-            };
-            music.push(
-                ListItem::new(format!(" {} {} | {}", status.0, e.author, e.title)).style(status.1),
-            );
-        }
-        music.extend(queue.iter().take(after + 4).map(|e| {
-            ListItem::new(format!(
+            ),
+            PlayerAction::Previous(i + 1),
+        )
+    }));
+    if let Some(e) = current {
+        let status = if sink.is_paused() {
+            MusicStatus::Paused.character()
+        } else {
+            MusicStatus::Playing.character()
+        };
+        music.push((
+            format!(" {status} {} | {}", e.author, e.title),
+            PlayerAction::Current(sink.is_paused()),
+        ));
+    }
+    music.extend(queue.iter().enumerate().map(|(i, e)| {
+        (
+            format!(
                 " {} {} | {}",
                 MusicStatus::Next.character(),
                 e.author,
                 e.title
-            ))
-            .style(next_style)
-        }));
-    }
+            ),
+            PlayerAction::Next(i + 1),
+        )
+    }));
     music
 }
