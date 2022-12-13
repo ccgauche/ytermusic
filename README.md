@@ -42,13 +42,17 @@ It's aims to be as fast and simple as possible.
 
 - Use your mouse to click in lists if your terminal has mouse support
 - Press `Space` to play/pause
+- Press `Enter` to select a playlist or a music
 - Press `f` to search
+- Press `s` to shuffle
 - Press `Arrow Right` or `>` to skip 5 seconds
 - Press `Arrow Left` or `<` to go back 5 seconds
 - Press `CTRL + Arrow Right` or `CTRL + >` to go to the next song
 - Press `CTRL + Arrow Left` or `CTRL + <` to go to the previous song
 - Press `+` for volume up
 - Press `-` for volume down
+- Press `Arrow down` to scroll down
+- Press `Arrow up` to scroll up
 - Press `ESC` to exit the current menu
 - Press `CTRL + C` or `CTRL + D` to exit
 
@@ -64,6 +68,14 @@ It's aims to be as fast and simple as possible.
 - [ ] Custom theming
 
 ## Changelog
+
+Alpha a0.0.11
+
+- Added scrollable music view
+- Added shuffle functionnality
+- Fixed some crashes while resizing the app
+- Added error messages for invalid headers or cookies
+- Added error messages for expired cookies
 
 Alpha a0.0.10
 
