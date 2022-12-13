@@ -1,6 +1,11 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 use flume::Sender;
+use once_cell::sync::Lazy;
 use ytpapi::{Playlist, YTApi};
 
 use crate::{
@@ -48,11 +53,23 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
     });
 }
 
+static BROWSED_PLAYLISTS: Lazy<Mutex<Vec<(String, String)>>> = Lazy::new(|| Mutex::new(vec![]));
+
 fn spawn_browse_playlist_task(
     playlist: Playlist,
     api: Arc<YTApi>,
     updater_s: Arc<Sender<ManagerMessage>>,
 ) {
+    {
+        let mut k = BROWSED_PLAYLISTS.lock().unwrap();
+        if k.iter()
+            .any(|(name, id)| name == &playlist.name && id == &playlist.browse_id)
+        {
+            return;
+        }
+        k.push((playlist.name.clone(), playlist.browse_id.clone()));
+    }
+
     tokio::task::spawn(async move {
         let guard = format!("Browse playlist {}", playlist.name);
         let guard = performance::guard(&guard);
