@@ -1,8 +1,10 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
+use rand::seq::SliceRandom;
 use tui::widgets::{Block, Borders, Gauge};
 
 use crate::{
+    errors::handle_error,
     structures::{app_status::AppStatus, sound_action::SoundAction},
     systems::player::{generate_music, PlayerAction, PlayerState},
 };
@@ -81,6 +83,19 @@ impl Screen for PlayerState {
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
             KeyCode::Char('f') => ManagerMessage::ChangeState(Screens::Search).event(),
+            KeyCode::Char('s') => {
+                let mut musics = Vec::with_capacity(self.previous.len() + self.queue.len() + 1);
+                musics.append(&mut self.previous);
+                if let Some(e) = self.current.take() {
+                    musics.push(e);
+                }
+                let queue = std::mem::take(&mut self.queue);
+                musics.extend(queue.into_iter());
+                musics.shuffle(&mut rand::thread_rng());
+                self.queue = musics.into();
+                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
+                EventResponse::None
+            }
             KeyCode::Char(' ') => {
                 SoundAction::PlayPause.apply_sound_action(self);
                 EventResponse::None
