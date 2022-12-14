@@ -47,7 +47,7 @@ impl Screen for PlaylistView {
                     self.videos.iter().skip(v).cloned().collect(),
                 ))
                 .unwrap();
-            EventResponse::Message(vec![ManagerMessage::PlayerFrom(Screens::PlaylistViewer)])
+            EventResponse::Message(vec![ManagerMessage::PlayerFrom(Screens::Playlist)])
         } else {
             EventResponse::None
         }
@@ -60,9 +60,7 @@ impl Screen for PlaylistView {
                     self.videos.iter().skip(*v).cloned().collect(),
                 ))
                 .unwrap();
-            return EventResponse::Message(vec![ManagerMessage::PlayerFrom(
-                Screens::PlaylistViewer,
-            )]);
+            return EventResponse::Message(vec![ManagerMessage::PlayerFrom(Screens::Playlist)]);
         }
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
