@@ -2,14 +2,10 @@ use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
-use tui::{
-    layout::Rect,
-    style::{Color, Style},
-    Frame,
-};
+use tui::{layout::Rect, style::Style, Frame};
 use ytpapi::Video;
 
-use crate::structures::sound_action::SoundAction;
+use crate::{consts::CONFIG, structures::sound_action::SoundAction, utils::invert, DATABASE};
 
 use super::{
     item_list::{ListItem, ListItemAction},
@@ -17,14 +13,20 @@ use super::{
 };
 
 #[derive(Clone)]
-pub struct PlayListAction(usize);
+pub struct PlayListAction(usize, bool);
 
 impl ListItemAction for PlayListAction {
     fn render_style(&self, _: &str, selected: bool) -> Style {
         if selected {
-            Style::default().fg(Color::Black).bg(Color::White)
+            if self.1 {
+                invert(CONFIG.player.text_downloading_style)
+            } else {
+                invert(CONFIG.player.text_next_style)
+            }
+        } else if self.1 {
+            CONFIG.player.text_downloading_style
         } else {
-            Style::default().fg(Color::White).bg(Color::Black)
+            CONFIG.player.text_next_style
         }
     }
 }
@@ -38,7 +40,7 @@ pub struct PlaylistView {
 
 impl Screen for PlaylistView {
     fn on_mouse_press(&mut self, e: crossterm::event::MouseEvent, r: &Rect) -> EventResponse {
-        if let Some(PlayListAction(v)) = self.items.on_mouse_press(e, r) {
+        if let Some(PlayListAction(v, _)) = self.items.on_mouse_press(e, r) {
             self.sender
                 .send(SoundAction::ReplaceQueue(
                     self.videos.iter().skip(v).cloned().collect(),
@@ -51,7 +53,7 @@ impl Screen for PlaylistView {
     }
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
-        if let Some(PlayListAction(v)) = self.items.on_key_press(key) {
+        if let Some(PlayListAction(v, _)) = self.items.on_key_press(key) {
             self.sender
                 .send(SoundAction::ReplaceQueue(
                     self.videos.iter().skip(*v).cloned().collect(),
@@ -72,11 +74,17 @@ impl Screen for PlaylistView {
     fn handle_global_message(&mut self, m: ManagerMessage) -> EventResponse {
         match m {
             ManagerMessage::Inspect(a, m) => {
-                self.items.set_title(a);
+                self.items.set_title(format!(" Inspecting {a} "));
+                let db = DATABASE.read().unwrap();
                 self.items.update(
                     m.iter()
                         .enumerate()
-                        .map(|(i, m)| (m.to_string(), PlayListAction(i)))
+                        .map(|(i, m)| {
+                            (
+                                format!("  {m}"),
+                                PlayListAction(i, !db.iter().any(|x| x.video_id == m.video_id)),
+                            )
+                        })
                         .collect(),
                     0,
                 );

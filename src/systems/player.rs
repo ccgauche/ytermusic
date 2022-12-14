@@ -15,6 +15,7 @@ use crate::{
         list_selector::{ListSelector, ListSelectorAction},
         ManagerMessage, Screens,
     },
+    utils::invert,
 };
 
 use super::download::IN_DOWNLOAD;
@@ -24,15 +25,6 @@ pub enum PlayerAction {
     Next(usize),
     Previous(usize),
     Downloading,
-}
-
-fn invert(style: Style) -> Style {
-    Style {
-        fg: style.bg,
-        bg: style.fg,
-        add_modifier: style.add_modifier,
-        sub_modifier: style.sub_modifier,
-    }
 }
 
 impl ListSelectorAction for PlayerAction {

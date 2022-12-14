@@ -55,11 +55,19 @@ pub struct Video {
 
 impl Display for Video {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} - {} ({}): {}",
-            self.title, self.author, self.album, self.duration
-        )
+        if self.duration.is_empty() && self.album.is_empty() {
+            write!(f, "{} - {}", self.title, self.author)
+        } else if self.duration.is_empty() {
+            write!(f, "{} - {} ({})", self.title, self.author, self.album)
+        } else if self.album.is_empty() {
+            write!(f, "{} - {}: {}", self.title, self.author, self.duration)
+        } else {
+            write!(
+                f,
+                "{} - {} ({}): {}",
+                self.title, self.author, self.album, self.duration
+            )
+        }
     }
 }
 

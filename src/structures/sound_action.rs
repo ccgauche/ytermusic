@@ -2,7 +2,7 @@ use ytpapi::Video;
 
 use crate::{
     errors::{handle_error, handle_error_option},
-    systems::player::PlayerState,
+    systems::{download, player::PlayerState},
 };
 
 /// Actions that can be sent to the player from other services
@@ -85,7 +85,10 @@ impl SoundAction {
             }
             Self::ReplaceQueue(videos) => {
                 player.queue.clear();
-                player.queue.extend(videos.into_iter());
+                download::clean(player.soundaction_sender.clone());
+                for video in videos.into_iter() {
+                    download::add(video.clone(), &player.soundaction_sender);
+                }
             }
         }
     }
