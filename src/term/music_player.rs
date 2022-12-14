@@ -184,7 +184,7 @@ impl Screen for PlayerState {
                         .title(
                             self.current
                                 .as_ref()
-                                .map(|x| format!(" {} | {} ", x.author, x.title))
+                                .map(|x| format!(" {x} "))
                                 .unwrap_or_else(|| " No music playing ".to_owned()),
                         )
                         .borders(Borders::ALL),
