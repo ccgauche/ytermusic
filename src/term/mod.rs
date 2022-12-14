@@ -1,9 +1,11 @@
 pub mod device_lost;
+pub mod item_list;
 pub mod list_selector;
 pub mod music_player;
 pub mod playlist;
 pub mod search;
 pub mod vertical_gauge;
+//pub mod playlist_view;
 
 use std::{
     io::{self, Stdout},
@@ -24,7 +26,7 @@ use ytpapi::Video;
 
 use crate::{structures::sound_action::SoundAction, systems::player::PlayerState};
 
-use self::{device_lost::DeviceLost, playlist::Chooser, search::Search};
+use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};
 
 // A trait to handle the different screens
 pub trait Screen {
@@ -86,9 +88,8 @@ impl Manager {
         Self {
             music_player,
             chooser: Chooser {
-                selected: 0,
-                items: vec![],
                 action_sender: action_sender.clone(),
+                item_list: ListItem::new(" Choose a playlist ".to_owned()),
             },
             search: Search::new(action_sender).await,
             current_screen: Screens::Playlist,

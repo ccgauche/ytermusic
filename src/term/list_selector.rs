@@ -18,7 +18,11 @@ pub struct ListSelector<Action> {
 
 impl<Action> Default for ListSelector<Action> {
     fn default() -> Self {
-        Self { list: Default::default(), current_position: Default::default(), scroll_position: Default::default() }
+        Self {
+            list: Default::default(),
+            current_position: Default::default(),
+            scroll_position: Default::default(),
+        }
     }
 }
 
@@ -30,7 +34,7 @@ impl<Action> ListSelector<Action> {
         let length = self.list.len();
         let length_after_start = length.saturating_sub(start);
         // Tries to take all the space left if length_after_start is smaller than height
-        let start = start - height.saturating_sub(length_after_start);
+        let start = start.saturating_sub(height.saturating_sub(length_after_start));
         self.list
             .iter()
             .enumerate()
@@ -67,7 +71,7 @@ impl<Action> ListSelector<Action> {
     }
 
     pub fn scroll_to(&mut self, position: usize) {
-        self.scroll_position = position.min(self.list.len() - 1);
+        self.scroll_position = position.min(self.list.len().saturating_sub(1));
     }
 
     pub fn scroll(&self) -> Option<&Action> {
@@ -91,7 +95,7 @@ impl<Action> ListSelector<Action> {
     }
 
     pub fn select_to(&mut self, position: usize) {
-        self.current_position = position.min(self.list.len() - 1);
+        self.current_position = position.min(self.list.len().saturating_sub(1));
     }
 
     pub fn update(&mut self, list: Vec<(String, Action)>, current: usize) {
@@ -100,8 +104,8 @@ impl<Action> ListSelector<Action> {
         }
         self.current_position = current;
         self.list = list;
-        self.current_position = self.current_position.min(self.list.len() - 1);
-        self.scroll_position = self.scroll_position.min(self.list.len() - 1);
+        self.current_position = self.current_position.min(self.list.len().saturating_sub(1));
+        self.scroll_position = self.scroll_position.min(self.list.len().saturating_sub(1));
     }
 }
 

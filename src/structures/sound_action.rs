@@ -19,6 +19,7 @@ pub enum SoundAction {
     Next(usize),
     PlayVideo(Video),
     PlayVideoUnary(Video),
+    ReplaceQueue(Vec<Video>),
 }
 
 impl SoundAction {
@@ -81,6 +82,10 @@ impl SoundAction {
             }
             Self::PlayVideoUnary(video) => {
                 player.queue.push_front(video);
+            }
+            Self::ReplaceQueue(videos) => {
+                player.queue.clear();
+                player.queue.extend(videos.into_iter());
             }
         }
     }
