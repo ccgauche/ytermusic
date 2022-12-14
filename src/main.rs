@@ -1,9 +1,12 @@
 use consts::CACHE_DIR;
+use flume::{Receiver, Sender};
+use once_cell::sync::Lazy;
 use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
+use tokio::select;
 
-use std::{panic, path::PathBuf, str::FromStr, sync::Arc};
+use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc};
 use systems::player::player_system;
 
 use crate::{consts::HEADER_TUTORIAL, systems::logger::log_};
@@ -27,9 +30,30 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+pub static SIGNALING_STOP: Lazy<(Sender<()>, Receiver<()>)> = Lazy::new(flume::unbounded);
+
+fn run_service<T>(future: T) -> tokio::task::JoinHandle<()>
+where
+    T: Future + Send + 'static,
+{
+    tokio::task::spawn(async move {
+        select! {
+            _ = future => {},
+            _ = SIGNALING_STOP.1.recv_async() => {},
+        }
+    })
+}
+
+fn shutdown() {
+    for _ in 0..100 {
+        SIGNALING_STOP.0.send(()).unwrap();
+    }
+}
+
 #[tokio::main]
 async fn main() {
     panic::set_hook(Box::new(|e| {
+        shutdown();
         println!("{e}");
         log_(e.to_string());
     }));

@@ -6,6 +6,7 @@ use ytpapi::Video;
 
 use crate::{
     consts::CACHE_DIR,
+    run_service,
     structures::sound_action::SoundAction,
     systems::{
         download::{add_to_in_download, remove_from_in_download, update_in_download, HANDLES},
@@ -75,7 +76,7 @@ pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
     }
 }
 pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: Video) {
-    HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
+    HANDLES.lock().unwrap().push(run_service(async move {
         start_download(song, &s).await;
     }));
 }

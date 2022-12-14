@@ -9,6 +9,7 @@ use once_cell::sync::Lazy;
 use ytpapi::{Playlist, YTApi};
 
 use crate::{
+    run_service,
     structures::performance,
     systems::logger::log_,
     term::{ManagerMessage, Screens},
@@ -18,7 +19,7 @@ const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
     "The `headers.txt` file is not configured correctly. \nThe cookies are expired or invalid.";
 
 pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
-    tokio::task::spawn(async move {
+    run_service(async move {
         log_("API task on");
         let guard = performance::guard("API task");
         match YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path()).await {
@@ -70,7 +71,7 @@ fn spawn_browse_playlist_task(
         k.push((playlist.name.clone(), playlist.browse_id.clone()));
     }
 
-    tokio::task::spawn(async move {
+    run_service(async move {
         let guard = format!("Browse playlist {}", playlist.name);
         let guard = performance::guard(&guard);
         match api.browse_playlist(&playlist.browse_id).await {

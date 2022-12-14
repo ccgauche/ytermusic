@@ -10,7 +10,8 @@ use tokio::{task::JoinHandle, time::sleep};
 use ytpapi::Video;
 
 use crate::{
-    consts::CACHE_DIR, structures::sound_action::SoundAction, tasks::download::start_download,
+    consts::CACHE_DIR, run_service, structures::sound_action::SoundAction,
+    tasks::download::start_download,
 };
 
 pub static IN_DOWNLOAD: Lazy<Mutex<Vec<(ytpapi::Video, usize)>>> =
@@ -27,7 +28,7 @@ fn take() -> Option<Video> {
 
 /// A worker of this system that downloads pending songs
 fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
-    HANDLES.lock().unwrap().push(tokio::task::spawn(async move {
+    HANDLES.lock().unwrap().push(run_service(async move {
         let mut k = true;
         loop {
             if !k {

@@ -17,8 +17,8 @@ use urlencoding::encode;
 use ytpapi::{Video, YTApi};
 
 use crate::{
-    structures::sound_action::SoundAction, systems::logger::log_, tasks, utils::get_before,
-    DATABASE,
+    run_service, structures::sound_action::SoundAction, systems::logger::log_, tasks,
+    utils::get_before, DATABASE,
 };
 
 use super::{
@@ -136,7 +136,7 @@ impl Screen for Search {
             let text = self.text.clone();
             let items = self.items.clone();
             self.selected = 0;
-            self.search_handle = Some(tokio::task::spawn(async move {
+            self.search_handle = Some(run_service(async move {
                 // Sleep to prevent spamming the api
                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 let mut item = Vec::new();

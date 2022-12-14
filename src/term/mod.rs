@@ -24,7 +24,7 @@ use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi::Video;
 
-use crate::{structures::sound_action::SoundAction, systems::player::PlayerState};
+use crate::{structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP};
 
 use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};
 
@@ -181,6 +181,9 @@ impl Manager {
 
         let mut last_tick = Instant::now();
         'a: loop {
+            if matches!(SIGNALING_STOP.1.try_recv(), Ok(())) {
+                break;
+            }
             while let Ok(e) = updater.try_recv() {
                 if self.handle_manager_message(e) {
                     break 'a;

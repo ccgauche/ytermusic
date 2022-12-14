@@ -1,4 +1,4 @@
-use std::{process::exit, sync::Arc};
+use std::sync::Arc;
 
 use flume::Sender;
 use player::Player;
@@ -7,7 +7,7 @@ use souvlaki::{
 };
 use ytpapi::Video;
 
-use crate::{systems::logger::log_, term::ManagerMessage};
+use crate::{shutdown, systems::logger::log_, term::ManagerMessage};
 
 use super::sound_action::SoundAction;
 
@@ -88,7 +88,7 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
         MediaControlEvent::OpenUri(_) => todo!(),
         MediaControlEvent::Raise => todo!(),
         MediaControlEvent::Quit => {
-            exit(0);
+            shutdown();
         }
     })
 }
