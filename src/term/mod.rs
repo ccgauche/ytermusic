@@ -51,8 +51,12 @@ pub enum EventResponse {
 pub enum ManagerMessage {
     Error(String, Box<Option<ManagerMessage>>),
     PassTo(Screens, Box<ManagerMessage>),
-    Inspect(String, Vec<Video>),
+    Inspect(String, Screens, Vec<Video>),
     ChangeState(Screens),
+    SearchFrom(Screens),
+    PlayerFrom(Screens),
+    #[allow(dead_code)]
+    PlaylistFrom(Screens),
     RestartPlayer,
     Quit,
     AddElementToChooser((String, Vec<Video>)),
@@ -94,11 +98,13 @@ impl Manager {
             music_player,
             chooser: Chooser {
                 action_sender: action_sender.clone(),
+                goto: Screens::MusicPlayer,
                 item_list: ListItem::new(" Choose a playlist ".to_owned()),
             },
             playlist_viewer: PlaylistView {
                 sender: action_sender.clone(),
                 items: ListItem::new(" Playlist ".to_owned()),
+                goto: Screens::Playlist,
                 videos: Vec::new(),
             },
             search: Search::new(action_sender).await,
@@ -150,6 +156,21 @@ impl Manager {
             ManagerMessage::ChangeState(e) => {
                 self.current_screen().close(e);
                 self.set_current_screen(e);
+            }
+            ManagerMessage::SearchFrom(e) => {
+                self.current_screen().close(Screens::Search);
+                self.search.goto = e;
+                self.set_current_screen(Screens::Search);
+            }
+            ManagerMessage::PlayerFrom(e) => {
+                self.current_screen().close(Screens::MusicPlayer);
+                self.music_player.goto = e;
+                self.set_current_screen(Screens::MusicPlayer);
+            }
+            ManagerMessage::PlaylistFrom(e) => {
+                self.current_screen().close(Screens::Playlist);
+                self.chooser.goto = e;
+                self.set_current_screen(Screens::Playlist);
             }
             e => {
                 return self.handle_manager_message(ManagerMessage::PassTo(

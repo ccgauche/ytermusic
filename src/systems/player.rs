@@ -61,6 +61,7 @@ impl ListSelectorAction for PlayerAction {
 }
 
 pub struct PlayerState {
+    pub goto: Screens,
     pub queue: VecDeque<Video>,
     pub current: Option<Video>,
     pub previous: Vec<Video>,
@@ -100,6 +101,7 @@ impl PlayerState {
             stream_error_receiver,
             soundaction_sender,
             sink,
+            goto: Screens::Playlist,
             guard,
             queue: Default::default(),
             current: Default::default(),

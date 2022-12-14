@@ -35,6 +35,7 @@ impl ListItemAction for PlayListAction {
 pub struct PlaylistView {
     pub items: ListItem<PlayListAction>,
     pub videos: Vec<Video>,
+    pub goto: Screens,
     pub sender: Arc<Sender<SoundAction>>,
 }
 
@@ -46,7 +47,7 @@ impl Screen for PlaylistView {
                     self.videos.iter().skip(v).cloned().collect(),
                 ))
                 .unwrap();
-            EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)])
+            EventResponse::Message(vec![ManagerMessage::PlayerFrom(Screens::PlaylistViewer)])
         } else {
             EventResponse::None
         }
@@ -59,10 +60,15 @@ impl Screen for PlaylistView {
                     self.videos.iter().skip(*v).cloned().collect(),
                 ))
                 .unwrap();
-            return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
+            return EventResponse::Message(vec![ManagerMessage::PlayerFrom(
+                Screens::PlaylistViewer,
+            )]);
         }
         match key.code {
-            KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
+            KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
+            KeyCode::Char('f') => {
+                return ManagerMessage::SearchFrom(Screens::PlaylistViewer).event()
+            }
             _ => EventResponse::None,
         }
     }
@@ -73,8 +79,9 @@ impl Screen for PlaylistView {
 
     fn handle_global_message(&mut self, m: ManagerMessage) -> EventResponse {
         match m {
-            ManagerMessage::Inspect(a, m) => {
+            ManagerMessage::Inspect(a, screen, m) => {
                 self.items.set_title(format!(" Inspecting {a} "));
+                self.goto = screen;
                 let db = DATABASE.read().unwrap();
                 self.items.update(
                     m.iter()

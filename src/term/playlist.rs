@@ -35,9 +35,7 @@ impl ListItemAction for ChooserAction {
 
 pub struct Chooser {
     pub item_list: ListItem<ChooserAction>,
-    /* pub selected: usize,
-
-    pub items: Vec<PlayListEntry>, */
+    pub goto: Screens,
     pub action_sender: Arc<Sender<SoundAction>>,
 }
 
@@ -45,27 +43,14 @@ pub struct Chooser {
 pub struct PlayListEntry {
     pub name: String,
     pub videos: Vec<Video>,
-    pub local_videos: usize,
     pub text_to_show: String,
 }
 
 impl PlayListEntry {
     pub fn new(name: String, videos: Vec<Video>) -> Self {
-        let db = DATABASE.read().unwrap();
-        let local_videos = videos
-            .iter()
-            .filter(|x| db.iter().any(|y| x.video_id == y.video_id))
-            .count();
         Self {
-            text_to_show: format!(
-                "{}     ({}/{} {}%)",
-                name,
-                local_videos,
-                videos.len(),
-                (local_videos as f32 / videos.len() as f32 * 100.0) as u8
-            ),
+            text_to_show: format_playlist(&name, &videos),
             name,
-            local_videos,
             videos,
         }
     }
@@ -73,6 +58,20 @@ impl PlayListEntry {
     pub fn tupplelize(&self) -> (&String, &Vec<Video>) {
         (&self.name, &self.videos)
     }
+}
+pub fn format_playlist(name: &str, videos: &[Video]) -> String {
+    let db = DATABASE.read().unwrap();
+    let local_videos = videos
+        .iter()
+        .filter(|x| db.iter().any(|y| x.video_id == y.video_id))
+        .count();
+    format!(
+        "{}     ({}/{} {}%)",
+        name,
+        local_videos,
+        videos.len(),
+        (local_videos as f32 / videos.len() as f32 * 100.0) as u8
+    )
 }
 impl Screen for Chooser {
     fn on_mouse_press(
@@ -83,12 +82,15 @@ impl Screen for Chooser {
         if let Some(ChooserAction::Play(a)) = self.item_list.on_mouse_press(mouse_event, frame_data)
         {
             if PLAYER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
-                return EventResponse::Message(vec![
-                    ManagerMessage::Inspect(a.name, a.videos).pass_to(Screens::PlaylistViewer)
-                ]);
+                return EventResponse::Message(vec![ManagerMessage::Inspect(
+                    a.name,
+                    Screens::Playlist,
+                    a.videos,
+                )
+                .pass_to(Screens::PlaylistViewer)]);
             }
             self.play(&a);
-            EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)])
+            EventResponse::Message(vec![ManagerMessage::PlayerFrom(Screens::Playlist)])
         } else {
             EventResponse::None
         }
@@ -97,16 +99,19 @@ impl Screen for Chooser {
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         if let Some(ChooserAction::Play(a)) = self.item_list.on_key_press(key).cloned() {
             if PLAYER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
-                return EventResponse::Message(vec![
-                    ManagerMessage::Inspect(a.name, a.videos).pass_to(Screens::PlaylistViewer)
-                ]);
+                return EventResponse::Message(vec![ManagerMessage::Inspect(
+                    a.name,
+                    Screens::Playlist,
+                    a.videos,
+                )
+                .pass_to(Screens::PlaylistViewer)]);
             }
             self.play(&a);
             return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
         }
         match key.code {
             KeyCode::Esc => return ManagerMessage::ChangeState(Screens::MusicPlayer).event(),
-            KeyCode::Char('f') => return ManagerMessage::ChangeState(Screens::Search).event(),
+            KeyCode::Char('f') => return ManagerMessage::SearchFrom(Screens::Playlist).event(),
             _ => {}
         }
         EventResponse::None

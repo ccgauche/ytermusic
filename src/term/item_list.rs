@@ -126,12 +126,25 @@ impl<Action: Clone> ListItem<Action> {
         self.current_position = current.min(self.list.len().saturating_sub(1));
     }
 
+    pub fn update_contents(&mut self, list: Vec<(String, Action)>) {
+        self.list = list;
+        self.current_position = self.current_position.min(self.list.len().saturating_sub(1));
+    }
+    pub fn clear(&mut self) {
+        self.list.clear();
+        self.current_position = 0;
+    }
+
     pub fn add_element(&mut self, element: (String, Action)) {
         self.list.push(element);
     }
 
     pub fn set_title(&mut self, a: String) {
         self.title = a;
+    }
+
+    pub fn current_position(&self) -> usize {
+        self.current_position
     }
 }
 

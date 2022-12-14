@@ -228,7 +228,6 @@ impl YTApi {
                 .map_err(Error::Reqwest)?,
         )?;
 
-        std::fs::write("search.json", &k).map_err(Error::Io)?;
         let json = serde_json::from_str::<serde_json::Value>(&k).map_err(Error::SerdeJson)?;
         Ok((
             from_json(&json, get_video)?,
