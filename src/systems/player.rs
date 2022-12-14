@@ -1,4 +1,7 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::{
+    collections::VecDeque,
+    sync::{atomic::Ordering, Arc},
+};
 
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
@@ -13,6 +16,7 @@ use crate::{
     structures::{media::Media, music_status::MusicStatus, sound_action::SoundAction},
     term::{
         list_selector::{ListSelector, ListSelectorAction},
+        playlist::PLAYER_RUNNING,
         ManagerMessage, Screens,
     },
     utils::invert,
@@ -104,6 +108,7 @@ impl PlayerState {
     }
 
     pub fn update(&mut self) {
+        PLAYER_RUNNING.store(self.current.is_some(), Ordering::SeqCst);
         self.update_controls();
         self.handle_stream_errors();
         while let Ok(e) = self.soundaction_receiver.try_recv() {

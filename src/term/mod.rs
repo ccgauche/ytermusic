@@ -188,6 +188,7 @@ impl Manager {
             }
             let rectsize = terminal.size()?;
             terminal.draw(|f| {
+                self.music_player.update();
                 self.current_screen().render(f);
             })?;
 
