@@ -3,9 +3,8 @@ use std::sync::Arc;
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
 use tui::{
-    layout::{Alignment, Rect},
+    layout::Rect,
     style::{Color, Style},
-    widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 use ytpapi::Video;
@@ -21,7 +20,7 @@ use super::{
 pub struct PlayListAction(usize);
 
 impl ListItemAction for PlayListAction {
-    fn render_style(&self, string: &str, selected: bool) -> Style {
+    fn render_style(&self, _: &str, selected: bool) -> Style {
         if selected {
             Style::default().fg(Color::Black).bg(Color::White)
         } else {

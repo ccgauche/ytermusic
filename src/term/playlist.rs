@@ -1,21 +1,16 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
-use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
 use tui::{
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Borders, List, ListState},
     Frame,
 };
 use ytpapi::Video;
 
 use crate::{
-    consts::{CACHE_DIR, CONFIG},
-    structures::sound_action::SoundAction,
-    systems::{download, logger::log_},
-    utils::get_before,
-    DATABASE,
+    consts::CACHE_DIR, structures::sound_action::SoundAction, systems::download, DATABASE,
 };
 
 use super::{
@@ -29,7 +24,7 @@ pub enum ChooserAction {
 }
 
 impl ListItemAction for ChooserAction {
-    fn render_style(&self, string: &str, selected: bool) -> Style {
+    fn render_style(&self, _: &str, selected: bool) -> Style {
         if selected {
             Style::default().fg(Color::Black).bg(Color::White)
         } else {
@@ -100,7 +95,7 @@ impl Screen for Chooser {
     }
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
-        if let Some(ChooserAction::Play(a)) = self.item_list.on_key_press(key.clone()).cloned() {
+        if let Some(ChooserAction::Play(a)) = self.item_list.on_key_press(key).cloned() {
             if PLAYER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
                 return EventResponse::Message(vec![
                     ManagerMessage::Inspect(a.name, a.videos).pass_to(Screens::PlaylistViewer)
