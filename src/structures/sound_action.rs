@@ -89,6 +89,7 @@ impl SoundAction {
                 for video in videos.into_iter() {
                     download::add(video.clone(), &player.soundaction_sender);
                 }
+                Self::Next(1).apply_sound_action(player);
             }
         }
     }
