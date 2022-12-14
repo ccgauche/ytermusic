@@ -141,7 +141,7 @@ impl Screen for Search {
                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 let mut item = Vec::new();
                 match api.search(&encode(&text).replace("%20", "+")).await {
-                    Ok(e) => {
+                    Ok((e, _)) => {
                         for video in e.into_iter() {
                             let id = video.video_id.clone();
                             item.push((

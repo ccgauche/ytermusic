@@ -5,10 +5,20 @@ use serde_json::Value;
 
 use crate::Error;
 
+pub(crate) fn from_json_string<T: PartialEq>(
+    json: &str,
+    transformer: impl Fn(&Value) -> Option<T>,
+) -> Result<Vec<T>, Error> {
+    from_json(
+        &serde_json::from_str(json).map_err(Error::SerdeJson)?,
+        transformer,
+    )
+}
+
 /// Applies recursively the `transformer` function to the given json value
 /// and returns the transformed values.
 pub(crate) fn from_json<T: PartialEq>(
-    json: &str,
+    json: &Value,
     transformer: impl Fn(&Value) -> Option<T>,
 ) -> Result<Vec<T>, Error> {
     /// Execute a function on each element of a json value recursively.
@@ -36,11 +46,7 @@ pub(crate) fn from_json<T: PartialEq>(
         }
     }
     let mut playlists = Vec::new();
-    inner_crawl(
-        &serde_json::from_str(json).map_err(Error::SerdeJson)?,
-        &mut playlists,
-        &transformer,
-    );
+    inner_crawl(&json, &mut playlists, &transformer);
     Ok(playlists)
 }
 
@@ -83,6 +89,33 @@ pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
         name: title_text,
         subtitle: subtitle.unwrap_or_default(),
         browse_id: browse_id.strip_prefix("VL")?.to_string(),
+    })
+}
+
+pub fn get_playlist_search(value: &Value) -> Option<Playlist> {
+    let playlist_id = value
+        .get("overlay")
+        .and_then(|x| x.get("musicItemThumbnailOverlayRenderer"))
+        .and_then(|x| x.get("content"))
+        .and_then(|x| x.get("musicPlayButtonRenderer"))
+        .and_then(|x| x.get("playNavigationEndpoint"))
+        .and_then(|x| x.get("watchPlaylistEndpoint"))
+        .and_then(|x| x.get("playlistId"))
+        .and_then(Value::as_str)?;
+    let titles: Vec<String> = value
+        .get("flexColumns")?
+        .as_array()?
+        .iter()
+        .flat_map(|x| {
+            x.get("musicResponsiveListItemFlexColumnRenderer")
+                .and_then(|x| x.get("text"))
+                .and_then(|x| get_text(x, false, false))
+        })
+        .collect();
+    Some(Playlist {
+        name: titles.get(0)?.clone(),
+        subtitle: titles.get(1)?.clone(),
+        browse_id: playlist_id.to_string(),
     })
 }
 

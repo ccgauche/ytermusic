@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     path::{Path, PathBuf},
-    str::FromStr, fmt::Display,
+    str::FromStr,
 };
 
 use reqwest::{
@@ -11,13 +12,13 @@ use reqwest::{
 
 use string_utils::StringUtils;
 
-use structs::{get_playlist, from_json, get_video};
+use structs::{from_json, from_json_string, get_playlist, get_playlist_search, get_video};
 pub use structs::{Playlist, Video};
 
 const YTM_DOMAIN: &str = "https://music.youtube.com";
 
 mod string_utils;
-mod structs;
+pub mod structs;
 
 fn unescape(inp: &str) -> Result<String, Error> {
     let mut string = String::with_capacity(inp.len());
@@ -49,11 +50,24 @@ fn unescape(inp: &str) -> Result<String, Error> {
                 }
                 'u' => {
                     let mut hex = String::with_capacity(4);
-                    for _ in 0..4 {
-                        hex.push(
-                            iter.next()
-                                .ok_or_else(|| Error::InvalidEscapedSequence(inp.to_owned()))?,
-                        );
+                    let c = iter
+                        .next()
+                        .ok_or_else(|| Error::InvalidEscapedSequence(inp.to_owned()))?;
+                    if c == '{' {
+                        while let Some(e) = iter.next() {
+                            if e == '}' {
+                                break;
+                            }
+                            hex.push(e);
+                        }
+                    } else {
+                        hex.push(c);
+                        for _ in 0..3 {
+                            hex.push(
+                                iter.next()
+                                    .ok_or_else(|| Error::InvalidEscapedSequence(inp.to_owned()))?,
+                            );
+                        }
                     }
                     let hex = u32::from_str_radix(&hex, 16)
                         .map_err(|_| Error::InvalidEscapedSequence(inp.to_owned()))?;
@@ -84,12 +98,12 @@ async fn get_visitor_id(
         .text()
         .await
         .map_err(Error::Reqwest)?;
-    let playlist = from_json(&extract_json(&response)?, get_playlist)?;
+    let playlist = from_json_string(&extract_json(&response)?, get_playlist)?;
     response
         .between("VISITOR_DATA\":\"", "\"")
         .to_owned_()
         .map(|x| (x, playlist))
-        .ok_or_else(|| Error::InvalidHTMLFile(0,response.to_string()))
+        .ok_or_else(|| Error::InvalidHTMLFile(0, response.to_string()))
 }
 
 async fn get_user_playlists(
@@ -105,7 +119,7 @@ async fn get_user_playlists(
         .text()
         .await
         .map_err(Error::Reqwest)?;
-    from_json(&extract_json(&response)?, get_playlist)
+    from_json_string(&extract_json(&response)?, get_playlist)
 }
 
 fn extract_json(string: &str) -> Result<String, Error> {
@@ -116,7 +130,7 @@ fn extract_json(string: &str) -> Result<String, Error> {
         )
         .after("data: '")
         .to_owned_()
-        .ok_or_else(|| Error::InvalidHTMLFile(1,string.to_string()))?;
+        .ok_or_else(|| Error::InvalidHTMLFile(1, string.to_string()))?;
     unescape(&json)
 }
 fn extract_json_search(string: &str) -> Result<String, Error> {
@@ -127,7 +141,7 @@ fn extract_json_search(string: &str) -> Result<String, Error> {
         )
         .after("data: '")
         .to_owned_()
-        .ok_or_else(|| Error::InvalidHTMLFile(2,string.to_string()))?;
+        .ok_or_else(|| Error::InvalidHTMLFile(2, string.to_string()))?;
     unescape(&json)
 }
 
@@ -138,7 +152,7 @@ pub struct YTApi {
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidHTMLFile(u32,String),
+    InvalidHTMLFile(u32, String),
     Reqwest(reqwest::Error),
     SerdeJson(serde_json::Error),
     InvalidHeaderValue(InvalidHeaderValue),
@@ -152,17 +166,18 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-			Error::InvalidHTMLFile(e,s) => write!(f, "Invalid HTML file: {} {}", e,s),
-			Error::Reqwest(e) => write!(f, "Reqwest error: {}", e),
-			Error::SerdeJson(e) => write!(f, "SerdeJson error: {}", e),
-			Error::InvalidHeaderValue(e) => write!(f, "Invalid header value: {}", e),
-			Error::InvalidHeaderName(e) => write!(f, "Invalid header name: {}", e),
-			Error::InvalidJsonCantFind(e, s) => write!(f, "Invalid json: {} {}", e, s),
-			Error::InvalidHeaderFormat(e, s) => write!(f, "Invalid header format: {} {}", e.display(), s),
-			Error::Io(e) => write!(f, "IO error: {}", e),
-			Error::InvalidEscapedSequence(e) => write!(f, "Invalid escaped sequence: {}", e),
-		}
-		
+            Error::InvalidHTMLFile(e, s) => write!(f, "Invalid HTML file: {} {}", e, s),
+            Error::Reqwest(e) => write!(f, "Reqwest error: {}", e),
+            Error::SerdeJson(e) => write!(f, "SerdeJson error: {}", e),
+            Error::InvalidHeaderValue(e) => write!(f, "Invalid header value: {}", e),
+            Error::InvalidHeaderName(e) => write!(f, "Invalid header name: {}", e),
+            Error::InvalidJsonCantFind(e, s) => write!(f, "Invalid json: {} {}", e, s),
+            Error::InvalidHeaderFormat(e, s) => {
+                write!(f, "Invalid header format: {} {}", e.display(), s)
+            }
+            Error::Io(e) => write!(f, "IO error: {}", e),
+            Error::InvalidEscapedSequence(e) => write!(f, "Invalid escaped sequence: {}", e),
+        }
     }
 }
 
@@ -186,13 +201,21 @@ impl YTApi {
             })?;
             headers.insert(key.to_owned(), value.to_owned());
         }
-        headers.insert("User-Agent".to_string(), "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0".to_string());
-        headers.insert("Accept".to_string(), "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8".to_string());
+        headers.insert(
+            "User-Agent".to_string(),
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0"
+                .to_string(),
+        );
+        headers.insert(
+            "Accept".to_string(),
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+                .to_string(),
+        );
         headers.insert("Accept-Language".to_string(), "en-US,en;q=0.5".to_string());
-		headers.insert("Accept-Encoding".to_string(), "gzip, deflate".to_string());
+        headers.insert("Accept-Encoding".to_string(), "gzip, deflate".to_string());
         Self::from_headers(&headers).await
     }
-    pub async fn search(&self, search: &str) -> Result<Vec<Video>, Error> {
+    pub async fn search(&self, search: &str) -> Result<(Vec<Video>, Vec<Playlist>), Error> {
         let k = extract_json_search(
             &self
                 .client
@@ -204,7 +227,13 @@ impl YTApi {
                 .await
                 .map_err(Error::Reqwest)?,
         )?;
-        from_json(&k, get_video)
+
+        std::fs::write("search.json", &k).map_err(Error::Io)?;
+        let json = serde_json::from_str::<serde_json::Value>(&k).map_err(Error::SerdeJson)?;
+        Ok((
+            from_json(&json, get_video)?,
+            from_json(&json, get_playlist_search)?,
+        ))
     }
     pub fn playlists(&self) -> &Vec<Playlist> {
         &self.playlists
@@ -253,6 +282,6 @@ impl YTApi {
                 .await
                 .map_err(Error::Reqwest)?,
         )?;
-        from_json(&playlist, get_video)
+        from_json_string(&playlist, get_video)
     }
 }

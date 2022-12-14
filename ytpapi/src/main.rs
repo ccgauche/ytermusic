@@ -1,4 +1,5 @@
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use ytpapi::YTApi;
 
@@ -8,11 +9,11 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async {
-            let api =
-                YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path())
-                    .await
-                    .unwrap();
-            api.playlists()
+            let api = YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path())
+                .await
+                .unwrap();
+            api.search("Carpenter Brut")
+                .await
                 .iter()
                 .for_each(|playlist| {
                     println!("{:?}", playlist);
