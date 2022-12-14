@@ -8,10 +8,10 @@ version = "0.1.0"
 [dependencies]
 #  --- YT Download ---
 rustube = { git = "https://github.com/Discursif/rustube", version = "0.6.0", features = [
-  "download",
-  "std",
-  "rustls-tls",
-  "callback",
+	"download",
+	"std",
+	"rustls-tls",
+	"callback",
 ], default-features = false }
 ytpapi = { path = "./ytpapi" }
 

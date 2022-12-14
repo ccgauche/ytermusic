@@ -3,10 +3,10 @@ use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{panic, path::PathBuf, str::FromStr, sync::Arc};
 use systems::player::player_system;
 
-use crate::consts::HEADER_TUTORIAL;
+use crate::{consts::HEADER_TUTORIAL, systems::logger::log_};
 
 mod config;
 mod consts;
@@ -28,7 +28,14 @@ use mimalloc::MiMalloc;
 static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() {
+    panic::set_hook(Box::new(|e| {
+        println!("{e}");
+        log_(e.to_string());
+    }));
+    app_start().await.unwrap();
+}
+async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
     STARTUP_TIME.log("Init");
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();

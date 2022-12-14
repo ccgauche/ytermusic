@@ -242,33 +242,36 @@ pub fn split_y_start(f: Rect, start_size: u16) -> [Rect; 2] {
     rectlistvol.height = start_size;
     let mut rectprogress = f;
     rectprogress.y += start_size;
-    rectprogress.height -= start_size;
+    rectprogress.height = rectprogress.height.saturating_sub(start_size);
     [rectlistvol, rectprogress]
 }
 pub fn split_y(f: Rect, end_size: u16) -> [Rect; 2] {
     let mut rectlistvol = f;
-    rectlistvol.height -= end_size;
+    rectlistvol.height = rectlistvol.height.saturating_sub(end_size);
     let mut rectprogress = f;
-    rectprogress.y += rectprogress.height - end_size;
+    rectprogress.y += rectprogress.height.saturating_sub(end_size);
     rectprogress.height = end_size;
     [rectlistvol, rectprogress]
 }
 pub fn split_x(f: Rect, end_size: u16) -> [Rect; 2] {
     let mut rectlistvol = f;
-    rectlistvol.width -= end_size;
+    rectlistvol.width = rectlistvol.width.saturating_sub(end_size);
     let mut rectprogress = f;
-    rectprogress.x += rectprogress.width - end_size;
+    rectprogress.x += rectprogress.width.saturating_sub(end_size);
     rectprogress.width = end_size;
     [rectlistvol, rectprogress]
 }
 
 pub fn rect_contains(rect: &Rect, x: u16, y: u16, margin: u16) -> bool {
     rect.x + margin <= x
-        && x <= rect.x + rect.width - margin
+        && x <= rect.x + rect.width.saturating_sub(margin)
         && rect.y + margin <= y
-        && y <= rect.y + rect.height - margin
+        && y <= rect.y + rect.height.saturating_sub(margin)
 }
 
 pub fn relative_pos(rect: &Rect, x: u16, y: u16, margin: u16) -> (u16, u16) {
-    (x - rect.x - margin, y - rect.y - margin)
+    (
+        x.saturating_sub(rect.x + margin),
+        y.saturating_sub(rect.y + margin),
+    )
 }
