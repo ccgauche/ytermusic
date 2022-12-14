@@ -3,9 +3,9 @@ pub mod item_list;
 pub mod list_selector;
 pub mod music_player;
 pub mod playlist;
+pub mod playlist_view;
 pub mod search;
 pub mod vertical_gauge;
-//pub mod playlist_view;
 
 use std::{
     io::{self, Stdout},
@@ -28,6 +28,8 @@ use crate::{structures::sound_action::SoundAction, systems::player::PlayerState}
 
 use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};
 
+use crate::term::playlist_view::PlaylistView;
+
 // A trait to handle the different screens
 pub trait Screen {
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
@@ -49,6 +51,7 @@ pub enum EventResponse {
 pub enum ManagerMessage {
     Error(String, Box<Option<ManagerMessage>>),
     PassTo(Screens, Box<ManagerMessage>),
+    Inspect(String, Vec<Video>),
     ChangeState(Screens),
     RestartPlayer,
     Quit,
@@ -72,6 +75,7 @@ pub enum Screens {
     Playlist = 0x1,
     Search = 0x2,
     DeviceLost = 0x3,
+    PlaylistViewer = 0x4,
 }
 
 // The screen manager that handles the different screens
@@ -81,6 +85,7 @@ pub struct Manager {
     search: Search,
     device_lost: DeviceLost,
     current_screen: Screens,
+    playlist_viewer: PlaylistView,
 }
 
 impl Manager {
@@ -90,6 +95,11 @@ impl Manager {
             chooser: Chooser {
                 action_sender: action_sender.clone(),
                 item_list: ListItem::new(" Choose a playlist ".to_owned()),
+            },
+            playlist_viewer: PlaylistView {
+                sender: action_sender.clone(),
+                items: ListItem::new(" Playlist ".to_owned()),
+                videos: Vec::new(),
             },
             search: Search::new(action_sender).await,
             current_screen: Screens::Playlist,
@@ -105,6 +115,7 @@ impl Manager {
             Screens::Playlist => &mut self.chooser,
             Screens::Search => &mut self.search,
             Screens::DeviceLost => &mut self.device_lost,
+            Screens::PlaylistViewer => &mut self.playlist_viewer,
         }
     }
     pub fn set_current_screen(&mut self, screen: Screens) {

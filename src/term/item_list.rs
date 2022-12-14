@@ -129,6 +129,10 @@ impl<Action: Clone> ListItem<Action> {
     pub fn add_element(&mut self, element: (String, Action)) {
         self.list.push(element);
     }
+
+    pub fn set_title(&mut self, a: String) {
+        self.title = a;
+    }
 }
 
 impl<Action: ListItemAction + Clone> Widget for &ListItem<Action> {

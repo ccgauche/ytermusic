@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
@@ -10,8 +12,8 @@ use crate::{
 };
 
 use super::{
-    rect_contains, relative_pos, split_x, split_y, vertical_gauge::VerticalGauge, EventResponse,
-    ManagerMessage, Screen, Screens,
+    playlist::PLAYER_RUNNING, rect_contains, relative_pos, split_x, split_y,
+    vertical_gauge::VerticalGauge, EventResponse, ManagerMessage, Screen, Screens,
 };
 
 impl Screen for PlayerState {
@@ -154,6 +156,7 @@ impl Screen for PlayerState {
     }
 
     fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+        PLAYER_RUNNING.store(self.current.is_some(), Ordering::SeqCst);
         self.update();
         let [top_rect, progress_rect] = split_y(f.size(), 3);
         let [list_rect, volume_rect] = split_x(top_rect, 10);

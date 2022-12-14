@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 
 use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
 use flume::Sender;
@@ -87,6 +87,11 @@ impl Screen for Chooser {
     ) -> EventResponse {
         if let Some(ChooserAction::Play(a)) = self.item_list.on_mouse_press(mouse_event, frame_data)
         {
+            if PLAYER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                return EventResponse::Message(vec![
+                    ManagerMessage::Inspect(a.name, a.videos).pass_to(Screens::PlaylistViewer)
+                ]);
+            }
             self.play(&a);
             EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)])
         } else {
@@ -96,6 +101,11 @@ impl Screen for Chooser {
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         if let Some(ChooserAction::Play(a)) = self.item_list.on_key_press(key.clone()).cloned() {
+            if PLAYER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+                return EventResponse::Message(vec![
+                    ManagerMessage::Inspect(a.name, a.videos).pass_to(Screens::PlaylistViewer)
+                ]);
+            }
             self.play(&a);
             return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
         }
@@ -126,6 +136,8 @@ impl Screen for Chooser {
         EventResponse::None
     }
 }
+pub static PLAYER_RUNNING: AtomicBool = AtomicBool::new(false);
+
 impl Chooser {
     fn play(&mut self, a: &PlayListEntry) {
         if a.name != "Local musics" {
