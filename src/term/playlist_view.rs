@@ -62,7 +62,7 @@ impl Screen for PlaylistView {
             return EventResponse::Message(vec![ManagerMessage::ChangeState(Screens::MusicPlayer)]);
         }
         match key.code {
-            KeyCode::Esc => ManagerMessage::ChangeState(Screens::MusicPlayer).event(),
+            KeyCode::Esc => ManagerMessage::ChangeState(Screens::Playlist).event(),
             _ => EventResponse::None,
         }
     }
