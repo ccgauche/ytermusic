@@ -119,6 +119,44 @@ pub fn get_playlist_search(value: &Value) -> Option<Playlist> {
     })
 }
 
+pub fn extract_playlist_info(value: &Value) -> Option<(String, String)> {
+    let header = value.get("header")?.get("musicDetailHeaderRenderer")?;
+    let title = get_text(header.get("title")?, false, false)?;
+    let subtitles = header
+        .get("subtitle")?
+        .get("runs")?
+        .as_array()?
+        .iter()
+        .flat_map(|x| get_text(x, false, false))
+        .filter(|x| x != " • ")
+        .collect::<Vec<String>>();
+    Some((title, subtitles.get(1)?.clone()))
+}
+
+pub fn get_video_from_album(value: &Value) -> Option<Video> {
+    let video_id = value
+        .get("playlistItemData")
+        .and_then(|x| x.get("videoId"))
+        .and_then(Value::as_str)?;
+    let title: Vec<String> = value
+        .get("flexColumns")?
+        .as_array()?
+        .iter()
+        .flat_map(|x| {
+            x.get("musicResponsiveListItemFlexColumnRenderer")
+                .and_then(|x| x.get("text"))
+                .and_then(|x| get_text(x, false, false))
+        })
+        .collect();
+    Some(Video {
+        title: title.get(0)?.clone(),
+        author: String::new(),
+        album: String::new(),
+        video_id: video_id.to_string(),
+        duration: String::new(),
+    })
+}
+
 /// Tries to extract the text from a json value.
 /// text_clean: Weather to include singleton text.
 /// dot: Weather to use the dotted text instead of the space

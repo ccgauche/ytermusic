@@ -12,7 +12,10 @@ use reqwest::{
 
 use string_utils::StringUtils;
 
-use structs::{from_json, from_json_string, get_playlist, get_playlist_search, get_video};
+use structs::{
+    extract_playlist_info, from_json, from_json_string, get_playlist, get_playlist_search,
+    get_video, get_video_from_album,
+};
 pub use structs::{Playlist, Video};
 
 const YTM_DOMAIN: &str = "https://music.youtube.com";
@@ -227,7 +230,6 @@ impl YTApi {
                 .await
                 .map_err(Error::Reqwest)?,
         )?;
-
         let json = serde_json::from_str::<serde_json::Value>(&k).map_err(Error::SerdeJson)?;
         Ok((
             from_json(&json, get_video)?,
@@ -281,6 +283,24 @@ impl YTApi {
                 .await
                 .map_err(Error::Reqwest)?,
         )?;
-        from_json_string(&playlist, get_video)
+        let json =
+            serde_json::from_str::<serde_json::Value>(&playlist).map_err(Error::SerdeJson)?;
+        let mut videos = from_json(&json, get_video)?;
+        let info = extract_playlist_info(&json);
+        for mut video in from_json(&json, get_video_from_album)? {
+            if videos.iter().any(|x| x.video_id == video.video_id) {
+                continue;
+            }
+            if let Some((title, artist)) = info.as_ref() {
+                if video.album.is_empty() {
+                    video.album = title.to_string();
+                }
+                if video.author.is_empty() {
+                    video.author = artist.to_string();
+                }
+            }
+            videos.push(video);
+        }
+        Ok(videos)
     }
 }
