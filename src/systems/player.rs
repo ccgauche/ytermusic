@@ -124,7 +124,7 @@ impl PlayerState {
             self.handle_stream_errors();
             self.update_controls();
             // If the current song is finished, we play the next one but if the next one has failed to download, we skip it
-            if self
+            while self
                 .queue
                 .front()
                 .map(|x| {
@@ -132,6 +132,9 @@ impl PlayerState {
                 })
                 .unwrap_or(false)
             {
+                if let Some(e) = self.current.take() {
+                    self.previous.push(e);
+                }
                 self.previous.push(self.queue.pop_front().unwrap());
             }
 
