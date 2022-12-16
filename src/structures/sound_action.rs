@@ -3,8 +3,10 @@ use ytpapi::Video;
 use crate::{
     errors::{handle_error, handle_error_option},
     systems::{download, player::PlayerState},
+    DATABASE,
 };
 
+use super::app_status::MusicDownloadStatus;
 /// Actions that can be sent to the player from other services
 #[derive(Debug, Clone)]
 pub enum SoundAction {
@@ -17,9 +19,10 @@ pub enum SoundAction {
     Forward,
     Backward,
     Next(usize),
-    PlayVideo(Video),
-    PlayVideoUnary(Video),
+    AddVideosToQueue(Vec<Video>),
+    AddVideoUnary(Video),
     ReplaceQueue(Vec<Video>),
+    VideoStatusUpdate(String, MusicDownloadStatus),
 }
 
 impl SoundAction {
@@ -32,6 +35,7 @@ impl SoundAction {
                 player.queue.clear();
                 player.previous.clear();
                 player.current = None;
+                player.music_status.clear();
                 handle_error(
                     &player.updater,
                     "sink stop",
@@ -54,8 +58,22 @@ impl SoundAction {
                     player.previous.push(player.queue.pop_front().unwrap());
                 }
             }
-            Self::PlayVideo(video) => {
-                player.queue.push_back(video);
+            Self::VideoStatusUpdate(video, status) => {
+                player.music_status.insert(video, status);
+            }
+            Self::AddVideosToQueue(video) => {
+                let db = DATABASE.read().unwrap();
+                for v in video {
+                    player.music_status.insert(
+                        v.video_id.clone(),
+                        if db.iter().any(|e| e.video_id == v.video_id) {
+                            MusicDownloadStatus::Downloaded
+                        } else {
+                            MusicDownloadStatus::NotDownloaded
+                        },
+                    );
+                    player.queue.push_back(v)
+                }
             }
             Self::Previous(a) => {
                 for _ in 0..a {
@@ -77,18 +95,29 @@ impl SoundAction {
                     handle_error_option(&player.updater, "update player", player.sink.update())
                         .unwrap();
                 if let Some(e) = player.current.clone() {
-                    Self::PlayVideo(e).apply_sound_action(player);
+                    Self::AddVideoUnary(e).apply_sound_action(player);
                 }
             }
-            Self::PlayVideoUnary(video) => {
+            Self::AddVideoUnary(video) => {
+                player.music_status.insert(
+                    video.video_id.clone(),
+                    if DATABASE
+                        .read()
+                        .unwrap()
+                        .iter()
+                        .any(|e| e.video_id == video.video_id)
+                    {
+                        MusicDownloadStatus::Downloaded
+                    } else {
+                        MusicDownloadStatus::NotDownloaded
+                    },
+                );
                 player.queue.push_front(video);
             }
             Self::ReplaceQueue(videos) => {
                 player.queue.clear();
                 download::clean(player.soundaction_sender.clone());
-                for video in videos.into_iter() {
-                    download::add(video.clone(), &player.soundaction_sender);
-                }
+                Self::AddVideosToQueue(videos).apply_sound_action(player);
                 Self::Next(1).apply_sound_action(player);
             }
         }

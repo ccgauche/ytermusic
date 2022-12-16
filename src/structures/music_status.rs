@@ -1,20 +1,12 @@
-#[derive(PartialEq, Debug, Clone)]
-pub enum MusicStatus {
-    Playing,
-    Paused,
-    Previous,
-    Next,
-    Downloading,
-}
+use tui::style::{Color, Style};
 
-impl MusicStatus {
-    pub fn character(&self) -> char {
-        match self {
-            MusicStatus::Playing => '▶',
-            MusicStatus::Paused => '⏸',
-            MusicStatus::Previous => ' ',
-            MusicStatus::Next => ' ',
-            MusicStatus::Downloading => '⭳',
-        }
-    }
+use super::app_status::MusicDownloadStatus;
+
+/* #[derive(PartialEq, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum MusicStatus {
+    Playing(MusicDownloadStatus),
+    Paused(MusicDownloadStatus),
+    Other(MusicDownloadStatus),
 }
+ */

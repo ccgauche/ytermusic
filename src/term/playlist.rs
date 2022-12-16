@@ -149,9 +149,9 @@ impl Chooser {
         }
         self.action_sender.send(SoundAction::Cleanup).unwrap();
         download::clean(self.action_sender.clone());
-        for video in a.videos.iter() {
-            download::add(video.clone(), &self.action_sender);
-        }
+        self.action_sender
+            .send(SoundAction::AddVideosToQueue(a.videos.clone()))
+            .unwrap();
     }
     fn add_element(&mut self, element: (String, Vec<Video>)) {
         let entry = PlayListEntry::new(element.0, element.1);

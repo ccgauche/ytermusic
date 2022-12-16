@@ -31,14 +31,14 @@ impl Screen for PlayerState {
                     .list_selector
                     .click_on(y as usize, list_rect.height as usize)
                 {
-                    None | Some((_, PlayerAction::Downloading)) => (),
-                    Some((_, PlayerAction::Current(_))) => {
+                    None => {}
+                    Some((_, PlayerAction::Current(..))) => {
                         SoundAction::PlayPause.apply_sound_action(self);
                     }
-                    Some((_, PlayerAction::Next(a))) => {
+                    Some((_, PlayerAction::Next(_, a))) => {
                         SoundAction::Next(*a).apply_sound_action(self);
                     }
-                    Some((_, PlayerAction::Previous(a))) => {
+                    Some((_, PlayerAction::Previous(_, a))) => {
                         SoundAction::Previous(*a).apply_sound_action(self);
                     }
                 }
@@ -115,16 +115,15 @@ impl Screen for PlayerState {
             KeyCode::Enter => {
                 if let Some(e) = self.list_selector.play() {
                     match e {
-                        PlayerAction::Current(_) => {
+                        PlayerAction::Current(..) => {
                             SoundAction::PlayPause.apply_sound_action(self);
                         }
-                        PlayerAction::Next(a) => {
+                        PlayerAction::Next(_, a) => {
                             SoundAction::Next(*a).apply_sound_action(self);
                         }
-                        PlayerAction::Previous(a) => {
+                        PlayerAction::Previous(_, a) => {
                             SoundAction::Previous(*a).apply_sound_action(self);
                         }
-                        PlayerAction::Downloading => (),
                     }
                 }
                 EventResponse::None
@@ -205,7 +204,13 @@ impl Screen for PlayerState {
         );
         // Create a List from all list items and highlight the currently selected one
         self.list_selector.update(
-            generate_music(&self.queue, &self.previous, &self.current, &self.sink),
+            generate_music(
+                &self.queue,
+                &self.music_status,
+                &self.previous,
+                &self.current,
+                &self.sink,
+            ),
             self.previous.len(),
         );
         f.render_widget(&self.list_selector, list_rect);

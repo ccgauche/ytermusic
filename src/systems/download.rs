@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    sync::{atomic::AtomicBool, Arc, Mutex},
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -9,21 +9,13 @@ use once_cell::sync::Lazy;
 use tokio::{task::JoinHandle, time::sleep};
 use ytpapi::Video;
 
-use crate::{
-    consts::CACHE_DIR, run_service, structures::sound_action::SoundAction,
-    tasks::download::start_download,
-};
+use crate::{run_service, structures::sound_action::SoundAction, tasks::download::start_download};
 
-pub static IN_DOWNLOAD: Lazy<Mutex<Vec<(ytpapi::Video, usize)>>> =
-    Lazy::new(|| Mutex::new(Vec::new()));
 pub static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
-pub static DOWNLOAD_MORE: AtomicBool = AtomicBool::new(true);
-// TODO Maybe switch to a channel
-static DOWNLOAD_QUEUE: Lazy<Mutex<VecDeque<ytpapi::Video>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
+pub static DOWNLOAD_LIST: Lazy<Mutex<VecDeque<Video>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
 fn take() -> Option<Video> {
-    DOWNLOAD_QUEUE.lock().unwrap().pop_front()
+    DOWNLOAD_LIST.lock().unwrap().pop_front()
 }
 
 /// A worker of this system that downloads pending songs
@@ -36,9 +28,6 @@ fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
             } else {
                 k = false;
             }
-            if !DOWNLOAD_MORE.load(std::sync::atomic::Ordering::SeqCst) {
-                continue;
-            }
             if let Some(id) = take() {
                 k = k || start_download(id, &s).await;
             }
@@ -48,7 +37,7 @@ fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
 
 /// Destroy all the worker and task getting processed and starts back the system
 pub fn clean(sender: Arc<Sender<SoundAction>>) {
-    DOWNLOAD_QUEUE.lock().unwrap().clear();
+    DOWNLOAD_LIST.lock().unwrap().clear();
     {
         let mut handle = HANDLES.lock().unwrap();
         for i in handle.iter() {
@@ -56,39 +45,20 @@ pub fn clean(sender: Arc<Sender<SoundAction>>) {
         }
         handle.clear();
     }
-    IN_DOWNLOAD.lock().unwrap().clear();
-    DOWNLOAD_MORE.store(true, std::sync::atomic::Ordering::SeqCst);
     spawn_system(sender);
 }
 
 /// Append a video to the download queue to be processed by the system
-pub fn add(video: Video, s: &Sender<SoundAction>) {
+/* pub fn add(video: Video, s: &Sender<SoundAction>) {
     let download_path_json = CACHE_DIR.join(format!("downloads/{}.json", &video.video_id));
     if download_path_json.exists() {
-        s.send(SoundAction::PlayVideo(video)).unwrap();
+        s.send(SoundAction::Up(video)).unwrap();
     } else {
         DOWNLOAD_QUEUE.lock().unwrap().push_back(video);
     }
-}
+} */
 
 const DOWNLOADER_COUNT: usize = 4;
-
-pub fn add_to_in_download(video: Video) {
-    IN_DOWNLOAD.lock().unwrap().push((video, 0));
-}
-pub fn update_in_download(id: &str, percentage: usize) {
-    IN_DOWNLOAD.lock().unwrap().iter_mut().for_each(|(v, p)| {
-        if v.video_id == id {
-            *p = percentage;
-        }
-    });
-}
-pub fn remove_from_in_download(video: &Video) {
-    IN_DOWNLOAD
-        .lock()
-        .unwrap()
-        .retain(|x| x.0.video_id != video.video_id);
-}
 
 pub fn spawn_system(s: Arc<Sender<SoundAction>>) {
     for _ in 0..DOWNLOADER_COUNT {

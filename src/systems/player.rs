@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     sync::{atomic::Ordering, Arc},
 };
 
@@ -13,7 +13,7 @@ use crate::{
     consts::{CACHE_DIR, CONFIG},
     database,
     errors::{handle_error, handle_error_option},
-    structures::{media::Media, music_status::MusicStatus, sound_action::SoundAction},
+    structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
     term::{
         list_selector::{ListSelector, ListSelectorAction},
         playlist::PLAYER_RUNNING,
@@ -22,38 +22,30 @@ use crate::{
     utils::invert,
 };
 
-use super::download::IN_DOWNLOAD;
+use super::download::DOWNLOAD_LIST;
 
 pub enum PlayerAction {
-    Current(bool), // Is paused
-    Next(usize),
-    Previous(usize),
-    Downloading,
+    Current(MusicDownloadStatus, bool), // Is paused
+    Next(MusicDownloadStatus, usize),
+    Previous(MusicDownloadStatus, usize),
 }
 
 impl ListSelectorAction for PlayerAction {
     fn render_style(&self, _: &str, _: bool, scrolling_on: bool) -> Style {
         match self {
-            Self::Current(paused) => {
-                if *paused {
-                    CONFIG.player.text_paused_style
+            Self::Current(e, paused) => e.style(Some(!paused)),
+            Self::Next(e, _) => {
+                if scrolling_on {
+                    invert(e.style(None))
                 } else {
-                    CONFIG.player.text_playing_style
+                    e.style(None)
                 }
             }
-            Self::Downloading => CONFIG.player.text_downloading_style,
-            Self::Next(_) => {
+            Self::Previous(e, _) => {
                 if scrolling_on {
-                    invert(CONFIG.player.text_next_style)
+                    invert(e.style(None))
                 } else {
-                    CONFIG.player.text_next_style
-                }
-            }
-            Self::Previous(_) => {
-                if scrolling_on {
-                    invert(CONFIG.player.text_previous_style)
-                } else {
-                    CONFIG.player.text_previous_style
+                    e.style(None)
                 }
             }
         }
@@ -65,6 +57,7 @@ pub struct PlayerState {
     pub queue: VecDeque<Video>,
     pub current: Option<Video>,
     pub previous: Vec<Video>,
+    pub music_status: HashMap<String, MusicDownloadStatus>,
     pub list_selector: ListSelector<PlayerAction>,
     pub controls: Media,
     pub sink: Player,
@@ -97,6 +90,7 @@ impl PlayerState {
             controls: Media::new(updater.clone(), soundaction_sender.clone()),
             soundaction_receiver,
             list_selector: ListSelector::default(),
+            music_status: HashMap::new(),
             updater,
             stream_error_receiver,
             soundaction_sender,
@@ -156,6 +150,22 @@ impl PlayerState {
                 self.previous.push(e);
             }
         }
+        let mut to_download = self
+            .queue
+            .iter()
+            .chain(self.previous.iter().rev())
+            .filter(|x| {
+                self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::NotDownloaded)
+            })
+            .take(12)
+            .cloned()
+            .collect::<VecDeque<_>>();
+        if let Some(e) = self.current.as_ref() {
+            if self.music_status.get(&e.video_id) == Some(&MusicDownloadStatus::NotDownloaded) {
+                to_download.push_front(e.clone());
+            }
+        }
+        *DOWNLOAD_LIST.lock().unwrap() = to_download;
     }
 
     fn handle_stream_errors(&self) {
@@ -183,55 +193,43 @@ pub fn player_system(
 
 pub fn generate_music<'a>(
     queue: &'a VecDeque<Video>,
+    music_status: &'a HashMap<String, MusicDownloadStatus>,
     previous: &'a [Video],
     current: &'a Option<Video>,
     sink: &'a Player,
 ) -> Vec<(String, PlayerAction)> {
     let mut music = Vec::with_capacity(10 + queue.len() + previous.len());
 
-    music.extend(IN_DOWNLOAD.lock().unwrap().iter().map(|e| {
-        (
-            format!(
-                " {} [{:02}%] {} | {}",
-                MusicStatus::Downloading.character(),
-                e.1.clamp(1, 99),
-                e.0.author,
-                e.0.title,
-            ),
-            PlayerAction::Downloading,
-        )
-    }));
     music.extend(previous.iter().rev().enumerate().rev().map(|(i, e)| {
+        let status = music_status
+            .get(&e.video_id)
+            .copied()
+            .unwrap_or(MusicDownloadStatus::Downloaded);
         (
-            format!(
-                " {} {} | {}",
-                MusicStatus::Previous.character(),
-                e.author,
-                e.title
-            ),
-            PlayerAction::Previous(i + 1),
+            format!(" {} {} | {}", status.character(None), e.author, e.title),
+            PlayerAction::Previous(status, i + 1),
         )
     }));
     if let Some(e) = current {
-        let status = if sink.is_paused() {
-            MusicStatus::Paused.character()
-        } else {
-            MusicStatus::Playing.character()
-        };
+        let mstatus = music_status
+            .get(&e.video_id)
+            .copied()
+            .unwrap_or(MusicDownloadStatus::Downloaded);
+        let status = mstatus.character(Some(!sink.is_paused()));
+
         music.push((
             format!(" {status} {} | {}", e.author, e.title),
-            PlayerAction::Current(sink.is_paused()),
+            PlayerAction::Current(mstatus, sink.is_paused()),
         ));
     }
     music.extend(queue.iter().enumerate().map(|(i, e)| {
+        let status = music_status
+            .get(&e.video_id)
+            .copied()
+            .unwrap_or(MusicDownloadStatus::Downloaded);
         (
-            format!(
-                " {} {} | {}",
-                MusicStatus::Next.character(),
-                e.author,
-                e.title
-            ),
-            PlayerAction::Next(i + 1),
+            format!(" {} {} | {}", status.character(None), e.author, e.title),
+            PlayerAction::Next(status, i + 1),
         )
     }));
     music
