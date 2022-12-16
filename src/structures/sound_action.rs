@@ -3,6 +3,7 @@ use ytpapi::Video;
 use crate::{
     errors::{handle_error, handle_error_option},
     systems::{download, player::PlayerState},
+    tasks::download::IN_DOWNLOAD,
     DATABASE,
 };
 
@@ -26,6 +27,22 @@ pub enum SoundAction {
 }
 
 impl SoundAction {
+    fn insert(player: &mut PlayerState, video: String, status: MusicDownloadStatus) {
+        if matches!(
+            player.music_status.get(&video),
+            Some(&MusicDownloadStatus::DownloadFailed)
+        ) {
+            IN_DOWNLOAD.lock().unwrap().remove(&video);
+        }
+        if matches!(
+            player.music_status.get(&video),
+            Some(&MusicDownloadStatus::Downloading(_) | &MusicDownloadStatus::Downloaded)
+        ) && status == MusicDownloadStatus::NotDownloaded
+        {
+            return;
+        }
+        player.music_status.insert(video, status);
+    }
     pub fn apply_sound_action(self, player: &mut PlayerState) {
         match self {
             Self::Backward => player.sink.seek_bw(),
@@ -64,7 +81,8 @@ impl SoundAction {
             Self::AddVideosToQueue(video) => {
                 let db = DATABASE.read().unwrap();
                 for v in video {
-                    player.music_status.insert(
+                    Self::insert(
+                        player,
                         v.video_id.clone(),
                         if db.iter().any(|e| e.video_id == v.video_id) {
                             MusicDownloadStatus::Downloaded
@@ -99,7 +117,8 @@ impl SoundAction {
                 }
             }
             Self::AddVideoUnary(video) => {
-                player.music_status.insert(
+                Self::insert(
+                    player,
                     video.video_id.clone(),
                     if DATABASE
                         .read()
