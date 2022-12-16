@@ -82,7 +82,7 @@ impl Screen for PlayerState {
     fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> EventResponse {
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
-            KeyCode::Char('f') => return ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
+            KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
             KeyCode::Char('s') => {
                 let mut musics = Vec::with_capacity(self.previous.len() + self.queue.len() + 1);
                 musics.append(&mut self.previous);

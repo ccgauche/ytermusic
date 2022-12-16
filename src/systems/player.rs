@@ -110,44 +110,78 @@ impl PlayerState {
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             e.apply_sound_action(self);
         }
+        if self
+            .current
+            .as_ref()
+            .map(|x| {
+                self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
+            })
+            .unwrap_or(false)
+        {
+            SoundAction::Next(1).apply_sound_action(self);
+        }
         if self.sink.is_finished() {
             self.handle_stream_errors();
             self.update_controls();
-            if let Some(video) = self.queue.pop_front() {
-                let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
-                if let Some(e) = self.current.replace(video.clone()) {
+            // If the current song is finished, we play the next one but if the next one has failed to download, we skip it
+            if self
+                .queue
+                .front()
+                .map(|x| {
+                    self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
+                })
+                .unwrap_or(false)
+            {
+                self.previous.push(self.queue.pop_front().unwrap());
+            }
+
+            if !self
+                .queue
+                .front()
+                .map(|x| {
+                    self.music_status.get(&x.video_id) != Some(&MusicDownloadStatus::Downloaded)
+                })
+                .unwrap_or(true)
+            {
+                if let Some(video) = self.queue.pop_front() {
+                    let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
+                    if let Some(e) = self.current.replace(video.clone()) {
+                        self.previous.push(e);
+                    }
+                    if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
+                        if matches!(e, PlayError::DecoderError(_)) {
+                            // Cleaning the file
+
+                            database::remove_video(&video);
+                            handle_error(
+                                &self.updater,
+                                "invalid cleaning MP4",
+                                std::fs::remove_file(k),
+                            );
+                            handle_error(
+                                &self.updater,
+                                "invalid cleaning JSON",
+                                std::fs::remove_file(
+                                    CACHE_DIR.join(format!("downloads/{}.json", &video.video_id)),
+                                ),
+                            );
+                            self.current = None;
+                            crate::write();
+                        } else {
+                            self.updater
+                                .send(ManagerMessage::PassTo(
+                                    Screens::DeviceLost,
+                                    Box::new(ManagerMessage::Error(
+                                        format!("{}", e),
+                                        Box::new(None),
+                                    )),
+                                ))
+                                .unwrap();
+                        }
+                    }
+                } else if let Some(e) = self.current.take() {
                     self.previous.push(e);
                 }
-                if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
-                    if matches!(e, PlayError::DecoderError(_)) {
-                        // Cleaning the file
-
-                        database::remove_video(&video);
-                        handle_error(
-                            &self.updater,
-                            "invalid cleaning MP4",
-                            std::fs::remove_file(k),
-                        );
-                        handle_error(
-                            &self.updater,
-                            "invalid cleaning JSON",
-                            std::fs::remove_file(
-                                CACHE_DIR.join(format!("downloads/{}.json", &video.video_id)),
-                            ),
-                        );
-                        self.current = None;
-                        crate::write();
-                    } else {
-                        self.updater
-                            .send(ManagerMessage::PassTo(
-                                Screens::DeviceLost,
-                                Box::new(ManagerMessage::Error(format!("{}", e), Box::new(None))),
-                            ))
-                            .unwrap();
-                    }
-                }
-            } else if let Some(e) = self.current.take() {
-                self.previous.push(e);
             }
         }
         let mut to_download = self

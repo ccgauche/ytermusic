@@ -9,7 +9,11 @@ use once_cell::sync::Lazy;
 use tokio::{task::JoinHandle, time::sleep};
 use ytpapi::Video;
 
-use crate::{run_service, structures::sound_action::SoundAction, tasks::download::start_download};
+use crate::{
+    run_service,
+    structures::sound_action::SoundAction,
+    tasks::download::{start_download, IN_DOWNLOAD},
+};
 
 pub static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
 pub static DOWNLOAD_LIST: Lazy<Mutex<VecDeque<Video>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
@@ -38,6 +42,8 @@ fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
 /// Destroy all the worker and task getting processed and starts back the system
 pub fn clean(sender: Arc<Sender<SoundAction>>) {
     DOWNLOAD_LIST.lock().unwrap().clear();
+
+    IN_DOWNLOAD.lock().unwrap().clear();
     {
         let mut handle = HANDLES.lock().unwrap();
         for i in handle.iter() {

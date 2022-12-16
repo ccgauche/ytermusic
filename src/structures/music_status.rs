@@ -1,7 +1,3 @@
-use tui::style::{Color, Style};
-
-use super::app_status::MusicDownloadStatus;
-
 /* #[derive(PartialEq, Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum MusicStatus {

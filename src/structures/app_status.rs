@@ -14,6 +14,7 @@ pub enum MusicDownloadStatus {
     NotDownloaded,
     Downloaded,
     Downloading(usize),
+    DownloadFailed,
 }
 
 impl MusicDownloadStatus {
@@ -32,6 +33,7 @@ impl MusicDownloadStatus {
             }
             Self::Downloaded => ' ',
             Self::Downloading(_) => '⭳',
+            Self::DownloadFailed => '⚠',
         }
     }
     pub fn style(&self, playing: Option<bool>) -> Style {
@@ -49,8 +51,9 @@ impl MusicDownloadStatus {
                 }
             }
             Self::Downloading(_) => Style::default().fg(Color::Blue).bg(Color::Black),
+            Self::DownloadFailed => Style::default().fg(Color::Red).bg(Color::Black),
         };
-        if let Some(e) = playing {
+        if playing.is_some() {
             k.add_modifier(Modifier::BOLD)
         } else {
             k

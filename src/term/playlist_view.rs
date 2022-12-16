@@ -64,9 +64,7 @@ impl Screen for PlaylistView {
         }
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
-            KeyCode::Char('f') => {
-                return ManagerMessage::SearchFrom(Screens::PlaylistViewer).event()
-            }
+            KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::PlaylistViewer).event(),
             _ => EventResponse::None,
         }
     }

@@ -69,9 +69,10 @@ impl Screen for Search {
             .unwrap()
             .on_mouse_press(mouse_event, &splitted[1])
         {
-            return self.execute_status(e.clone(), mouse_event.modifiers);
+            self.execute_status(e, mouse_event.modifiers)
+        } else {
+            EventResponse::None
         }
-        EventResponse::None
     }
 
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
@@ -226,6 +227,9 @@ impl Search {
     pub fn execute_status(&self, e: Status, modifiers: KeyModifiers) -> EventResponse {
         match e {
             Status::Local(e) | Status::Unknown(e) => {
+                self.action_sender
+                    .send(SoundAction::AddVideoUnary(e.clone()))
+                    .unwrap();
                 tasks::download::start_task_unary(self.action_sender.clone(), e);
                 if modifiers.contains(KeyModifiers::CONTROL) {
                     EventResponse::None

@@ -1,6 +1,10 @@
-use std::sync::Arc;
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
 
 use flume::Sender;
+use once_cell::sync::Lazy;
 use rustube::{Callback, Id};
 use ytpapi::Video;
 
@@ -45,7 +49,16 @@ async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), Er
     Ok(())
 }
 
+pub static IN_DOWNLOAD: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
 pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
+    {
+        let mut downloads = IN_DOWNLOAD.lock().unwrap();
+        if downloads.contains(&song.video_id) {
+            return false;
+        }
+        downloads.insert(song.video_id.clone());
+    }
     s.send(SoundAction::VideoStatusUpdate(
         song.video_id.clone(),
         MusicDownloadStatus::Downloading(1),
@@ -73,6 +86,7 @@ pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
                 MusicDownloadStatus::Downloaded,
             ))
             .unwrap();
+            IN_DOWNLOAD.lock().unwrap().remove(&song.video_id);
             true
         }
         Err(e) => {
@@ -81,7 +95,7 @@ pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
             }
             s.send(SoundAction::VideoStatusUpdate(
                 song.video_id.clone(),
-                MusicDownloadStatus::NotDownloaded,
+                MusicDownloadStatus::DownloadFailed,
             ))
             .unwrap();
             log_(format!("Error downloading {}: {e}", song.video_id));
