@@ -70,7 +70,8 @@ async fn app_start() -> Result<(), Error> {
     }
     if !std::fs::read_to_string("headers.txt")
         .unwrap()
-        .contains("Cookie: ")
+        .to_lowercase()
+        .contains("cookie: ")
     {
         println!("The `headers.txt` file is not configured correctly.");
         println!("{HEADER_TUTORIAL}");
