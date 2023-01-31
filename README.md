@@ -26,6 +26,13 @@ It's aims to be as fast and simple as possible.
   - Restart YterMusic
 - Run `ytermusic.exe`
 
+## Linux
+
+Install the following libraries:
+```
+$ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
+```
+
 ## Screenshots
 
 ![Screenshot 2022-11-23 145422](https://user-images.githubusercontent.com/16625987/203564779-d3ae13f9-b262-41c0-8deb-0a486124cdca.png)
