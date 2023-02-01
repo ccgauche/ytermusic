@@ -72,8 +72,8 @@ impl<Action: Clone> ListItem<Action> {
                     return Some(a);
                 }
             }
-            KeyCode::Char('+') | KeyCode::Up => self.select_up(),
-            KeyCode::Char('-') | KeyCode::Down => self.select_down(),
+            KeyCode::Char('+') | KeyCode::Up | KeyCode::Char('k') => self.select_up(),
+            KeyCode::Char('-') | KeyCode::Down | KeyCode::Char('j') => self.select_down(),
             _ => {}
         }
         None
