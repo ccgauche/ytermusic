@@ -100,15 +100,11 @@ impl Screen for PlayerState {
                 SoundAction::PlayPause.apply_sound_action(self);
                 EventResponse::None
             }
-            KeyCode::Char('+') => {
-                SoundAction::Plus.apply_sound_action(self);
-                EventResponse::None
-            }
-            KeyCode::Up => {
+            KeyCode::Up | KeyCode::Char('k') => {
                 self.list_selector.scroll_up();
                 EventResponse::None
             }
-            KeyCode::Down => {
+            KeyCode::Down | KeyCode::Char('j') => {
                 self.list_selector.scroll_down();
                 EventResponse::None
             }
@@ -128,11 +124,15 @@ impl Screen for PlayerState {
                 }
                 EventResponse::None
             }
+            KeyCode::Char('+') => {
+                SoundAction::Plus.apply_sound_action(self);
+                EventResponse::None
+            }
             KeyCode::Char('-') => {
                 SoundAction::Minus.apply_sound_action(self);
                 EventResponse::None
             }
-            KeyCode::Char('<') | KeyCode::Left => {
+            KeyCode::Char('<') | KeyCode::Left | KeyCode::Char('h') => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     SoundAction::Previous(1).apply_sound_action(self);
                 } else {
@@ -140,7 +140,7 @@ impl Screen for PlayerState {
                 }
                 EventResponse::None
             }
-            KeyCode::Char('>') | KeyCode::Right => {
+            KeyCode::Char('>') | KeyCode::Right | KeyCode::Char('l') => {
                 if key.modifiers.contains(KeyModifiers::CONTROL) {
                     SoundAction::Next(1).apply_sound_action(self);
                 } else {
