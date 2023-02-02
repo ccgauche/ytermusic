@@ -114,7 +114,7 @@ impl Config {
             let project_dirs = get_project_dirs()?;
             let config_path = project_dirs.config_dir().join("config.toml");
             let config_string = std::fs::read_to_string(config_path).ok()?;
-            Some(toml::from_str::<Self>(&config_string).unwrap())
+            toml::from_str::<Self>(&config_string).ok()
         };
         opt().unwrap_or_default()
     }
