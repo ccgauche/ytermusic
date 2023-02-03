@@ -63,7 +63,7 @@ $ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
 - Press `ESC` to exit the current menu
 - Press `CTRL + C` or `CTRL + D` to exit
 
-## Features and upcomming features
+## Features and upcoming features
 
 - [x] Playlist selector
 - [x] Error message display in the TUI
@@ -79,7 +79,7 @@ $ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
 Alpha a0.0.11
 
 - Added scrollable music view
-- Added shuffle functionnality
+- Added shuffle functionality
 - Fixed some crashes while resizing the app
 - Added error messages for invalid headers or cookies
 - Added error messages for expired cookies
