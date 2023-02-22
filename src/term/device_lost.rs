@@ -19,14 +19,14 @@ impl Screen for DeviceLost {
     fn on_key_press(&mut self, key: KeyEvent, _: &Rect) -> EventResponse {
         match key.code {
             KeyCode::Enter | KeyCode::Char(' ') => {
-				if let Some(m) = self.1.take() {
-					EventResponse::Message(vec![m])
-				} else {
-					ManagerMessage::RestartPlayer
-						.pass_to(Screens::MusicPlayer)
-						.event()
-				}
-			},
+                if let Some(m) = self.1.take() {
+                    EventResponse::Message(vec![m])
+                } else {
+                    ManagerMessage::RestartPlayer
+                        .pass_to(Screens::MusicPlayer)
+                        .event()
+                }
+            }
             KeyCode::Esc => ManagerMessage::Quit.event(),
             _ => EventResponse::None,
         }

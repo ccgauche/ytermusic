@@ -7,7 +7,7 @@ use std::{
 use flume::Sender;
 use once_cell::sync::Lazy;
 use tokio::{task::JoinHandle, time::sleep};
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     run_service,
@@ -16,9 +16,10 @@ use crate::{
 };
 
 pub static HANDLES: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(Vec::new()));
-pub static DOWNLOAD_LIST: Lazy<Mutex<VecDeque<Video>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+pub static DOWNLOAD_LIST: Lazy<Mutex<VecDeque<YoutubeMusicVideoRef>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
-fn take() -> Option<Video> {
+fn take() -> Option<YoutubeMusicVideoRef> {
     DOWNLOAD_LIST.lock().unwrap().pop_front()
 }
 

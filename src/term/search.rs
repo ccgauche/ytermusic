@@ -13,8 +13,7 @@ use tui::{
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
-use urlencoding::encode;
-use ytpapi::{Playlist, Video, YTApi};
+use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
     consts::CONFIG, run_service, structures::sound_action::SoundAction, systems::logger::log_,
@@ -32,14 +31,14 @@ pub struct Search {
     pub goto: Screens,
     pub list: Arc<RwLock<ListItem<Status>>>,
     pub search_handle: Option<JoinHandle<()>>,
-    pub api: Option<Arc<ytpapi::YTApi>>,
+    pub api: Option<Arc<YoutubeMusicInstance>>,
     pub action_sender: Arc<Sender<SoundAction>>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
-    Local(Video),
-    Unknown(Video),
-    PlayList(Playlist, Vec<Video>),
+    Local(YoutubeMusicVideoRef),
+    Unknown(YoutubeMusicVideoRef),
+    PlayList(YoutubeMusicPlaylistRef, Vec<YoutubeMusicVideoRef>),
 }
 impl ListItemAction for Status {
     fn render_style(&self, _: &str, selected: bool) -> Style {
@@ -122,8 +121,14 @@ impl Screen for Search {
                 // Sleep to prevent spamming the api
                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 let mut item = Vec::new();
-                match api.search(&encode(&text).replace("%20", "+")).await {
-                    Ok((e, p)) => {
+                match api
+                    .search(&text.replace('\\', "\\\\").replace('\"', "\\\""), 0)
+                    .await
+                {
+                    Ok(SearchResults {
+                        videos: e,
+                        playlists: p,
+                    }) => {
                         for video in e.into_iter() {
                             let id = video.video_id.clone();
                             item.push((
@@ -139,7 +144,7 @@ impl Screen for Search {
                             let api = api.clone();
                             let items = items.clone();
                             run_service(async move {
-                                match api.browse_playlist(&playlist.browse_id).await {
+                                match api.get_playlist(&playlist, 0).await {
                                     Ok(e) => {
                                         if e.is_empty() {
                                             return;
@@ -156,14 +161,14 @@ impl Screen for Search {
                                         ));
                                     }
                                     Err(e) => {
-                                        log_(format!("{:?}", e));
+                                        log_(format!("{e:?}"));
                                     }
                                 };
                             });
                         }
                     }
                     Err(e) => {
-                        log_(format!("{:?}", e));
+                        log_(format!("{e:?}"));
                     }
                 }
                 let mut local = local;
@@ -216,10 +221,12 @@ impl Search {
             ))),
             goto: Screens::MusicPlayer,
             search_handle: None,
-            api: YTApi::from_header_file(PathBuf::from_str("headers.txt").unwrap().as_path())
-                .await
-                .ok()
-                .map(Arc::new),
+            api: YoutubeMusicInstance::from_header_file(
+                PathBuf::from_str("headers.txt").unwrap().as_path(),
+            )
+            .await
+            .ok()
+            .map(Arc::new),
             action_sender,
         }
     }

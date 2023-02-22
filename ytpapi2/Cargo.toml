@@ -1,5 +1,5 @@
 [package]
-name = "ytpapi"
+name = "ytpapi2"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,9 +12,7 @@ reqwest = { version = "0.11.13", features = [
     "cookies",
     "rustls-tls",
 ], default-features = false }
-# sha1 = "0.10.1"
 serde = { version = "1.0.142", features = ["derive"] }
 serde_json = "1.0.83"
 tokio = { version = "1.22.0", features = ["full"] }
 sha1 = "0.10.5"
-hex = "0.4.3"

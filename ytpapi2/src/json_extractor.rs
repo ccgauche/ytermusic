@@ -3,24 +3,14 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::Error;
-
-pub(crate) fn from_json_string<T: PartialEq>(
-    json: &str,
-    transformer: impl Fn(&Value) -> Option<T>,
-) -> Result<Vec<T>, Error> {
-    from_json(
-        &serde_json::from_str(json).map_err(Error::SerdeJson)?,
-        transformer,
-    )
-}
+use crate::YoutubeMusicPlaylistRef;
 
 /// Applies recursively the `transformer` function to the given json value
 /// and returns the transformed values.
 pub(crate) fn from_json<T: PartialEq>(
     json: &Value,
     transformer: impl Fn(&Value) -> Option<T>,
-) -> Result<Vec<T>, Error> {
+) -> crate::Result<Vec<T>> {
     /// Execute a function on each element of a json value recursively.
     /// When the function returns something, the value is added to the result.
     pub(crate) fn inner_crawl<T: PartialEq>(
@@ -46,12 +36,12 @@ pub(crate) fn from_json<T: PartialEq>(
         }
     }
     let mut playlists = Vec::new();
-    inner_crawl(&json, &mut playlists, &transformer);
+    inner_crawl(json, &mut playlists, &transformer);
     Ok(playlists)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub struct Video {
+#[derive(Debug, Clone, PartialOrd, Eq, Ord, PartialEq, Hash, Serialize, Deserialize)]
+pub struct YoutubeMusicVideoRef {
     pub title: String,
     pub author: String,
     pub album: String,
@@ -59,22 +49,15 @@ pub struct Video {
     pub duration: String,
 }
 
-impl Display for Video {
+impl Display for YoutubeMusicVideoRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} | {}", self.author, self.title)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, Ord, PartialEq, Hash)]
-pub struct Playlist {
-    pub name: String,
-    pub subtitle: String,
-    pub browse_id: String,
-}
-
 /// Tries to extract a playlist from a json value.
 /// Quite flexible to reduce odds of API change breaking this.
-pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
+pub(crate) fn get_playlist(value: &Value) -> Option<YoutubeMusicPlaylistRef> {
     let object = value.as_object()?;
     let title_text = get_text(object.get("title")?, true, false)?;
     let subtitle = object
@@ -85,22 +68,39 @@ pub(crate) fn get_playlist(value: &Value) -> Option<Playlist> {
         .and_then(|x| x.get("browseEndpoint"))
         .and_then(|x| x.get("browseId"))
         .and_then(Value::as_str)?;
-    Some(Playlist {
+    Some(YoutubeMusicPlaylistRef {
         name: title_text,
         subtitle: subtitle.unwrap_or_default(),
-        browse_id: browse_id.strip_prefix("VL")?.to_string(),
+        browse_id: browse_id.to_string(),
     })
 }
 
-pub fn get_playlist_search(value: &Value) -> Option<Playlist> {
-    let playlist_id = value
-        .get("overlay")
-        .and_then(|x| x.get("musicItemThumbnailOverlayRenderer"))
-        .and_then(|x| x.get("content"))
-        .and_then(|x| x.get("musicPlayButtonRenderer"))
-        .and_then(|x| x.get("playNavigationEndpoint"))
-        .and_then(|x| x.get("watchPlaylistEndpoint"))
-        .and_then(|x| x.get("playlistId"))
+#[derive(Debug, Clone, PartialOrd, Eq, Ord, PartialEq, Hash, Serialize, Deserialize)]
+pub struct Continuation {
+    pub(crate) continuation: String,
+    pub(crate) click_tracking_params: String,
+}
+
+pub fn get_continuation(value: &Value) -> Option<Continuation> {
+    let continuation = value
+        .get("nextContinuationData")
+        .and_then(|x| x.get("continuation"))
+        .and_then(Value::as_str)?;
+    let click_tracking_params = value
+        .get("nextContinuationData")
+        .and_then(|x| x.get("clickTrackingParams"))
+        .and_then(Value::as_str)?;
+    Some(Continuation {
+        continuation: continuation.to_string(),
+        click_tracking_params: click_tracking_params.to_string(),
+    })
+}
+
+pub fn get_playlist_search(value: &Value) -> Option<YoutubeMusicPlaylistRef> {
+    let browse_id = &value
+        .get("navigationEndpoint")
+        .and_then(|x| x.get("browseEndpoint"))
+        .and_then(|x| x.get("browseId"))
         .and_then(Value::as_str)?;
     let titles: Vec<String> = value
         .get("flexColumns")?
@@ -112,10 +112,10 @@ pub fn get_playlist_search(value: &Value) -> Option<Playlist> {
                 .and_then(|x| get_text(x, false, false))
         })
         .collect();
-    Some(Playlist {
+    Some(YoutubeMusicPlaylistRef {
         name: titles.get(0)?.clone(),
         subtitle: titles.get(1)?.clone(),
-        browse_id: playlist_id.to_string(),
+        browse_id: browse_id.to_string(),
     })
 }
 
@@ -133,7 +133,7 @@ pub fn extract_playlist_info(value: &Value) -> Option<(String, String)> {
     Some((title, subtitles.get(1)?.clone()))
 }
 
-pub fn get_video_from_album(value: &Value) -> Option<Video> {
+pub fn get_video_from_album(value: &Value) -> Option<YoutubeMusicVideoRef> {
     let video_id = value
         .get("playlistItemData")
         .and_then(|x| x.get("videoId"))
@@ -148,7 +148,7 @@ pub fn get_video_from_album(value: &Value) -> Option<Video> {
                 .and_then(|x| get_text(x, false, false))
         })
         .collect();
-    Some(Video {
+    Some(YoutubeMusicVideoRef {
         title: title.get(0)?.clone(),
         author: String::new(),
         album: String::new(),
@@ -211,7 +211,7 @@ pub fn get_videoid(value: &Value) -> Option<String> {
 
 /// Tries to extract a video from a json value.
 /// Quite flexible to reduce odds of API change breaking this.
-pub(crate) fn get_video(value: &Value) -> Option<Video> {
+pub(crate) fn get_video(value: &Value) -> Option<YoutubeMusicVideoRef> {
     // Extract the text part (title, author, album) from a json value.
     let mut texts = value
         .as_object()?
@@ -224,7 +224,7 @@ pub(crate) fn get_video(value: &Value) -> Option<Video> {
                 .and_then(|x| get_text(x, true, true))
         });
 
-    Some(Video {
+    Some(YoutubeMusicVideoRef {
         video_id: get_videoid(value)?,
         title: texts.next()?,
         author: texts.next()?,

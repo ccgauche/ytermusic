@@ -13,7 +13,7 @@ rustube = { git = "https://github.com/Discursif/rustube", version = "0.6.0", fea
 	"rustls-tls",
 	"callback",
 ], default-features = false }
-ytpapi = { path = "./ytpapi" }
+ytpapi2 = { path = "./ytpapi2" }
 
 #  --- Threading & Sync ---
 flume = "0.10.12"

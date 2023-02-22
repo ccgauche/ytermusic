@@ -1,12 +1,12 @@
 use std::io::{Cursor, Read};
 
 use varuint::ReadVarint;
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::consts::CACHE_DIR;
 
 /// Reads the database
-pub fn read() -> Option<Vec<Video>> {
+pub fn read() -> Option<Vec<YoutubeMusicVideoRef>> {
     let mut buffer = Cursor::new(std::fs::read(CACHE_DIR.join("db.bin")).ok()?);
     let mut videos = Vec::new();
     while buffer.get_mut().len() > buffer.position() as usize {
@@ -16,8 +16,8 @@ pub fn read() -> Option<Vec<Video>> {
 }
 
 /// Reads a video from the cursor
-fn read_video(buffer: &mut Cursor<Vec<u8>>) -> Option<Video> {
-    Some(Video {
+fn read_video(buffer: &mut Cursor<Vec<u8>>) -> Option<YoutubeMusicVideoRef> {
+    Some(YoutubeMusicVideoRef {
         title: read_str(buffer)?,
         author: read_str(buffer)?,
         album: read_str(buffer)?,

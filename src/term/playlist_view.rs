@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
 use tui::{layout::Rect, style::Style, Frame};
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{consts::CONFIG, structures::sound_action::SoundAction, utils::invert, DATABASE};
 
@@ -34,7 +34,7 @@ impl ListItemAction for PlayListAction {
 // Audio device not connected!
 pub struct PlaylistView {
     pub items: ListItem<PlayListAction>,
-    pub videos: Vec<Video>,
+    pub videos: Vec<YoutubeMusicVideoRef>,
     pub goto: Screens,
     pub sender: Arc<Sender<SoundAction>>,
 }

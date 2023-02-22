@@ -1,4 +1,4 @@
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     errors::{handle_error, handle_error_option},
@@ -20,9 +20,9 @@ pub enum SoundAction {
     Forward,
     Backward,
     Next(usize),
-    AddVideosToQueue(Vec<Video>),
-    AddVideoUnary(Video),
-    ReplaceQueue(Vec<Video>),
+    AddVideosToQueue(Vec<YoutubeMusicVideoRef>),
+    AddVideoUnary(YoutubeMusicVideoRef),
+    ReplaceQueue(Vec<YoutubeMusicVideoRef>),
     VideoStatusUpdate(String, MusicDownloadStatus),
 }
 

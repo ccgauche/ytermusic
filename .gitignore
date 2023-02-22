@@ -4,6 +4,7 @@ ytermusic.exe
 headers.txt
 /player/target
 /ytpapi/target
+/ytpapi2/target
 /rustube/target
 /log.txt
 /music_renamer

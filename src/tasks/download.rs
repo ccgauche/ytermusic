@@ -6,7 +6,7 @@ use std::{
 use flume::Sender;
 use once_cell::sync::Lazy;
 use rustube::{Callback, Id};
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::CACHE_DIR,
@@ -51,7 +51,7 @@ async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), Er
 
 pub static IN_DOWNLOAD: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
-pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
+pub async fn start_download(song: YoutubeMusicVideoRef, s: &Sender<SoundAction>) -> bool {
     {
         let mut downloads = IN_DOWNLOAD.lock().unwrap();
         if downloads.contains(&song.video_id) {
@@ -103,7 +103,7 @@ pub async fn start_download(song: Video, s: &Sender<SoundAction>) -> bool {
         }
     }
 }
-pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: Video) {
+pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: YoutubeMusicVideoRef) {
     HANDLES.lock().unwrap().push(run_service(async move {
         start_download(song, &s).await;
     }));

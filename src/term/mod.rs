@@ -22,7 +22,7 @@ use crossterm::{
 };
 use flume::{Receiver, Sender};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP};
 
@@ -51,7 +51,7 @@ pub enum EventResponse {
 pub enum ManagerMessage {
     Error(String, Box<Option<ManagerMessage>>),
     PassTo(Screens, Box<ManagerMessage>),
-    Inspect(String, Screens, Vec<Video>),
+    Inspect(String, Screens, Vec<YoutubeMusicVideoRef>),
     ChangeState(Screens),
     SearchFrom(Screens),
     PlayerFrom(Screens),
@@ -59,7 +59,7 @@ pub enum ManagerMessage {
     PlaylistFrom(Screens),
     RestartPlayer,
     Quit,
-    AddElementToChooser((String, Vec<Video>)),
+    AddElementToChooser((String, Vec<YoutubeMusicVideoRef>)),
 }
 
 impl ManagerMessage {
@@ -177,8 +177,7 @@ impl Manager {
                     Screens::DeviceLost,
                     Box::new(ManagerMessage::Error(
                         format!(
-                        "Invalid manager message (Forward the message to a screen maybe):\n{:?}",
-                        e
+                        "Invalid manager message (Forward the message to a screen maybe):\n{e:?}"
                     ),
                         Box::new(None),
                     )),

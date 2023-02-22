@@ -32,7 +32,7 @@ impl<'a> Widget for VerticalGauge<'a> {
         // label is put at the center of the gauge_area
         let label = {
             let pct = f64::round(self.ratio * 100.0);
-            format!("{}%", pct)
+            format!("{pct}%")
         };
         let clamped_label_width = gauge_area.width.min(label.len() as u16);
         let label_col = gauge_area.left() + (gauge_area.width - clamped_label_width) / 2;

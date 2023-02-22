@@ -7,7 +7,7 @@ use tui::{
     style::{Color, Style},
     Frame,
 };
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::CACHE_DIR, structures::sound_action::SoundAction, systems::download, DATABASE,
@@ -42,12 +42,12 @@ pub struct Chooser {
 #[derive(Clone)]
 pub struct PlayListEntry {
     pub name: String,
-    pub videos: Vec<Video>,
+    pub videos: Vec<YoutubeMusicVideoRef>,
     pub text_to_show: String,
 }
 
 impl PlayListEntry {
-    pub fn new(name: String, videos: Vec<Video>) -> Self {
+    pub fn new(name: String, videos: Vec<YoutubeMusicVideoRef>) -> Self {
         Self {
             text_to_show: format_playlist(&name, &videos),
             name,
@@ -55,11 +55,11 @@ impl PlayListEntry {
         }
     }
 
-    pub fn tupplelize(&self) -> (&String, &Vec<Video>) {
+    pub fn tupplelize(&self) -> (&String, &Vec<YoutubeMusicVideoRef>) {
         (&self.name, &self.videos)
     }
 }
-pub fn format_playlist(name: &str, videos: &[Video]) -> String {
+pub fn format_playlist(name: &str, videos: &[YoutubeMusicVideoRef]) -> String {
     let db = DATABASE.read().unwrap();
     let local_videos = videos
         .iter()
@@ -153,7 +153,7 @@ impl Chooser {
             .send(SoundAction::AddVideosToQueue(a.videos.clone()))
             .unwrap();
     }
-    fn add_element(&mut self, element: (String, Vec<Video>)) {
+    fn add_element(&mut self, element: (String, Vec<YoutubeMusicVideoRef>)) {
         let entry = PlayListEntry::new(element.0, element.1);
         self.item_list
             .add_element((entry.text_to_show.clone(), ChooserAction::Play(entry)));

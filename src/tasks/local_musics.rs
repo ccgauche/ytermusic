@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use flume::Sender;
 use rand::seq::SliceRandom;
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
@@ -38,7 +38,7 @@ pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
     });
 }
 
-fn shuffle_and_send(mut videos: Vec<Video>, updater_s: &Sender<ManagerMessage>) {
+fn shuffle_and_send(mut videos: Vec<YoutubeMusicVideoRef>, updater_s: &Sender<ManagerMessage>) {
     *DATABASE.write().unwrap() = videos.clone();
 
     if CONFIG.player.shuffle {

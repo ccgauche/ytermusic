@@ -18,7 +18,7 @@ where
                 .send(ManagerMessage::PassTo(
                     Screens::DeviceLost,
                     Box::new(ManagerMessage::Error(
-                        format!("{} {}", error_type, a),
+                        format!("{error_type} {a}"),
                         Box::new(None),
                     )),
                 ))

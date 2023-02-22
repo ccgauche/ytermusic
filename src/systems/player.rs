@@ -7,7 +7,7 @@ use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
 
 use tui::style::Style;
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
@@ -54,9 +54,9 @@ impl ListSelectorAction for PlayerAction {
 
 pub struct PlayerState {
     pub goto: Screens,
-    pub queue: VecDeque<Video>,
-    pub current: Option<Video>,
-    pub previous: Vec<Video>,
+    pub queue: VecDeque<YoutubeMusicVideoRef>,
+    pub current: Option<YoutubeMusicVideoRef>,
+    pub previous: Vec<YoutubeMusicVideoRef>,
     pub music_status: HashMap<String, MusicDownloadStatus>,
     pub list_selector: ListSelector<PlayerAction>,
     pub controls: Media,
@@ -174,10 +174,7 @@ impl PlayerState {
                             self.updater
                                 .send(ManagerMessage::PassTo(
                                     Screens::DeviceLost,
-                                    Box::new(ManagerMessage::Error(
-                                        format!("{}", e),
-                                        Box::new(None),
-                                    )),
+                                    Box::new(ManagerMessage::Error(format!("{e}"), Box::new(None))),
                                 ))
                                 .unwrap();
                         }
@@ -214,7 +211,7 @@ impl PlayerState {
         let result = self
             .controls
             .update(&self.current, &self.sink)
-            .map_err(|x| format!("{:?}", x));
+            .map_err(|x| format!("{x:?}"));
         handle_error::<String>(&self.updater, "Can't update finished media control", result);
     }
 }
@@ -229,10 +226,10 @@ pub fn player_system(
 }
 
 pub fn generate_music<'a>(
-    queue: &'a VecDeque<Video>,
+    queue: &'a VecDeque<YoutubeMusicVideoRef>,
     music_status: &'a HashMap<String, MusicDownloadStatus>,
-    previous: &'a [Video],
-    current: &'a Option<Video>,
+    previous: &'a [YoutubeMusicVideoRef],
+    current: &'a Option<YoutubeMusicVideoRef>,
     sink: &'a Player,
 ) -> Vec<(String, PlayerAction)> {
     let mut music = Vec::with_capacity(10 + queue.len() + previous.len());

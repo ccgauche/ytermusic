@@ -5,7 +5,7 @@ use player::Player;
 use souvlaki::{
     Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
 };
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{shutdown, systems::logger::log_, term::ManagerMessage};
 
@@ -22,8 +22,7 @@ impl Media {
         if let Some(e) = handle.as_mut() {
             if let Err(e) = connect(e, soundaction_sender) {
                 log_(format!(
-                    "[ERROR] Media actions are not supported on this platform: {:?}",
-                    e
+                    "[ERROR] Media actions are not supported on this platform: {e:?}",
                 ));
             }
         } else {
@@ -34,7 +33,7 @@ impl Media {
 
     pub fn update(
         &mut self,
-        current: &Option<Video>,
+        current: &Option<YoutubeMusicVideoRef>,
         sink: &Player,
     ) -> Result<(), souvlaki::Error> {
         if let Some(e) = &mut self.0 {
@@ -105,7 +104,7 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
             display_name: "YTerMusic",
             hwnd: None,
         })
-        .map_err(|e| format!("{:?}", e)),
+        .map_err(|e| format!("{e:?}")),
     )
 }
 

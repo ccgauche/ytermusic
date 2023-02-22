@@ -1,7 +1,7 @@
 use std::{fs::OpenOptions, io::Write};
 
 use varuint::WriteVarint;
-use ytpapi::Video;
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::consts::CACHE_DIR;
 
@@ -20,7 +20,7 @@ pub fn write() {
 }
 
 /// Writes a video to a file
-pub fn write_video(buffer: &mut impl Write, video: &Video) {
+pub fn write_video(buffer: &mut impl Write, video: &YoutubeMusicVideoRef) {
     write_str(buffer, &video.title);
     write_str(buffer, &video.author);
     write_str(buffer, &video.album);
