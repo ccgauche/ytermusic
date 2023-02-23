@@ -45,7 +45,7 @@ where
 }
 
 fn shutdown() {
-    for _ in 0..100 {
+    for _ in 0..1000 {
         SIGNALING_STOP.0.send(()).unwrap();
     }
 }
@@ -53,11 +53,21 @@ fn shutdown() {
 #[tokio::main]
 async fn main() {
     panic::set_hook(Box::new(|e| {
-        shutdown();
         println!("{e}");
         log_(e.to_string());
+        shutdown();
     }));
-    app_start().await.unwrap();
+    select! {
+        _ = async {
+            app_start().await.unwrap()
+        } => {},
+        _ = tokio::signal::ctrl_c() => {
+            shutdown();
+        },
+    }
+    ;
+    
+
 }
 async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();

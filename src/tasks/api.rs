@@ -123,15 +123,14 @@ fn spawn_browse_playlist_task(
         let guard = performance::guard(&guard);
         match api.get_playlist(&playlist, 5).await {
             Ok(videos) => {
-                updater_s
+                let _ = updater_s
                     .send(
                         ManagerMessage::AddElementToChooser((
                             format!("{} ({})", playlist.name, playlist.subtitle),
                             videos,
                         ))
                         .pass_to(Screens::Playlist),
-                    )
-                    .unwrap();
+                    );
             }
             Err(e) => {
                 log_(format!("{e:?}"));

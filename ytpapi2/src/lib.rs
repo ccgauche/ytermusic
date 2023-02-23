@@ -107,22 +107,26 @@ impl YoutubeMusicInstance {
             .map_err(YoutubeMusicError::IoError)?
             .lines()
         {
-            if header.trim().is_empty() {
-                continue;
+            if let Some((key, value)) = header.split_once(": ") {
+                headers.insert(
+                    match key.to_lowercase().as_str() {
+                        "cookie" => reqwest::header::COOKIE,
+                        "user-agent" => reqwest::header::USER_AGENT,
+                        _ => {
+                            #[cfg(test)]
+                            println!("Unknown header key: {key}");
+                            continue;
+                        }
+                    },
+                    value.parse().unwrap(),
+                );
             }
-            let (key, value) = header.split_once(": ").unwrap();
-            headers.insert(
-                match key {
-                    "Cookie" => reqwest::header::COOKIE,
-                    "User-Agent" => reqwest::header::USER_AGENT,
-                    _ => {
-                        #[cfg(test)]
-                        println!("Unknown header key: {key}");
-                        continue;
-                    }
-                },
-                value.parse().unwrap(),
-            );
+        }
+        if !headers.contains_key(reqwest::header::COOKIE) {
+            return Err(YoutubeMusicError::InvalidHeaders);
+        }
+        if !headers.contains_key(reqwest::header::USER_AGENT) {
+            headers.insert(reqwest::header::USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0".parse().unwrap());
         }
         Self::new(headers).await
     }
@@ -478,4 +482,5 @@ pub enum YoutubeMusicError {
     SerdeJson(serde_json::Error),
     IoError(std::io::Error),
     YoutubeMusicError(Value),
+    InvalidHeaders,
 }
