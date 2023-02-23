@@ -6,7 +6,7 @@ use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc};
+use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc, process::exit};
 use systems::player::player_system;
 
 use crate::{consts::HEADER_TUTORIAL, systems::logger::log_};
@@ -48,6 +48,7 @@ fn shutdown() {
     for _ in 0..1000 {
         SIGNALING_STOP.0.send(()).unwrap();
     }
+    exit(0);
 }
 
 #[tokio::main]
@@ -61,6 +62,7 @@ async fn main() {
         _ = async {
             app_start().await.unwrap()
         } => {},
+        _ = SIGNALING_STOP.1.recv_async() => {},
         _ = tokio::signal::ctrl_c() => {
             shutdown();
         },
