@@ -1,19 +1,21 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tui::style::{Color, Modifier, Style};
 
 use crate::utils::get_project_dirs;
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct GlobalConfig {}
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct MusicPlayerConfig {
     /// Initial volume of the player, in percent.
     /// Default value is 50, clamped at 100.
     #[serde(default = "default_volume")]
     pub initial_volume: u8,
+    #[serde(default = "default_true")]
+    pub dbus: bool,
     /// Whether to shuffle playlists before playing
     #[serde(default)]
     pub shuffle: bool,
@@ -35,7 +37,7 @@ pub struct MusicPlayerConfig {
     pub text_downloading_style: Style,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(remote = "Style")]
 struct StyleDef {
     #[serde(default)]
@@ -51,6 +53,7 @@ struct StyleDef {
 impl Default for MusicPlayerConfig {
     fn default() -> Self {
         Self {
+            dbus: default_true(),
             initial_volume: default_volume(),
             shuffle: Default::default(),
             gauge_paused_style: default_paused_style(),
@@ -63,6 +66,10 @@ impl Default for MusicPlayerConfig {
             text_downloading_style: default_downloading_style(),
         }
     }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_paused_style() -> Style {
@@ -85,16 +92,16 @@ fn default_volume() -> u8 {
     50
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct PlaylistConfig {}
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct SearchConfig {}
 
 #[allow(unused)]
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct Config {
     #[serde(default)]
@@ -114,7 +121,9 @@ impl Config {
             let project_dirs = get_project_dirs()?;
             let config_path = project_dirs.config_dir().join("config.toml");
             let config_string = std::fs::read_to_string(config_path).ok()?;
-            toml::from_str::<Self>(&config_string).ok()
+            let config = toml::from_str::<Self>(&config_string).ok()?;
+            std::fs::write(project_dirs.config_dir().join("config.applied.toml"), toml::to_string_pretty(&config).ok()?).ok()?;
+            Some(config)
         };
         opt().unwrap_or_default()
     }

@@ -7,17 +7,31 @@ use souvlaki::{
 };
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{shutdown, systems::logger::log_, term::ManagerMessage};
+use crate::{consts::CONFIG, shutdown, systems::logger::log_, term::ManagerMessage};
 
 use super::sound_action::SoundAction;
 
-pub struct Media(Option<MediaControls>, Arc<Sender<ManagerMessage>>);
+pub struct Media {
+    controls: Option<MediaControls>,
+
+    current_meta: Option<(String, String, String)>,
+    current_playback: Option<MediaPlayback>,
+
+}
 
 impl Media {
     pub fn new(
         updater: Arc<Sender<ManagerMessage>>,
         soundaction_sender: Arc<Sender<SoundAction>>,
     ) -> Self {
+        if !CONFIG.player.dbus {
+            log_("[INFO] Media controls disabled by config");
+            return Self {
+                controls: None,
+                current_meta: None,
+                current_playback: None,
+            };
+        }
         let mut handle = get_handle(&updater);
         if let Some(e) = handle.as_mut() {
             if let Err(e) = connect(e, soundaction_sender) {
@@ -28,7 +42,11 @@ impl Media {
         } else {
             log_("[ERROR] Media controls are not supported on this platform");
         }
-        Self(handle, updater)
+        Self {
+            controls: handle,
+            current_meta: None,
+            current_playback: None,
+        }
     }
 
     pub fn update(
@@ -36,24 +54,32 @@ impl Media {
         current: &Option<YoutubeMusicVideoRef>,
         sink: &Player,
     ) -> Result<(), souvlaki::Error> {
-        if let Some(e) = &mut self.0 {
-            e.set_metadata(MediaMetadata {
+        if let Some(e) = &mut self.controls {
+            let media_meta = MediaMetadata {
                 title: current.as_ref().map(|video| video.title.as_str()),
                 album: current.as_ref().map(|video| video.album.as_str()),
                 artist: current.as_ref().map(|video| video.author.as_str()),
                 cover_url: None,
                 duration: None,
-            })?;
-            if sink.is_finished() {
-                e.set_playback(MediaPlayback::Stopped)?;
+            };
+            if self.current_meta != Some((media_meta.title.unwrap_or("").to_string(), media_meta.album.unwrap_or("").to_string(), media_meta.artist.unwrap_or("").to_string())) {
+                self.current_meta = Some((media_meta.title.unwrap_or("").to_string(), media_meta.album.unwrap_or("").to_string(), media_meta.artist.unwrap_or("").to_string()));
+                e.set_metadata(media_meta)?;
+            }
+            let playback = if sink.is_finished() {
+                MediaPlayback::Stopped
             } else if sink.is_paused() {
-                e.set_playback(MediaPlayback::Paused {
+                MediaPlayback::Paused {
                     progress: Some(MediaPosition(sink.elapsed())),
-                })?;
+                }
             } else {
-                e.set_playback(MediaPlayback::Playing {
+                MediaPlayback::Playing {
                     progress: Some(MediaPosition(sink.elapsed())),
-                })?;
+                }
+            };
+            if self.current_playback != Some(playback.clone()) {
+                self.current_playback = Some(playback.clone());
+                e.set_playback(playback)?;
             }
         }
         Ok(())
