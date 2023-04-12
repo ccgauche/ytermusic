@@ -16,15 +16,16 @@ It's aims to be as fast and simple as possible.
 ## Setup
 
 - Download the latest version from `releases`
-- Create a `headers.txt` file and copy your headers from the nav when browsing https://music.youtube.com/
-  - Open the YouTube Music website in your browser");
-  - Open the developer tools (F12)
-  - Go to the Network tab
-  - Go to https://music.youtube.com
-  - Copy the `cookie` header from the associated request
-  - Paste it in the `headers.txt` file as `Cookie: <cookie>`
-  - Restart YterMusic
-- Run `ytermusic.exe`
+- Give `ytermusic` authentication to your account, by copying out the headers
+  1. Open the https://music.youtube.com website in your browser
+  2. Open the developer tools (F12)
+  3. Go to the Network tab
+  4. Find the request to the `music.youtube.com` document / page
+  5. Copy the `Cookie` header from the associated response request
+  6. Create a file in your users home directory called `headers.txt`
+  7. Create an entry like this `Cookie: <cookie>`
+  8. Add a valid "User Agent" below the cookie, like `User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36`
+- Then you can start `ytermusic`
 
 ## Linux
 
