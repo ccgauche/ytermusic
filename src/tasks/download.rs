@@ -4,6 +4,7 @@ use std::{
 };
 
 use flume::Sender;
+use log::error;
 use once_cell::sync::Lazy;
 use rustube::{Callback, Id};
 use ytpapi2::YoutubeMusicVideoRef;
@@ -12,7 +13,7 @@ use crate::{
     consts::CACHE_DIR,
     run_service,
     structures::{app_status::MusicDownloadStatus, sound_action::SoundAction},
-    systems::{download::HANDLES, logger::log_},
+    systems::{download::HANDLES},
     Error,
 };
 
@@ -98,7 +99,7 @@ pub async fn start_download(song: YoutubeMusicVideoRef, s: &Sender<SoundAction>)
                 MusicDownloadStatus::DownloadFailed,
             ))
             .unwrap();
-            log_(format!("Error downloading {}: {e}", song.video_id));
+            error!("Error downloading {}: {e}", song.video_id);
             false
         }
     }

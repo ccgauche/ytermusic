@@ -1,5 +1,6 @@
 use std::{fs::OpenOptions, sync::RwLock};
 
+use log::info;
 use once_cell::sync::Lazy;
 
 mod reader;
@@ -9,7 +10,7 @@ pub use reader::read;
 pub use writer::{write, write_video};
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{consts::CACHE_DIR, systems::logger::log_};
+use crate::{consts::CACHE_DIR};
 
 /// A global variable to store the current musical Database
 pub static DATABASE: Lazy<RwLock<Vec<YoutubeMusicVideoRef>>> =
@@ -31,6 +32,6 @@ pub fn append(video: YoutubeMusicVideoRef) {
         .open(CACHE_DIR.join("db.bin"))
         .unwrap();
     write_video(&mut file, &video);
-    log_(format!("Appended {} to database", video.title));
+    info!("Appended {} to database", video.title);
     DATABASE.write().unwrap().push(video);
 }

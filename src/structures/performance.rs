@@ -1,8 +1,7 @@
 use std::time::Instant;
 
+use log::info;
 use once_cell::sync::Lazy;
-
-use crate::systems::logger::log_;
 
 pub struct Performance {
     pub initial: Instant,
@@ -20,7 +19,7 @@ impl Performance {
     }
 
     pub fn log(&self, message: &str) {
-        log_(format!("[PERF] {}: {}ms", message, self.get_ms()));
+        info!(target: "performance", "{}: {}ms", message, self.get_ms());
     }
 }
 
@@ -53,11 +52,11 @@ pub fn mesure<T>(name: &str, f: impl FnOnce() -> T) -> T {
     let start = Instant::now();
     let t = f();
     let end = Instant::now();
-    log_(format!(
-        "[PERF]{}: {}ms",
+    info!(target: "performance", 
+        "{}: {}ms",
         name,
         end.duration_since(start).as_millis()
-    ));
+    );
     t
 }
 

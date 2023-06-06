@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use flume::Sender;
+use log::{info, error};
 use player::Player;
 use souvlaki::{
     Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
 };
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{consts::CONFIG, shutdown, systems::logger::log_, term::ManagerMessage};
+use crate::{consts::CONFIG, shutdown, term::ManagerMessage};
 
 use super::sound_action::SoundAction;
 
@@ -25,7 +26,7 @@ impl Media {
         soundaction_sender: Arc<Sender<SoundAction>>,
     ) -> Self {
         if !CONFIG.player.dbus {
-            log_("[INFO] Media controls disabled by config");
+            info!("Media controls disabled by config");
             return Self {
                 controls: None,
                 current_meta: None,
@@ -35,12 +36,12 @@ impl Media {
         let mut handle = get_handle(&updater);
         if let Some(e) = handle.as_mut() {
             if let Err(e) = connect(e, soundaction_sender) {
-                log_(format!(
-                    "[ERROR] Media actions are not supported on this platform: {e:?}",
-                ));
+                error!(
+                    "Media actions are not supported on this platform: {e:?}",
+                );
             }
         } else {
-            log_("[ERROR] Media controls are not supported on this platform");
+            error!("Media controls are not supported on this platform");
         }
         Self {
             controls: handle,

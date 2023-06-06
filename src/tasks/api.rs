@@ -5,6 +5,7 @@ use std::{
 };
 
 use flume::Sender;
+use log::{info, error};
 use once_cell::sync::Lazy;
 use tokio::task::JoinSet;
 use ytpapi2::{YoutubeMusicInstance, YoutubeMusicPlaylistRef};
@@ -12,7 +13,6 @@ use ytpapi2::{YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 use crate::{
     run_service,
     structures::performance,
-    systems::logger::log_,
     term::{ManagerMessage, Screens},
 };
 
@@ -21,7 +21,7 @@ const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
 
 pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
     run_service(async move {
-        log_("API task on");
+        info!("API task on");
         let guard = performance::guard("API task");
         let client = YoutubeMusicInstance::from_header_file(
             PathBuf::from_str("headers.txt").unwrap().as_path(),
@@ -63,7 +63,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                             }
                         }
                         Err(e) => {
-                            log_(format!("{e:?}"));
+                            error!("{e:?}");
                         }
                     }
                 });
@@ -80,8 +80,8 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 | ytpapi2::YoutubeMusicError::CantFindInnerTubeClientVersion(_)
                 | ytpapi2::YoutubeMusicError::CantFindVisitorData(_)
                 | ytpapi2::YoutubeMusicError::IoError(_) => {
-                    log_(TEXT_COOKIES_EXPIRED_OR_INVALID);
-                    log_(format!("{e:?}"));
+                    error!("{}",TEXT_COOKIES_EXPIRED_OR_INVALID);
+                    error!("{e:?}");
                     updater_s
                         .send(
                             ManagerMessage::Error(
@@ -93,7 +93,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                         .unwrap();
                 }
                 e => {
-                    log_(format!("{e:?}"));
+                    error!("{e:?}");
                 }
             },
         }
@@ -133,7 +133,7 @@ fn spawn_browse_playlist_task(
                     );
             }
             Err(e) => {
-                log_(format!("{e:?}"));
+                error!("{e:?}");
             }
         }
 

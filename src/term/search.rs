@@ -6,6 +6,7 @@ use std::{
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use flume::Sender;
+use log::error;
 use tokio::task::JoinHandle;
 use tui::{
     layout::{Alignment, Rect},
@@ -16,7 +17,7 @@ use tui::{
 use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
-    consts::CONFIG, run_service, structures::sound_action::SoundAction, systems::logger::log_,
+    consts::CONFIG, run_service, structures::sound_action::SoundAction,
     tasks, utils::invert, DATABASE,
 };
 
@@ -161,14 +162,14 @@ impl Screen for Search {
                                         ));
                                     }
                                     Err(e) => {
-                                        log_(format!("{e:?}"));
+                                        error!("{e:?}");
                                     }
                                 };
                             });
                         }
                     }
                     Err(e) => {
-                        log_(format!("{e:?}"));
+                        error!("{e:?}");
                     }
                 }
                 let mut local = local;

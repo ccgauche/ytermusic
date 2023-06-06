@@ -7,6 +7,7 @@ use json_extractor::{
     extract_playlist_info, from_json, get_continuation, get_playlist, get_playlist_search,
     get_video, get_video_from_album, Continuation,
 };
+use log::{error, trace, debug};
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,7 +51,9 @@ fn get_headers() -> HeaderMap {
 fn advanced_like() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers())
+            .await
+            .unwrap();
         println!("{}", ytm.compute_sapi_hash());
         let search = ytm.get_library(0).await.unwrap();
         assert_eq!(search.is_empty(), false);
@@ -63,7 +66,9 @@ fn advanced_like() {
 fn advanced_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers())
+            .await
+            .unwrap();
         let search = ytm.search("j'ai la danse qui va avec", 0).await.unwrap();
         assert_eq!(search.videos.is_empty(), false);
         assert_eq!(search.playlists.is_empty(), false);
@@ -76,7 +81,9 @@ fn advanced_test() {
 fn home_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers())
+            .await
+            .unwrap();
         let search = ytm.get_home(0).await.unwrap();
         println!("{:?}", search.playlists);
         assert_eq!(search.playlists.is_empty(), false);
@@ -126,16 +133,33 @@ impl YoutubeMusicInstance {
             return Err(YoutubeMusicError::InvalidHeaders);
         }
         if !headers.contains_key(reqwest::header::USER_AGENT) {
-            headers.insert(reqwest::header::USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0".parse().unwrap());
+            headers.insert(
+                reqwest::header::USER_AGENT,
+                "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0"
+                    .parse()
+                    .unwrap(),
+            );
         }
         Self::new(headers).await
     }
 
+    // pub async fn dump_file(name: &str, content: &str, log_provider: &impl Fn(String)) -> Result<()> {
+    //     let timestamp_millis = SystemTime::now()
+    //         .duration_since(UNIX_EPOCH)
+    //         .unwrap()
+    //         .as_millis();
+    //     tokio::fs::write(format!("dump/{timestamp_millis}-{name}"), content)
+    //         .await
+    //         .map_err(YoutubeMusicError::IoError)
+    // }
+
     pub async fn new(headers: HeaderMap) -> Result<Self> {
+        trace!("Creating new YoutubeMusicInstance");
         let rest_client = reqwest::ClientBuilder::default()
             .default_headers(headers.clone())
             .build()
             .map_err(YoutubeMusicError::RequestError)?;
+        trace!("Fetching YoutubeMusic homepage");
         let response: String = rest_client
             .get(YTM_DOMAIN)
             .headers(headers.clone())
@@ -145,11 +169,15 @@ impl YoutubeMusicInstance {
             .text()
             .await
             .map_err(YoutubeMusicError::RequestError)?;
+        trace!("Fetched");
+
         if response.contains("<base href=\"https://accounts.google.com/v3/signin/\">")
             || response.contains("<base href=\"https://consent.youtube.com/\">")
         {
+            error!("Need to login");
             return Err(YoutubeMusicError::NeedToLogin);
         }
+        trace!("Parsing cookies");
         let cookies = headers
             .get("Cookie")
             .ok_or(YoutubeMusicError::NoCookieAttribute)?
@@ -159,14 +187,17 @@ impl YoutubeMusicInstance {
         let sapisid = cookies
             .between("SAPISID=", ";")
             .ok_or_else(|| YoutubeMusicError::NoSapsidInCookie)?;
+        trace!("Cookies parsed! SAPISID: {}", sapisid);
         let innertube_api_key = response
             .between("INNERTUBE_API_KEY\":\"", "\"")
             .ok_or_else(|| YoutubeMusicError::CantFindInnerTubeApiKey(response.to_string()))?;
+        trace!("Innertube API key: {}", innertube_api_key);
         let client_version = response
             .between("INNERTUBE_CLIENT_VERSION\":\"", "\"")
             .ok_or_else(|| {
                 YoutubeMusicError::CantFindInnerTubeClientVersion(response.to_string())
             })?;
+        trace!("Innertube client version: {}", client_version);
         Ok(Self {
             sapisid: sapisid.to_string(),
             innertube_api_key: innertube_api_key.to_string(),
@@ -187,6 +218,7 @@ impl YoutubeMusicInstance {
         for byte in result {
             hex.push_str(&format!("{byte:02x}"));
         }
+        trace!("Computed SAPI Hash{timestamp}_{hex}");
         format!("{timestamp}_{hex}")
     }
     async fn browse_continuation(
@@ -197,7 +229,10 @@ impl YoutubeMusicInstance {
         let playlist_json: Value =
             serde_json::from_str(&self.browse_continuation_raw(continuation).await?)
                 .map_err(YoutubeMusicError::SerdeJson)?;
+        debug!("Browse continuation response: {playlist_json}");
         if playlist_json.get("error").is_some() {
+            error!("Error in browse_continuation");
+            error!("{:?}", playlist_json);
             return Err(YoutubeMusicError::YoutubeMusicError(playlist_json));
         }
         let continuation = if continuations {
@@ -214,6 +249,7 @@ impl YoutubeMusicInstance {
             click_tracking_params,
         }: &Continuation,
     ) -> Result<String> {
+        trace!("Browse continuation {continuation}");
         let url = format!(
             "https://music.youtube.com/youtubei/v1/browse?ctoken={continuation}&continuation={continuation}&type=next&itct={click_tracking_params}&key={}&prettyPrint=false",
             self.innertube_api_key
@@ -245,6 +281,7 @@ impl YoutubeMusicInstance {
         endpoint_key: &str,
         endpoint_param: &str,
     ) -> Result<String> {
+        trace!("Browse {endpoint_route}");
         let url = format!(
             "https://music.youtube.com/youtubei/v1/{endpoint_route}?key={}&prettyPrint=false",
             self.innertube_api_key
@@ -285,7 +322,10 @@ impl YoutubeMusicInstance {
                 .await?,
         )
         .map_err(YoutubeMusicError::SerdeJson)?;
+        debug!("Browse response: {playlist_json}");
         if playlist_json.get("error").is_some() {
+            error!("Error in browse");
+            error!("{:?}", playlist_json);
             return Err(YoutubeMusicError::YoutubeMusicError(playlist_json));
         }
         let continuation = if continuations {
@@ -302,14 +342,22 @@ impl YoutubeMusicInstance {
         let (library_json, mut continuations) = self
             .browse(&Endpoint::MusicLikedPlaylists, n_continuations > 0)
             .await?;
+        trace!("Fetched library");
+        debug!("Library response: {library_json}");
+        debug!("Continuations: {continuations:?}");
         let mut library = from_json(&library_json, get_playlist)?;
+        debug!("Library: {library:?}");
         while let Some(continuation) = continuations.pop() {
             n_continuations -= 1;
+            trace!("Fetching continuation {continuation:?}");
             let (library_json, new_continuations) = self
                 .browse_continuation(&continuation, (n_continuations - 1) > 0)
                 .await?;
+            debug!("Library response: {library_json}");
             continuations.extend(new_continuations);
             let new_library = from_json(&library_json, get_playlist)?;
+            trace!("Fetched {} playlists",new_library.len());
+            debug!("Library response: {library_json}");
             library.extend(new_library);
             if n_continuations == 0 {
                 break;
@@ -337,15 +385,24 @@ impl YoutubeMusicInstance {
                 n_continuations > 0,
             )
             .await?;
+        trace!("Fetched playlist");
+        debug!("Playlist response: {playlist_json}");
+        debug!("Continuations: {continuations:?}");
         let mut videos = parse_playlist(&playlist_json)?;
+
+        debug!("Videos: {videos:?}");
 
         while let Some(continuation) = continuations.pop() {
             n_continuations -= 1;
+            trace!("Fetching continuation {continuation:?}");
             let (playlist_json, new_continuations) = self
                 .browse_continuation(&continuation, (n_continuations - 1) > 0)
                 .await?;
+            debug!("Playlist response: {playlist_json}");
             continuations.extend(new_continuations);
             let new_videos = parse_playlist(&playlist_json)?;
+            trace!("Fetched {} videos",new_videos.len());
+            debug!("Playlist response: {playlist_json}");
             videos.extend(new_videos);
             if n_continuations == 0 {
                 break;
@@ -362,16 +419,23 @@ impl YoutubeMusicInstance {
         let (search_json, mut continuations) = self
             .browse(&Endpoint::Search(search_query.to_string()), false)
             .await?;
+        debug!("Search response: {search_json}");
         let mut videos = from_json(&search_json, get_video)?;
+        debug!("Videos: {videos:?}");
         let mut playlists = from_json(&search_json, get_playlist_search)?;
+        debug!("Playlists: {playlists:?}");
 
         while let Some(continuation) = continuations.pop() {
             n_continuations -= 1;
+            trace!("Fetching continuation {continuation:?}");
             let (search_json, new_continuations) =
                 self.browse_continuation(&continuation, false).await?;
+            trace!("Search response: {search_json}");
             continuations.extend(new_continuations);
             let new_videos = from_json(&search_json, get_video)?;
+            debug!("Videos: {videos:?}");
             let new_playlists = from_json(&search_json, get_playlist_search)?;
+            debug!("Playlists: {playlists:?}");
             videos.extend(new_videos);
             playlists.extend(new_playlists);
             if n_continuations == 0 {
@@ -386,17 +450,24 @@ impl YoutubeMusicInstance {
         let (home_json, mut continuations) = self
             .browse(&Endpoint::MusicHome, n_continuations > 0)
             .await?;
+        debug!("Home response: {home_json}");
         let mut videos = from_json(&home_json, get_video)?;
+        debug!("Videos: {videos:?}");
         let mut playlists = from_json(&home_json, get_playlist)?;
+        debug!("Playlists: {playlists:?}");
 
         while let Some(continuation) = continuations.pop() {
             n_continuations -= 1;
+            trace!("Fetching continuation {continuation:?}");
             let (home_json, new_continuations) = self
                 .browse_continuation(&continuation, n_continuations > 0)
                 .await?;
+            debug!("Home response: {home_json}");
             continuations.extend(new_continuations);
             let new_videos = from_json(&home_json, get_video)?;
+            debug!("Videos: {videos:?}");
             let new_playlists = from_json(&home_json, get_playlist)?;
+            debug!("Playlists: {playlists:?}");
             videos.extend(new_videos);
             playlists.extend(new_playlists);
             if n_continuations == 0 {

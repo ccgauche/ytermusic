@@ -1,5 +1,6 @@
 use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
+use log::{error};
 use once_cell::sync::Lazy;
 use rustube::Error;
 use structures::performance::STARTUP_TIME;
@@ -7,9 +8,9 @@ use term::{Manager, ManagerMessage};
 use tokio::select;
 
 use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc, process::exit};
-use systems::player::player_system;
+use systems::{player::player_system, logger::init};
 
-use crate::{consts::HEADER_TUTORIAL, systems::logger::log_};
+use crate::{consts::HEADER_TUTORIAL};
 
 mod config;
 mod consts;
@@ -55,7 +56,7 @@ fn shutdown() {
 async fn main() {
     panic::set_hook(Box::new(|e| {
         println!("{e}");
-        log_(e.to_string());
+        error!("{e}");
         shutdown();
     }));
     select! {
@@ -73,7 +74,9 @@ async fn main() {
 }
 async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
+    init().expect("Failed to initialize logger");
     STARTUP_TIME.log("Init");
+
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");

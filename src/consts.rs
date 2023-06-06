@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
+use log::warn;
 use once_cell::sync::Lazy;
 
-use crate::{config, systems::logger::log_, utils::get_project_dirs};
+use crate::{config, utils::get_project_dirs};
 
 pub const HEADER_TUTORIAL: &str = r#"To configure the YTerMusic:
 1. Open the YouTube Music website in your browser;
@@ -18,7 +19,7 @@ pub static CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     if let Some(dir) = pdir {
         return dir.cache_dir().to_path_buf();
     };
-    log_("Failed to get cache dir! Defaulting to './data'");
+    warn!("Failed to get cache dir! Defaulting to './data'");
     PathBuf::from("./data")
 });
 

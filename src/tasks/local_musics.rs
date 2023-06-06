@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use flume::Sender;
+use log::info;
 use rand::seq::SliceRandom;
 use ytpapi2::YoutubeMusicVideoRef;
 
@@ -8,14 +9,13 @@ use crate::{
     consts::{CACHE_DIR, CONFIG},
     read, run_service,
     structures::performance,
-    systems::logger::log_,
     term::{ManagerMessage, Screens},
     DATABASE,
 };
 
 pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
     run_service(async move {
-        log_("Database getter task on");
+        info!("Database getter task on");
         let guard = performance::guard("Local musics");
         if let Some(videos) = read() {
             shuffle_and_send(videos, &updater_s);
