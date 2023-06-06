@@ -110,11 +110,19 @@ impl<Action: Clone> ListItem<Action> {
     }
 
     pub fn select_down(&mut self) {
-        self.select_to(self.current_position.saturating_add(1));
+        if self.current_position == self.list.len() - 1 {
+            self.select_to(0);
+        } else {
+            self.select_to(self.current_position.saturating_add(1));
+        }
     }
 
     pub fn select_up(&mut self) {
-        self.select_to(self.current_position.saturating_sub(1));
+        if self.current_position == 0 {
+            self.select_to(self.list.len() - 1);
+        } else {
+            self.select_to(self.current_position.saturating_sub(1));
+        }
     }
 
     pub fn select_to(&mut self, position: usize) {

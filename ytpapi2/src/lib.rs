@@ -55,7 +55,7 @@ fn advanced_like() {
             .await
             .unwrap();
         println!("{}", ytm.compute_sapi_hash());
-        let search = ytm.get_library(0).await.unwrap();
+        let search = ytm.get_library(0, &Endpoint::MusicLibraryLanding).await.unwrap();
         assert_eq!(search.is_empty(), false);
         println!("{:?}", search[1]);
         println!("{:?}", ytm.get_playlist(&search[1], 0).await.unwrap());
@@ -142,16 +142,6 @@ impl YoutubeMusicInstance {
         }
         Self::new(headers).await
     }
-
-    // pub async fn dump_file(name: &str, content: &str, log_provider: &impl Fn(String)) -> Result<()> {
-    //     let timestamp_millis = SystemTime::now()
-    //         .duration_since(UNIX_EPOCH)
-    //         .unwrap()
-    //         .as_millis();
-    //     tokio::fs::write(format!("dump/{timestamp_millis}-{name}"), content)
-    //         .await
-    //         .map_err(YoutubeMusicError::IoError)
-    // }
 
     pub async fn new(headers: HeaderMap) -> Result<Self> {
         trace!("Creating new YoutubeMusicInstance");
@@ -321,7 +311,7 @@ impl YoutubeMusicInstance {
                 )
                 .await?,
         )
-        .map_err(YoutubeMusicError::SerdeJson)?;
+        .map_err(YoutubeMusicError::SerdeJson)?; 
         debug!("Browse response: {playlist_json}");
         if playlist_json.get("error").is_some() {
             error!("Error in browse");
@@ -337,10 +327,11 @@ impl YoutubeMusicInstance {
     }
     pub async fn get_library(
         &self,
+        endpoint: &Endpoint,
         mut n_continuations: usize,
     ) -> Result<Vec<YoutubeMusicPlaylistRef>> {
         let (library_json, mut continuations) = self
-            .browse(&Endpoint::MusicLikedPlaylists, n_continuations > 0)
+            .browse(endpoint, n_continuations > 0)
             .await?;
         trace!("Fetched library");
         debug!("Library response: {library_json}");
@@ -505,9 +496,10 @@ pub struct SearchResults {
 }
 
 #[derive(Debug, Clone, PartialOrd, Eq, Ord, PartialEq, Hash)]
-enum Endpoint {
+pub enum Endpoint {
     MusicLikedPlaylists,
     MusicHome,
+    MusicLibraryLanding,
     Playlist(String),
     Search(String),
 }
@@ -516,6 +508,7 @@ impl Endpoint {
     fn get_key(&self) -> String {
         match self {
             Endpoint::MusicLikedPlaylists => "browseId".to_owned(),
+            Endpoint::MusicLibraryLanding => "browseId".to_owned(),
             Endpoint::Playlist(_) => "browseId".to_owned(),
             Endpoint::MusicHome => "browseId".to_owned(),
             Endpoint::Search(_) => "query".to_owned(),
@@ -524,6 +517,7 @@ impl Endpoint {
     fn get_param(&self) -> String {
         match self {
             Endpoint::MusicLikedPlaylists => "FEmusic_liked_playlists".to_owned(),
+            Endpoint::MusicLibraryLanding => "FEmusic_library_landing".to_owned(),
             Endpoint::Playlist(id) => id.to_owned(),
             Endpoint::Search(query) => query.to_owned(),
             Endpoint::MusicHome => "FEmusic_home".to_owned(),
@@ -532,6 +526,7 @@ impl Endpoint {
     fn get_route(&self) -> String {
         match self {
             Endpoint::MusicLikedPlaylists => "browse".to_owned(),
+            Endpoint::MusicLibraryLanding => "browse".to_owned(),
             Endpoint::Playlist(_) => "browse".to_owned(),
             Endpoint::Search(_) => "search".to_owned(),
             Endpoint::MusicHome => "browse".to_owned(),

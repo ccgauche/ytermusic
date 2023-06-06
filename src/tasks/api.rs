@@ -8,7 +8,7 @@ use flume::Sender;
 use log::{info, error};
 use once_cell::sync::Lazy;
 use tokio::task::JoinSet;
-use ytpapi2::{YoutubeMusicInstance, YoutubeMusicPlaylistRef};
+use ytpapi2::{YoutubeMusicInstance, YoutubeMusicPlaylistRef, Endpoint};
 
 use crate::{
     run_service,
@@ -51,7 +51,26 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 let api_ = api.clone();
                 let updater_s_ = updater_s.clone();
                 set.spawn(async move {
-                    let search_results = api_.get_library(2).await;
+                    let search_results = api_.get_library(&Endpoint::MusicLikedPlaylists,2).await;
+                    match search_results {
+                        Ok(e) => {
+                            for playlist in e {
+                                spawn_browse_playlist_task(
+                                    playlist.clone(),
+                                    api_.clone(),
+                                    updater_s_.clone(),
+                                )
+                            }
+                        }
+                        Err(e) => {
+                            error!("{e:?}");
+                        }
+                    }
+                });
+                let api_ = api.clone();
+                let updater_s_ = updater_s.clone();
+                set.spawn(async move {
+                    let search_results = api_.get_library(&Endpoint::MusicLibraryLanding,2).await;
                     match search_results {
                         Ok(e) => {
                             for playlist in e {
@@ -123,6 +142,10 @@ fn spawn_browse_playlist_task(
         let guard = performance::guard(&guard);
         match api.get_playlist(&playlist, 5).await {
             Ok(videos) => {
+                if videos.len() < 2{
+                    info!("Playlist {} is too small so skipped", playlist.name);
+                    return;
+                }
                 let _ = updater_s
                     .send(
                         ManagerMessage::AddElementToChooser((
