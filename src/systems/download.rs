@@ -26,15 +26,11 @@ fn take() -> Option<YoutubeMusicVideoRef> {
 /// A worker of this system that downloads pending songs
 fn spawn_system_worker_instance(s: Arc<Sender<SoundAction>>) {
     HANDLES.lock().unwrap().push(run_service(async move {
-        let mut k = true;
         loop {
-            if !k {
-                sleep(Duration::from_millis(200)).await;
-            } else {
-                k = false;
-            }
             if let Some(id) = take() {
-                k = k || start_download(id, &s).await;
+                start_download(id, &s).await;
+            } else {
+                sleep(Duration::from_millis(200)).await;
             }
         }
     }));

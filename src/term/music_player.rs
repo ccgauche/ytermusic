@@ -2,11 +2,18 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
 use tui::widgets::{Block, Borders, Gauge};
+use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     errors::handle_error,
-    structures::{app_status::AppStatus, sound_action::SoundAction},
-    systems::player::{generate_music, PlayerAction, PlayerState},
+    structures::{
+        app_status::{AppStatus, MusicDownloadStatus},
+        sound_action::SoundAction,
+    },
+    systems::{
+        download::DOWNLOAD_LIST,
+        player::{generate_music, PlayerAction, PlayerState},
+    },
 };
 
 use super::{
@@ -82,6 +89,33 @@ impl Screen for PlayerState {
     fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> EventResponse {
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
+            KeyCode::F(5) => {
+                // Get all musics that have failled to download
+                let mut musics = Vec::new();
+                self.music_status.iter_mut().for_each(|(key, music_status)| {
+                    if MusicDownloadStatus::DownloadFailed != *music_status {
+                        return;
+                    }
+                    if let Some(e) = self.previous.iter().find(|x| &x.video_id == key) {
+                        musics.push(e.clone());
+                        *music_status = MusicDownloadStatus::NotDownloaded;
+                        return;
+                    }
+                    if let Some(e) = self.current.as_ref().filter(|x| &x.video_id == key) {
+                        musics.push(e.clone());
+                        *music_status = MusicDownloadStatus::NotDownloaded;
+                        return;
+                    }
+                    if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
+                        musics.push(e.clone());
+                        *music_status = MusicDownloadStatus::NotDownloaded;
+                        return;
+                    }
+                });
+                // Download them
+                DOWNLOAD_LIST.lock().unwrap().extend(musics.into_iter());
+                EventResponse::None
+            }
             KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
             KeyCode::Char('s') => {
                 let mut musics = Vec::with_capacity(self.previous.len() + self.queue.len() + 1);

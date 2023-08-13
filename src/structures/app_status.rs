@@ -18,7 +18,7 @@ pub enum MusicDownloadStatus {
 }
 
 impl MusicDownloadStatus {
-    pub fn character(&self, playing: Option<bool>) -> char {
+    pub fn character(&self, playing: Option<bool>) -> String {
         match self {
             Self::NotDownloaded => {
                 if let Some(e) = playing {
@@ -32,9 +32,9 @@ impl MusicDownloadStatus {
                 }
             }
             Self::Downloaded => ' ',
-            Self::Downloading(_) => '⭳',
+            Self::Downloading(progress) => return format!("⭳ [{:02}%]", progress),
             Self::DownloadFailed => '⚠',
-        }
+        }.into()
     }
     pub fn style(&self, playing: Option<bool>) -> Style {
         let k = match self {
