@@ -11,7 +11,7 @@ It's aims to be as fast and simple as possible.
 - Memory efficient (Around 20MB of RAM while fully loaded)
 - Cache all downloads and store them
 - Work even without connection (If musics were already downloaded)
-- Automic background download manager
+- Automatic background download manager
 
 ## Setup
 
