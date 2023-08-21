@@ -34,7 +34,8 @@ impl MusicDownloadStatus {
             Self::Downloaded => ' ',
             Self::Downloading(progress) => return format!("⭳ [{:02}%]", progress),
             Self::DownloadFailed => '⚠',
-        }.into()
+        }
+        .into()
     }
     pub fn style(&self, playing: Option<bool>) -> Style {
         let k = match self {
@@ -50,7 +51,7 @@ impl MusicDownloadStatus {
                     Style::default().fg(Color::White).bg(Color::Black)
                 }
             }
-            Self::Downloading(_) => Style::default().fg(Color::Blue).bg(Color::Black),
+            Self::Downloading(_) => Style::default().fg(Color::Cyan).bg(Color::Black),
             Self::DownloadFailed => Style::default().fg(Color::Red).bg(Color::Black),
         };
         if playing.is_some() {
