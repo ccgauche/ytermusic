@@ -130,7 +130,7 @@ impl Screen for PlayerState {
                 handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
                 EventResponse::None
             }
-            KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('C') => {
                 SoundAction::Cleanup.apply_sound_action(self);
                 EventResponse::None
             }
