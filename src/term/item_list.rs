@@ -147,6 +147,12 @@ impl<Action: Clone> ListItem<Action> {
         self.list.push(element);
     }
 
+    pub fn rm_element(&mut self, element: (String, Action)) {
+        if let Some(pos) = self.list.iter().position(|x| *x == element) {
+            self.list.remove(pos);
+        }
+    }
+
     pub fn set_title(&mut self, a: String) {
         self.title = a;
     }
