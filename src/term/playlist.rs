@@ -158,9 +158,4 @@ impl Chooser {
         self.item_list
             .add_element((entry.text_to_show.clone(), ChooserAction::Play(entry)));
     }
-    fn rm_element(&mut self, element: (String, Vec<YoutubeMusicVideoRef)) {
-        let entry = PlaylistEntry::new(element.0, element.1);
-        self.item_list
-            .rm_element((entry.text_to_show.clone(), entry);
-    }
 }
