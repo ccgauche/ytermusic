@@ -158,7 +158,7 @@ impl Screen for PlayerState {
                 }
                 EventResponse::None
             }
-            KeyCode::Char('+') => {
+            KeyCode::Char('+') | KeyCode::Char('=') => {
                 SoundAction::Plus.apply_sound_action(self);
                 EventResponse::None
             }
