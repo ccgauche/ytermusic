@@ -4,8 +4,8 @@ use directories::ProjectDirs;
 use tui::style::Style;
 
 /// Get directories for the project for config, cache, etc.
-pub fn get_project_dirs() -> ProjectDirs {
-    ProjectDirs::from("com", "ccgauche", "ytermusic").unwrap()
+pub fn get_project_dirs() -> Option<ProjectDirs> {
+    ProjectDirs::from("com", "ccgauche", "ytermusic")
 }
 
 /// Locate the headers.txt file:
@@ -14,7 +14,7 @@ pub fn locate_headers_file() -> Option<PathBuf> {
     // Locate the headers.txt file:
     let header_paths: [PathBuf; 2] = [
         PathBuf::from_str("./headers.txt").unwrap(),
-        get_project_dirs().config_dir().join("headers.txt"),
+        get_project_dirs()?.config_dir().join("headers.txt"),
     ];
 
     // Return the first path that exists, if any:

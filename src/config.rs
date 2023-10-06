@@ -118,7 +118,7 @@ impl Config {
     pub fn new() -> Self {
         // TODO handle errors
         let opt = || {
-            let project_dirs = get_project_dirs();
+            let project_dirs = get_project_dirs()?;
             let config_path = project_dirs.config_dir().join("config.toml");
             let config_string = std::fs::read_to_string(config_path).ok()?;
             let config = toml::from_str::<Self>(&config_string).ok()?;

@@ -26,7 +26,7 @@ const YTM_DOMAIN: &str = "https://music.youtube.com";
 #[cfg(test)]
 fn get_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
-    let file = std::fs::read_to_string(get_header_location()).unwrap();
+    let file = std::fs::read_to_string("../headers.txt").unwrap();
     for header in file.lines() {
         if header.trim().is_empty() {
             continue;
