@@ -1,6 +1,4 @@
 use std::{
-    path::PathBuf,
-    str::FromStr,
     sync::{Arc, RwLock},
 };
 
@@ -18,7 +16,7 @@ use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, Yout
 
 use crate::{
     consts::CONFIG, run_service, structures::sound_action::SoundAction,
-    tasks, utils::invert, DATABASE,
+    tasks, utils::{invert, locate_headers_file}, DATABASE,
 };
 
 use super::{
@@ -223,7 +221,7 @@ impl Search {
             goto: Screens::MusicPlayer,
             search_handle: None,
             api: YoutubeMusicInstance::from_header_file(
-                PathBuf::from_str("headers.txt").unwrap().as_path(),
+                locate_headers_file().unwrap().as_path(),
             )
             .await
             .ok()
