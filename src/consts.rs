@@ -6,13 +6,14 @@ use once_cell::sync::Lazy;
 use crate::{config, utils::get_project_dirs};
 
 pub const HEADER_TUTORIAL: &str = r#"To configure the YTerMusic:
-1. Open the YouTube Music website in your browser;
-2. Open the developer tools (F12);
-3. Go to the Network tab;
-4. Go to https://music.youtube.com;
-5. Copy the `cookie` header from the associated request;
-6. Paste it in the `headers.txt` file as `Cookie: <cookie>`;
-7. Restart YterMusic"#;
+1. Open the YouTube Music website in your browser
+2. Open the developer tools (F12)
+3. Go to the Network tab
+4. Go to https://music.youtube.com
+5. Copy the `cookie` header from the associated request
+6. Paste it in the `headers.txt` file in format `Cookie: <cookie>`
+7. On a newline of `headers.txt` add a user-agent in format `User-Agent: <Mozilla/5.0 (Example)>
+8. Restart YterMusic"#;
 
 pub static CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let pdir = get_project_dirs();
