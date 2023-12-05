@@ -16,11 +16,11 @@ pub const HEADER_TUTORIAL: &str = r#"To configure the YTerMusic:
 
 pub static CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let pdir = get_project_dirs();
-    if let Some(dir) = pdir {
-        return dir.cache_dir().to_path_buf();
-    };
-    warn!("Failed to get cache dir! Defaulting to './data'");
-    PathBuf::from("./data")
+    if Some(pdir.cache_dir()) == None {
+        warn!("Failed to get cache dir! Defaulting to './data'");
+        return PathBuf::from("./data");
+    }
+    return pdir.cache_dir().to_path_buf()
 });
 
 pub static CONFIG: Lazy<config::Config> = Lazy::new(config::Config::new);
