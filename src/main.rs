@@ -65,7 +65,7 @@ async fn main() {
         _ = tokio::signal::ctrl_c() => {
             shutdown();
         },
-    }
+    };
 }
 async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
