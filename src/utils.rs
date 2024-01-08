@@ -18,12 +18,7 @@ pub fn locate_headers_file() -> Option<PathBuf> {
     ];
 
     // Return the first path that exists, if any:
-    for path in header_paths.iter() {
-        if path.exists() {
-            return Some(path.clone());
-        }
-    }
-    None
+    header_paths.iter().find(|path| path.exists()).cloned()
 }
 
 /// Invert a style
