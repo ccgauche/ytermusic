@@ -10,7 +10,7 @@ pub use reader::read;
 pub use writer::{write, write_video};
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{consts::CACHE_DIR};
+use crate::consts::CACHE_DIR;
 
 /// A global variable to store the current musical Database
 pub static DATABASE: Lazy<RwLock<Vec<YoutubeMusicVideoRef>>> =

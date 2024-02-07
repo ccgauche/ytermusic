@@ -40,13 +40,13 @@ static LEVEL: Lazy<(LevelFilter, Level)> = Lazy::new(|| {
 
 pub fn init() -> Result<(), SetLoggerError> {
     log::set_logger(&LOGGER).map(|()| log::set_max_level(LEVEL.0))?;
-    info!("Logger mode {}",LEVEL.1);
+    info!("Logger mode {}", LEVEL.1);
     return Ok(());
 }
 
 use log::{info, Level, LevelFilter, Metadata, Record, SetLoggerError};
 
-static FILTER: &[&str] = &["rustls","tokio-util","want-","mio-"];
+static FILTER: &[&str] = &["rustls", "tokio-util", "want-", "mio-"];
 
 struct SimpleLogger;
 

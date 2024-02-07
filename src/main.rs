@@ -1,16 +1,16 @@
 use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
-use log::{error};
+use log::error;
 use once_cell::sync::Lazy;
 use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc, process::exit};
-use systems::{player::player_system, logger::init};
+use std::{future::Future, panic, path::PathBuf, process::exit, str::FromStr, sync::Arc};
+use systems::{logger::init, player::player_system};
 
-use crate::{consts::HEADER_TUTORIAL};
+use crate::consts::HEADER_TUTORIAL;
 
 mod config;
 mod consts;
@@ -67,10 +67,7 @@ async fn main() {
         _ = tokio::signal::ctrl_c() => {
             shutdown();
         },
-    }
-    ;
-    
-
+    };
 }
 async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();

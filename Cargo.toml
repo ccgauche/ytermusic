@@ -33,7 +33,7 @@ varuint = "0.6.0"
 
 #  --- UI ---
 crossterm = "0.27.0"
-tui = { version = "0.19.0", features = ["serde"] }
+ratatui = { version = "0.26.0", features = ["serde"] }
 
 #  --- Player ---
 player = { path = "player" }

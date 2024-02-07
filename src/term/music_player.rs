@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
-use tui::widgets::{Block, Borders, Gauge};
+use ratatui::widgets::{Block, Borders, Gauge};
 
 use crate::{
     errors::handle_error,
@@ -24,7 +24,7 @@ impl Screen for PlayerState {
     fn on_mouse_press(
         &mut self,
         mouse_event: crossterm::event::MouseEvent,
-        frame_data: &tui::layout::Rect,
+        frame_data: &ratatui::layout::Rect,
     ) -> EventResponse {
         let x = mouse_event.column;
         let y = mouse_event.row;
@@ -85,32 +85,34 @@ impl Screen for PlayerState {
         EventResponse::None
     }
 
-    fn on_key_press(&mut self, key: KeyEvent, _: &tui::layout::Rect) -> EventResponse {
+    fn on_key_press(&mut self, key: KeyEvent, _: &ratatui::layout::Rect) -> EventResponse {
         match key.code {
             KeyCode::Esc => ManagerMessage::ChangeState(self.goto).event(),
             KeyCode::F(5) => {
                 // Get all musics that have failled to download
                 let mut musics = Vec::new();
-                self.music_status.iter_mut().for_each(|(key, music_status)| {
-                    if MusicDownloadStatus::DownloadFailed != *music_status {
-                        return;
-                    }
-                    if let Some(e) = self.previous.iter().find(|x| &x.video_id == key) {
-                        musics.push(e.clone());
-                        *music_status = MusicDownloadStatus::NotDownloaded;
-                        return;
-                    }
-                    if let Some(e) = self.current.as_ref().filter(|x| &x.video_id == key) {
-                        musics.push(e.clone());
-                        *music_status = MusicDownloadStatus::NotDownloaded;
-                        return;
-                    }
-                    if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
-                        musics.push(e.clone());
-                        *music_status = MusicDownloadStatus::NotDownloaded;
-                        return;
-                    }
-                });
+                self.music_status
+                    .iter_mut()
+                    .for_each(|(key, music_status)| {
+                        if MusicDownloadStatus::DownloadFailed != *music_status {
+                            return;
+                        }
+                        if let Some(e) = self.previous.iter().find(|x| &x.video_id == key) {
+                            musics.push(e.clone());
+                            *music_status = MusicDownloadStatus::NotDownloaded;
+                            return;
+                        }
+                        if let Some(e) = self.current.as_ref().filter(|x| &x.video_id == key) {
+                            musics.push(e.clone());
+                            *music_status = MusicDownloadStatus::NotDownloaded;
+                            return;
+                        }
+                        if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
+                            musics.push(e.clone());
+                            *music_status = MusicDownloadStatus::NotDownloaded;
+                            return;
+                        }
+                    });
                 // Download them
                 DOWNLOAD_LIST.lock().unwrap().extend(musics.into_iter());
                 EventResponse::None
@@ -189,7 +191,7 @@ impl Screen for PlayerState {
         }
     }
 
-    fn render(&mut self, f: &mut tui::Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, f: &mut ratatui::Frame) {
         let [top_rect, progress_rect] = split_y(f.size(), 3);
         let [list_rect, volume_rect] = split_x(top_rect, 10);
         let colors = if self.sink.is_paused() {

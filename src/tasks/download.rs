@@ -13,7 +13,7 @@ use crate::{
     consts::CACHE_DIR,
     run_service,
     structures::{app_status::MusicDownloadStatus, sound_action::SoundAction},
-    systems::{download::HANDLES},
+    systems::download::HANDLES,
     Error,
 };
 

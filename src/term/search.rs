@@ -7,18 +7,18 @@ use std::{
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use flume::Sender;
 use log::error;
-use tokio::task::JoinHandle;
-use tui::{
+use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
+use tokio::task::JoinHandle;
 use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
-    consts::CONFIG, run_service, structures::sound_action::SoundAction,
-    tasks, utils::invert, DATABASE,
+    consts::CONFIG, run_service, structures::sound_action::SoundAction, tasks, utils::invert,
+    DATABASE,
 };
 
 use super::{
@@ -181,7 +181,7 @@ impl Screen for Search {
         EventResponse::None
     }
 
-    fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, frame: &mut Frame) {
         let splitted = split_y_start(frame.size(), 3);
         frame.render_widget(
             Paragraph::new(self.text.clone())

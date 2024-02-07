@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
-use tui::{layout::Rect, style::Style, Frame};
+use ratatui::{layout::Rect, style::Style, Frame};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{consts::CONFIG, structures::sound_action::SoundAction, utils::invert, DATABASE};
@@ -69,7 +69,7 @@ impl Screen for PlaylistView {
         }
     }
 
-    fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, frame: &mut Frame) {
         frame.render_widget(&self.items, frame.size());
     }
 

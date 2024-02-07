@@ -1,5 +1,5 @@
+use ratatui::style::{Color, Modifier, Style};
 use serde::{Deserialize, Serialize};
-use tui::style::{Color, Modifier, Style};
 
 use crate::utils::get_project_dirs;
 
@@ -48,6 +48,8 @@ struct StyleDef {
     add_modifier: Modifier,
     #[serde(default = "Modifier::empty")]
     sub_modifier: Modifier,
+    #[serde(default)]
+    underline_color: Option<Color>,
 }
 
 impl Default for MusicPlayerConfig {
@@ -122,7 +124,11 @@ impl Config {
             let config_path = project_dirs.config_dir().join("config.toml");
             let config_string = std::fs::read_to_string(config_path).ok()?;
             let config = toml::from_str::<Self>(&config_string).ok()?;
-            std::fs::write(project_dirs.config_dir().join("config.applied.toml"), toml::to_string_pretty(&config).ok()?).ok()?;
+            std::fs::write(
+                project_dirs.config_dir().join("config.applied.toml"),
+                toml::to_string_pretty(&config).ok()?,
+            )
+            .ok()?;
             Some(config)
         };
         opt().unwrap_or_default()

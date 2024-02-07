@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
-use tui::{
+use ratatui::{
     layout::Rect,
     style::{Color, Style},
     Frame,
@@ -117,7 +117,7 @@ impl Screen for Chooser {
         EventResponse::None
     }
 
-    fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, frame: &mut Frame) {
         frame.render_widget(&self.item_list, frame.size());
     }
 
