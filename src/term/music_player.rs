@@ -4,6 +4,7 @@ use rand::seq::SliceRandom;
 use ratatui::widgets::{Block, Borders, Gauge};
 
 use crate::{
+    consts::CONFIG,
     errors::handle_error,
     structures::{
         app_status::{AppStatus, MusicDownloadStatus},
@@ -191,8 +192,9 @@ impl Screen for PlayerState {
     }
 
     fn render(&mut self, f: &mut ratatui::Frame) {
+        let render_volume_slider = CONFIG.player.volume_slider;
         let [top_rect, progress_rect] = split_y(f.size(), 3);
-        let [list_rect, volume_rect] = split_x(top_rect, 10);
+        let [list_rect, volume_rect] = split_x(top_rect, if render_volume_slider { 10 } else { 0 });
         let colors = if self.sink.is_paused() {
             AppStatus::Paused
         } else if self.sink.is_finished() {
@@ -201,13 +203,15 @@ impl Screen for PlayerState {
             AppStatus::Playing
         }
         .style();
-        f.render_widget(
-            VerticalGauge::default()
-                .block(Block::default().title(" Volume ").borders(Borders::ALL))
-                .gauge_style(colors)
-                .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
-            volume_rect,
-        );
+        if render_volume_slider {
+            f.render_widget(
+                VerticalGauge::default()
+                    .block(Block::default().title(" Volume ").borders(Borders::ALL))
+                    .gauge_style(colors)
+                    .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
+                volume_rect,
+            );
+        }
         let current_time = self.sink.elapsed();
         let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
