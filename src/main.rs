@@ -2,7 +2,6 @@ use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
 use log::error;
 use once_cell::sync::Lazy;
-use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
@@ -61,7 +60,7 @@ async fn main() {
     }));
     select! {
         _ = async {
-            app_start().await.unwrap()
+            app_start().await
         } => {},
         _ = SIGNALING_STOP.1.recv_async() => {},
         _ = tokio::signal::ctrl_c() => {
@@ -69,7 +68,7 @@ async fn main() {
         },
     };
 }
-async fn app_start() -> Result<(), Error> {
+async fn app_start() {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
     init().expect("Failed to initialize logger");
     STARTUP_TIME.log("Init");
@@ -78,7 +77,7 @@ async fn app_start() -> Result<(), Error> {
     if !PathBuf::from_str("headers.txt").unwrap().exists() {
         println!("The `headers.txt` file is not present in the root directory.");
         println!("{HEADER_TUTORIAL}");
-        return Ok(());
+        return;
     }
     if !std::fs::read_to_string("headers.txt")
         .unwrap()
@@ -87,7 +86,7 @@ async fn app_start() -> Result<(), Error> {
     {
         println!("The `headers.txt` file is not configured correctly.");
         println!("{HEADER_TUTORIAL}");
-        return Ok(());
+        return;
     }
 
     STARTUP_TIME.log("Startup");
@@ -114,5 +113,4 @@ async fn app_start() -> Result<(), Error> {
     STARTUP_TIME.log("Running manager");
     let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
-    Ok(())
 }

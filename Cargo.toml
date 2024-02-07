@@ -7,13 +7,13 @@ version = "0.1.0"
 
 [dependencies]
 #  --- YT Download ---
-rustube = { git = "https://github.com/Discursif/rustube", version = "0.6.0", features = [
-	"download",
-	"std",
-	"rustls-tls",
-	"callback",
-], default-features = false }
-# rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main" }
+# rustube = { git = "https://github.com/Discursif/rustube", version = "0.6.0", features = [
+# 	"download",
+# 	"std",
+# 	"rustls-tls",
+# 	"callback",
+# ], default-features = false }
+rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main" }
 
 ytpapi2 = { path = "./ytpapi2" }
 
