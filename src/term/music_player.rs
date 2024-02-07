@@ -110,11 +110,10 @@ impl Screen for PlayerState {
                         if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
                             musics.push(e.clone());
                             *music_status = MusicDownloadStatus::NotDownloaded;
-                            return;
                         }
                     });
                 // Download them
-                DOWNLOAD_LIST.lock().unwrap().extend(musics.into_iter());
+                DOWNLOAD_LIST.lock().unwrap().extend(musics);
                 EventResponse::None
             }
             KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
@@ -125,7 +124,7 @@ impl Screen for PlayerState {
                     musics.push(e);
                 }
                 let queue = std::mem::take(&mut self.queue);
-                musics.extend(queue.into_iter());
+                musics.extend(queue);
                 musics.shuffle(&mut rand::thread_rng());
                 self.queue = musics.into();
                 handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
