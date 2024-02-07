@@ -44,7 +44,7 @@ pub fn clean(sender: &Sender<SoundAction>) {
         }
         handle.clear();
     }
-    spawn_system(&sender);
+    spawn_system(sender);
 }
 
 /// Append a video to the download queue to be processed by the system

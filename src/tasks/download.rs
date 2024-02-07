@@ -30,7 +30,6 @@ fn new_video_with_id(id: &str) -> Result<Video, VideoError> {
         filter: search_options,
         download_options: DownloadOptions {
             dl_chunk_size: Some(1024 * 100_u64),
-            ..Default::default()
         },
         ..Default::default()
     };
