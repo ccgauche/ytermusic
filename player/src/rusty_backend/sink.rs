@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ pub struct Sink {
     queue_tx: Arc<queue::SourcesQueueInput<f32>>,
 
     controls: Arc<Controls>,
-    sound_count: Arc<AtomicUsize>,
+    sound_playing: Arc<AtomicBool>,
 
     detached: bool,
 
@@ -50,7 +50,7 @@ impl Sink {
                 stopped: AtomicBool::new(false),
                 seek: Mutex::new(None),
             }),
-            sound_count: Arc::new(AtomicUsize::new(0)),
+            sound_playing: Arc::new(AtomicBool::new(false)),
             detached: false,
             elapsed: Arc::new(RwLock::new(Duration::from_secs(0))),
         };
@@ -91,9 +91,9 @@ impl Sink {
                         .set_paused(controls.pause.load(Ordering::SeqCst));
                 }
             })
-            .convert_samples();
-        self.sound_count.fetch_add(1, Ordering::Relaxed);
-        let source = Done::new(source, self.sound_count.clone());
+            .convert_samples::<f32>();
+        self.sound_playing.store(true, Ordering::Relaxed);
+        let source = Done::new(source, self.sound_playing.clone());
         self.queue_tx.append(source);
     }
 
@@ -162,13 +162,7 @@ impl Sink {
     /// Returns true if this sink has no more sounds to play.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Returns the number of sounds currently in the queue.
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.sound_count.load(Ordering::Relaxed)
+        !self.sound_playing.load(Ordering::Relaxed)
     }
 
     #[inline]

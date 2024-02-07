@@ -26,7 +26,7 @@ where
     S: Sample + Send + 'static,
 {
     let input = Arc::new(SourcesQueueInput {
-        next_sounds: Mutex::new(Vec::new()),
+        next_sounds: Mutex::new(None),
         keep_alive_if_empty: AtomicBool::new(keep_alive_if_empty),
     });
 
@@ -44,7 +44,7 @@ where
 /// The input of the queue.
 #[allow(clippy::type_complexity)]
 pub struct SourcesQueueInput<S> {
-    next_sounds: Mutex<Vec<Box<dyn Source<Item = S> + Send>>>,
+    next_sounds: Mutex<Option<Box<dyn Source<Item = S> + Send>>>,
 
     /// See constructor.
     keep_alive_if_empty: AtomicBool,
@@ -61,10 +61,10 @@ where
     where
         T: Source<Item = S> + Send + 'static,
     {
-        self.next_sounds
+        *self.next_sounds
             .lock()
             .unwrap()
-            .push(Box::new(source) as Box<_>);
+            = Some(Box::new(source) as Box<_>);
     }
 
     /// Sets whether the queue stays alive if there's no more sound to play.
@@ -192,7 +192,7 @@ where
         let next = {
             let mut next = self.input.next_sounds.lock().unwrap();
 
-            if next.len() == 0 {
+            if next.is_none() {
                 if self.input.keep_alive_if_empty.load(Ordering::Acquire) {
                     // Play a short silence in order to avoid spinlocking.
                     let silence = Zero::<S>::new(1, 44100); // TODO: meh
@@ -202,7 +202,7 @@ where
                     return Err(());
                 }
             } else {
-                let mut next = next.remove(0);
+                let mut next = next.take().unwrap();
                 loop {
                     let l = next.next();
                     let r = next.next();

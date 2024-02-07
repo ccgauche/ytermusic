@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,14 +8,14 @@ use super::{Sample, Source};
 #[derive(Debug, Clone)]
 pub struct Done<I> {
     input: I,
-    signal: Arc<AtomicUsize>,
+    signal: Arc<AtomicBool>,
     signal_sent: bool,
 }
 
 #[allow(clippy::use_self, clippy::missing_const_for_fn, unused)]
 impl<I> Done<I> {
     #[inline]
-    pub fn new(input: I, signal: Arc<AtomicUsize>) -> Done<I> {
+    pub fn new(input: I, signal: Arc<AtomicBool>) -> Done<I> {
         Done {
             input,
             signal,
@@ -53,7 +53,7 @@ where
     fn next(&mut self) -> Option<I::Item> {
         let next = self.input.next();
         if !self.signal_sent && next.is_none() {
-            self.signal.fetch_sub(1, Ordering::Relaxed);
+            self.signal.store(false, Ordering::Relaxed);
             self.signal_sent = true;
         }
         next
