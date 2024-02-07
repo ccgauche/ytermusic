@@ -1,4 +1,4 @@
-use consts::CACHE_DIR;
+use consts::{CACHE_DIR, HEADER_TUTORIAL};
 use flume::{Receiver, Sender};
 use log::{error};
 use once_cell::sync::Lazy;
@@ -7,10 +7,8 @@ use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, path::PathBuf, str::FromStr, sync::Arc, process::exit};
+use std::{future::Future, panic, str::FromStr, sync::Arc, process::exit};
 use systems::{player::player_system, logger::init};
-
-use crate::{consts::HEADER_TUTORIAL};
 
 mod config;
 mod consts;
@@ -67,10 +65,7 @@ async fn main() {
         _ = tokio::signal::ctrl_c() => {
             shutdown();
         },
-    }
-    ;
-    
-
+    };
 }
 async fn app_start() -> Result<(), Error> {
     std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
@@ -78,17 +73,16 @@ async fn app_start() -> Result<(), Error> {
     STARTUP_TIME.log("Init");
 
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
-    if !PathBuf::from_str("headers.txt").unwrap().exists() {
-        println!("The `headers.txt` file is not present in the root directory.");
-        println!("{HEADER_TUTORIAL}");
-        return Ok(());
-    }
-    if !std::fs::read_to_string("headers.txt")
-        .unwrap()
-        .to_lowercase()
-        .contains("cookie: ")
-    {
-        println!("The `headers.txt` file is not configured correctly.");
+    if let Some(headers_path) = utils::locate_headers_file() {
+        //println!("Reading headers from {:?}", headers_path);
+        let headers = std::fs::read_to_string(headers_path).unwrap();
+        if !headers.to_lowercase().contains("cookie: ") {
+            println!("The `headers.txt` file is not configured correctly.");
+            println!("{HEADER_TUTORIAL}");
+            return Ok(());
+        }
+    } else {
+        println!("The `headers.txt` file was not found.");
         println!("{HEADER_TUTORIAL}");
         return Ok(());
     }

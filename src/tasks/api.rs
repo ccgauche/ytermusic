@@ -1,6 +1,4 @@
 use std::{
-    path::PathBuf,
-    str::FromStr,
     sync::{Arc, Mutex},
 };
 
@@ -14,6 +12,7 @@ use crate::{
     run_service,
     structures::performance,
     term::{ManagerMessage, Screens},
+    utils::locate_headers_file,
 };
 
 const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
@@ -24,7 +23,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
         info!("API task on");
         let guard = performance::guard("API task");
         let client = YoutubeMusicInstance::from_header_file(
-            PathBuf::from_str("headers.txt").unwrap().as_path(),
+            locate_headers_file().unwrap().as_path(),
         )
         .await;
         match client {
