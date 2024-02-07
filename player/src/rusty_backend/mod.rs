@@ -161,7 +161,7 @@ impl Player {
         self.sink.set_volume(f32::from(self.data.volume) / 100.0);
     }
     pub fn is_finished(&self) -> bool {
-        self.sink.is_empty() || self.sink.sleep_until_end()
+        self.sink.is_empty()
     }
     pub fn play(&mut self, path: &Path, guard: &Guard) -> Result<(), PlayError> {
         self.stop(guard);

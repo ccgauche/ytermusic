@@ -1,11 +1,6 @@
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
-use std::{
-    collections::VecDeque,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
-
-use flume::Receiver;
 
 use super::{queue, source::Done, Sample, Source};
 use super::{OutputStreamHandle, PlayError};
@@ -16,7 +11,6 @@ use super::{OutputStreamHandle, PlayError};
 /// playing.
 pub struct Sink {
     queue_tx: Arc<queue::SourcesQueueInput<f32>>,
-    sleep_until_end: VecDeque<Receiver<()>>,
 
     controls: Arc<Controls>,
     sound_count: Arc<AtomicUsize>,
@@ -50,7 +44,6 @@ impl Sink {
 
         let sink = Self {
             queue_tx,
-            sleep_until_end: VecDeque::new(),
             controls: Arc::new(Controls {
                 pause: AtomicBool::new(false),
                 volume: Mutex::new(1.0),
@@ -101,8 +94,7 @@ impl Sink {
             .convert_samples();
         self.sound_count.fetch_add(1, Ordering::Relaxed);
         let source = Done::new(source, self.sound_count.clone());
-        self.sleep_until_end
-            .push_back(self.queue_tx.append_with_signal(source));
+        self.queue_tx.append(source);
     }
 
     /// Gets the volume of the sound.
@@ -167,19 +159,6 @@ impl Sink {
         self.detached = true;
     }
 
-    /// Sleeps the current thread until the sound ends.
-    #[inline]
-    pub fn sleep_until_end(&self) -> bool {
-        if let Some(sleep_until_end) = self.sleep_until_end.back() {
-            sleep_until_end.try_recv().is_ok()
-        } else {
-            true
-        }
-    }
-
-    pub fn get_current_receiver(&mut self) -> Option<Receiver<()>> {
-        self.sleep_until_end.pop_front()
-    }
     /// Returns true if this sink has no more sounds to play.
     #[inline]
     pub fn is_empty(&self) -> bool {
