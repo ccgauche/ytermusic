@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use flume::Sender;
 use log::info;
 use ytpapi2::YoutubeMusicVideoRef;

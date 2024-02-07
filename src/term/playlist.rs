@@ -1,4 +1,4 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::atomic::AtomicBool;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;

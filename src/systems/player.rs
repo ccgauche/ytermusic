@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{atomic::Ordering, Arc},
+    sync::atomic::Ordering,
 };
 
 use flume::{unbounded, Receiver, Sender};
@@ -216,9 +216,7 @@ impl PlayerState {
     }
 }
 
-pub fn player_system(
-    updater: Sender<ManagerMessage>,
-) -> (Sender<SoundAction>, PlayerState) {
+pub fn player_system(updater: Sender<ManagerMessage>) -> (Sender<SoundAction>, PlayerState) {
     let (tx, rx) = flume::unbounded::<SoundAction>();
     (tx.clone(), PlayerState::new(tx, rx, updater))
 }

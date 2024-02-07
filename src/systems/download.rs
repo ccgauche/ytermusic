@@ -1,8 +1,4 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{collections::VecDeque, sync::Mutex, time::Duration};
 
 use flume::Sender;
 use once_cell::sync::Lazy;

@@ -9,7 +9,6 @@ pub mod vertical_gauge;
 
 use std::{
     io::{self},
-    sync::Arc,
     time::{Duration, Instant},
 };
 

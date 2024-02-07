@@ -1,4 +1,4 @@
-use std::{time::Duration};
+use std::time::Duration;
 
 use flume::Sender;
 use log::{error, info};
@@ -21,10 +21,7 @@ pub struct Media {
 }
 
 impl Media {
-    pub fn new(
-        updater: Sender<ManagerMessage>,
-        soundaction_sender: Sender<SoundAction>,
-    ) -> Self {
+    pub fn new(updater: Sender<ManagerMessage>, soundaction_sender: Sender<SoundAction>) -> Self {
         if !CONFIG.player.dbus {
             info!("Media controls disabled by config");
             return Self {

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
 use ratatui::{layout::Rect, style::Style, Frame};

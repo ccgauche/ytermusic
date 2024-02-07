@@ -1,5 +1,3 @@
-
-
 use flume::Sender;
 use log::info;
 use rand::seq::SliceRandom;

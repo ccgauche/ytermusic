@@ -6,7 +6,7 @@ use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, path::PathBuf, process::exit, str::FromStr, sync::Arc};
+use std::{future::Future, panic, path::PathBuf, process::exit, str::FromStr};
 use systems::{logger::init, player::player_system};
 
 use crate::consts::HEADER_TUTORIAL;
