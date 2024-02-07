@@ -93,7 +93,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>, music_player: PlayerState) -> Self {
+    pub async fn new(action_sender: Sender<SoundAction>, music_player: PlayerState) -> Self {
         Self {
             music_player,
             chooser: Chooser {

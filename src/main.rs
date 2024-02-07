@@ -96,11 +96,10 @@ async fn app_start() {
     tasks::clean::spawn_clean_task();
 
     STARTUP_TIME.log("Spawned clean task");
-    let updater_s = Arc::new(updater_s);
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
-    systems::download::spawn_system(sa.clone());
+    systems::download::spawn_system(&sa);
     STARTUP_TIME.log("Spawned system task");
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     STARTUP_TIME.log("Spawned last playlist task");
@@ -108,7 +107,7 @@ async fn app_start() {
     tasks::api::spawn_api_task(updater_s.clone());
     STARTUP_TIME.log("Spawned api task");
     // Spawn the database getter task
-    tasks::local_musics::spawn_local_musics_task(updater_s.clone());
+    tasks::local_musics::spawn_local_musics_task(updater_s);
 
     STARTUP_TIME.log("Running manager");
     let mut manager = Manager::new(sa, player).await;

@@ -11,7 +11,7 @@ use crate::{
     term::{ManagerMessage, Screens},
 };
 
-pub fn spawn_last_playlist_task(updater_s: Arc<Sender<ManagerMessage>>) {
+pub fn spawn_last_playlist_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         let guard = performance::guard("Last playlist");
         info!("Last playlist task on");

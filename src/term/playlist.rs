@@ -36,7 +36,7 @@ impl ListItemAction for ChooserAction {
 pub struct Chooser {
     pub item_list: ListItem<ChooserAction>,
     pub goto: Screens,
-    pub action_sender: Arc<Sender<SoundAction>>,
+    pub action_sender: Sender<SoundAction>,
 }
 
 #[derive(Clone)]
@@ -148,7 +148,7 @@ impl Chooser {
             .unwrap();
         }
         self.action_sender.send(SoundAction::Cleanup).unwrap();
-        download::clean(self.action_sender.clone());
+        download::clean(&self.action_sender);
         self.action_sender
             .send(SoundAction::AddVideosToQueue(a.videos.clone()))
             .unwrap();

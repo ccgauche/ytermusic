@@ -174,7 +174,7 @@ pub async fn start_download(song: YoutubeMusicVideoRef, s: &Sender<SoundAction>)
         }
     }
 }
-pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: YoutubeMusicVideoRef) {
+pub fn start_task_unary(s: Sender<SoundAction>, song: YoutubeMusicVideoRef) {
     HANDLES.lock().unwrap().push(run_service(async move {
         start_download(song, &s).await;
     }));

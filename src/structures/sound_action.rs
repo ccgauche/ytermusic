@@ -135,7 +135,7 @@ impl SoundAction {
             }
             Self::ReplaceQueue(videos) => {
                 player.queue.clear();
-                download::clean(player.soundaction_sender.clone());
+                download::clean(&player.soundaction_sender);
                 Self::AddVideosToQueue(videos).apply_sound_action(player);
                 Self::Next(1).apply_sound_action(player);
             }

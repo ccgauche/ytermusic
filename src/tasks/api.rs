@@ -19,7 +19,7 @@ use crate::{
 const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
     "The `headers.txt` file is not configured correctly. \nThe cookies are expired or invalid.";
 
-pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
+pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("API task on");
         let guard = performance::guard("API task");
@@ -125,7 +125,7 @@ static BROWSED_PLAYLISTS: Lazy<Mutex<Vec<(String, String)>>> = Lazy::new(|| Mute
 fn spawn_browse_playlist_task(
     playlist: YoutubeMusicPlaylistRef,
     api: Arc<YoutubeMusicInstance>,
-    updater_s: Arc<Sender<ManagerMessage>>,
+    updater_s: Sender<ManagerMessage>,
 ) {
     {
         let mut k = BROWSED_PLAYLISTS.lock().unwrap();

@@ -34,7 +34,7 @@ static VOLUME_STEP: u8 = 5;
 pub struct Player {
     sink: Sink,
     data: PlayerData,
-    error_sender: Arc<Sender<StreamError>>,
+    error_sender: Sender<StreamError>,
     options: PlayerOptions,
 }
 
@@ -61,7 +61,7 @@ impl Player {
     /// Returns a new stream & handle using the given output device.
     fn try_from_device(
         device: &cpal::Device,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
         let (mixer, stream) = device.try_new_output_stream(error_sender)?;
         stream.play()?;
@@ -79,7 +79,7 @@ impl Player {
     ///
     /// On failure will fallback to trying any non-default output devices.
     fn try_default(
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
         let default_device = cpal::default_host()
             .default_output_device()
@@ -100,7 +100,7 @@ impl Player {
         })
     }
     pub fn new(
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
         options: PlayerOptions,
     ) -> Result<(Self, Guard), PlayError> {
         let (stream, handle) =
@@ -111,8 +111,8 @@ impl Player {
 
         Ok((
             Self {
-                sink: sink,
-                error_sender: error_sender,
+                sink,
+                error_sender,
                 data: PlayerData {
                     total_duration: None,
                     volume,

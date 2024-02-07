@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{time::Duration};
 
 use flume::Sender;
 use log::{error, info};
@@ -22,8 +22,8 @@ pub struct Media {
 
 impl Media {
     pub fn new(
-        updater: Arc<Sender<ManagerMessage>>,
-        soundaction_sender: Arc<Sender<SoundAction>>,
+        updater: Sender<ManagerMessage>,
+        soundaction_sender: Sender<SoundAction>,
     ) -> Self {
         if !CONFIG.player.dbus {
             info!("Media controls disabled by config");
@@ -95,7 +95,7 @@ impl Media {
     }
 }
 
-fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Result<(), Error> {
+fn connect(mpris: &mut MediaControls, sender: Sender<SoundAction>) -> Result<(), Error> {
     mpris.attach(move |e| match e {
         MediaControlEvent::Toggle | MediaControlEvent::Play | MediaControlEvent::Pause => {
             sender.send(SoundAction::PlayPause).unwrap();

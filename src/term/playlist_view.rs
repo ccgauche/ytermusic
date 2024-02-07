@@ -36,7 +36,7 @@ pub struct PlaylistView {
     pub items: ListItem<PlayListAction>,
     pub videos: Vec<YoutubeMusicVideoRef>,
     pub goto: Screens,
-    pub sender: Arc<Sender<SoundAction>>,
+    pub sender: Sender<SoundAction>,
 }
 
 impl Screen for PlaylistView {

@@ -33,7 +33,7 @@ pub struct Search {
     pub list: Arc<RwLock<ListItem<Status>>>,
     pub search_handle: Option<JoinHandle<()>>,
     pub api: Option<Arc<YoutubeMusicInstance>>,
-    pub action_sender: Arc<Sender<SoundAction>>,
+    pub action_sender: Sender<SoundAction>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
@@ -214,7 +214,7 @@ impl Screen for Search {
     }
 }
 impl Search {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
+    pub async fn new(action_sender: Sender<SoundAction>) -> Self {
         Self {
             text: String::new(),
             list: Arc::new(RwLock::new(ListItem::new(

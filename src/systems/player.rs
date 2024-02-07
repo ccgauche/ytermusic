@@ -62,24 +62,24 @@ pub struct PlayerState {
     pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
-    pub updater: Arc<Sender<ManagerMessage>>,
-    pub soundaction_sender: Arc<Sender<SoundAction>>,
+    pub updater: Sender<ManagerMessage>,
+    pub soundaction_sender: Sender<SoundAction>,
     pub soundaction_receiver: Receiver<SoundAction>,
     pub stream_error_receiver: Receiver<StreamError>,
 }
 
 impl PlayerState {
     fn new(
-        soundaction_sender: Arc<Sender<SoundAction>>,
+        soundaction_sender: Sender<SoundAction>,
         soundaction_receiver: Receiver<SoundAction>,
-        updater: Arc<Sender<ManagerMessage>>,
+        updater: Sender<ManagerMessage>,
     ) -> Self {
         let (stream_error_sender, stream_error_receiver) = unbounded::<StreamError>();
         let (sink, guard) = handle_error_option(
             &updater,
             "player creation error",
             Player::new(
-                Arc::new(stream_error_sender),
+                stream_error_sender,
                 PlayerOptions {
                     initial_volume: CONFIG.player.initial_volume,
                 },
@@ -217,12 +217,10 @@ impl PlayerState {
 }
 
 pub fn player_system(
-    updater: Arc<Sender<ManagerMessage>>,
-) -> (Arc<Sender<SoundAction>>, PlayerState) {
+    updater: Sender<ManagerMessage>,
+) -> (Sender<SoundAction>, PlayerState) {
     let (tx, rx) = flume::unbounded::<SoundAction>();
-    let tx = Arc::new(tx);
-    let k = tx.clone();
-    (tx, PlayerState::new(k, rx, updater))
+    (tx.clone(), PlayerState::new(tx, rx, updater))
 }
 
 pub fn generate_music<'a>(
