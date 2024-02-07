@@ -1,6 +1,8 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use atomic_float::AtomicF32;
 
 use super::{queue, source::Done, Sample, Source};
 use super::{OutputStreamHandle, PlayError};
@@ -17,12 +19,12 @@ pub struct Sink {
 
     detached: bool,
 
-    elapsed: Arc<RwLock<Duration>>,
+    elapsed: Arc<AtomicU32>,
 }
 
 struct Controls {
     pause: AtomicBool,
-    volume: Mutex<f32>,
+    volume: AtomicF32,
     seek: Mutex<Option<Duration>>,
     stopped: AtomicBool,
 }
@@ -46,13 +48,13 @@ impl Sink {
             queue_tx,
             controls: Arc::new(Controls {
                 pause: AtomicBool::new(false),
-                volume: Mutex::new(1.0),
+                volume: AtomicF32::new(1.0),
                 stopped: AtomicBool::new(false),
                 seek: Mutex::new(None),
             }),
             sound_playing: Arc::new(AtomicBool::new(false)),
             detached: false,
-            elapsed: Arc::new(RwLock::new(Duration::from_secs(0))),
+            elapsed: Arc::new(AtomicU32::new(0)),
         };
         (sink, queue_rx)
     }
@@ -84,17 +86,16 @@ impl Sink {
                             }
                         }
                     }
-                    *elapsed.write().unwrap() = src.elapsed();
-                    src.inner_mut().set_factor(*controls.volume.lock().unwrap());
+                    elapsed.store(src.elapsed().as_secs() as u32, Ordering::Relaxed);
+                    src.inner_mut().set_factor(controls.volume.load(Ordering::Relaxed));
                     src.inner_mut()
                         .inner_mut()
-                        .set_paused(controls.pause.load(Ordering::SeqCst));
+                        .set_paused(controls.pause.load(Ordering::Relaxed));
                 }
             })
             .convert_samples::<f32>();
         self.sound_playing.store(true, Ordering::Relaxed);
-        let source = Done::new(source, self.sound_playing.clone());
-        self.queue_tx.append(source);
+        self.queue_tx.append(Done::new(source, self.sound_playing.clone()));
     }
 
     /// Gets the volume of the sound.
@@ -103,7 +104,7 @@ impl Sink {
     /// multiply each sample by this value.
     #[inline]
     pub fn volume(&self) -> f32 {
-        *self.controls.volume.lock().unwrap()
+        self.controls.volume.load(Ordering::Relaxed)
     }
 
     /// Changes the volume of the sound.
@@ -112,7 +113,7 @@ impl Sink {
     /// multiply each sample by this value.
     #[inline]
     pub fn set_volume(&self, value: f32) {
-        *self.controls.volume.lock().unwrap() = value;
+        self.controls.volume.store(value, Ordering::Relaxed)
     }
 
     /// Resumes playback of a paused sink.
@@ -166,8 +167,8 @@ impl Sink {
     }
 
     #[inline]
-    pub fn elapsed(&self) -> Duration {
-        *self.elapsed.read().unwrap()
+    pub fn elapsed(&self) -> u32 {
+        self.elapsed.load(Ordering::Relaxed)
     }
     pub fn destroy(&self) {
         self.queue_tx.set_keep_alive_if_empty(false);

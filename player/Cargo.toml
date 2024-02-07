@@ -13,3 +13,4 @@ symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = [
 ] }
 flume = "0.11.0"
 tokio = "1.36.0"
+atomic_float = "0.1.0"

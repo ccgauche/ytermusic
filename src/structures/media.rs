@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use flume::Sender;
 use log::{error, info};
@@ -79,11 +79,11 @@ impl Media {
                 MediaPlayback::Stopped
             } else if sink.is_paused() {
                 MediaPlayback::Paused {
-                    progress: Some(MediaPosition(sink.elapsed())),
+                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
                 }
             } else {
                 MediaPlayback::Playing {
-                    progress: Some(MediaPosition(sink.elapsed())),
+                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
                 }
             };
             if self.current_playback != Some(playback.clone()) {

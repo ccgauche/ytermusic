@@ -208,7 +208,7 @@ impl Screen for PlayerState {
                 .ratio((self.sink.volume() as f64 / 100.).clamp(0.0, 1.0)),
             volume_rect,
         );
-        let current_time = self.sink.elapsed().as_secs();
+        let current_time = self.sink.elapsed();
         let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
             Gauge::default()
