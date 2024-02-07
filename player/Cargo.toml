@@ -11,5 +11,5 @@ symphonia = { git = "https://github.com/pdeljanov/Symphonia", features = [
     "aac",
     "isomp4",
 ] }
-flume = "0.10.12"
-tokio = "1.17.0"
+flume = "0.11.0"
+tokio = "1.36.0"

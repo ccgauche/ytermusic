@@ -4,7 +4,7 @@ use flume::Sender;
 use log::{info, error};
 use player::Player;
 use souvlaki::{
-    Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
+    Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, SeekDirection,
 };
 use ytpapi2::YoutubeMusicVideoRef;
 
@@ -109,13 +109,30 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
                 sender.send(SoundAction::Backward).unwrap();
             }
         },
-        MediaControlEvent::SeekBy(_, _) => todo!(),
-        MediaControlEvent::SetPosition(_) => todo!(),
-        MediaControlEvent::OpenUri(_) => todo!(),
-        MediaControlEvent::Raise => todo!(),
+        // TODO(functionnality): implement seek amount
+        MediaControlEvent::SeekBy(a, _b) => {
+            if a == SeekDirection::Forward {
+                sender.send(SoundAction::Forward).unwrap();
+            } else {
+                sender.send(SoundAction::Backward).unwrap();
+            }
+        }
+
+        MediaControlEvent::SetPosition(a) => {
+            todo!("Can't set position to {a:?}")
+        },
+        MediaControlEvent::OpenUri(a) => {
+            todo!("Implement URI opening {a:?}")
+        },
+        MediaControlEvent::Raise => {
+            todo!("Implement raise")
+        },
         MediaControlEvent::Quit => {
             shutdown();
         }
+        MediaControlEvent::SetVolume(e) => {
+            todo!("Implement volume setting {e:?}");
+        },
     })
 }
 

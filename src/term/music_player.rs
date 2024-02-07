@@ -2,7 +2,6 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
 use tui::widgets::{Block, Borders, Gauge};
-use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     errors::handle_error,

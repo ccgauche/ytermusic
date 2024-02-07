@@ -74,7 +74,7 @@ impl PlayerState {
         soundaction_receiver: Receiver<SoundAction>,
         updater: Arc<Sender<ManagerMessage>>,
     ) -> Self {
-        let (stream_error_sender, stream_error_receiver) = unbounded();
+        let (stream_error_sender, stream_error_receiver) = unbounded::<StreamError>();
         let (sink, guard) = handle_error_option(
             &updater,
             "player creation error",
