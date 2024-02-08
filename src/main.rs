@@ -1,14 +1,14 @@
 use consts::{CACHE_DIR, HEADER_TUTORIAL};
 use flume::{Receiver, Sender};
-use log::{error};
+use log::error;
 use once_cell::sync::Lazy;
 use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, str::FromStr, sync::Arc, process::exit};
-use systems::{player::player_system, logger::init};
+use std::{future::Future, panic, process::exit, str::FromStr, sync::Arc};
+use systems::{logger, player::player_system};
 
 mod config;
 mod consts;
@@ -68,8 +68,7 @@ async fn main() {
     };
 }
 async fn app_start() -> Result<(), Error> {
-    std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
-    init().expect("Failed to initialize logger");
+    logger::init().expect("Failed to initialize logger");
     STARTUP_TIME.log("Init");
 
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
