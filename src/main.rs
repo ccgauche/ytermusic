@@ -69,7 +69,7 @@ async fn main() {
     };
 }
 async fn app_start() {
-    std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
+    std::fs::write(get_log_file_path(), "# YTerMusic log file\n\n").unwrap();
     init().expect("Failed to initialize logger");
     STARTUP_TIME.log("Init");
 
