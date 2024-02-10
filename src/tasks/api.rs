@@ -10,6 +10,7 @@ use crate::{
     get_header_file, run_service,
     structures::performance,
     term::{ManagerMessage, Screens},
+    utils::locate_headers_file,
 };
 
 pub fn get_text_cookies_expired_or_invalid() -> String {
