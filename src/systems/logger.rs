@@ -25,7 +25,7 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
     tx
 });
 
-fn get_log_file_path() -> PathBuf {
+pub fn get_log_file_path() -> PathBuf {
     if let Some(val) = get_project_dirs() {
         if let Err(e) = std::fs::create_dir_all(val.cache_dir()) {
             panic!("Failed to create cache dir: {}", e);

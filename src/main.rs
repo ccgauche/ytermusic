@@ -9,7 +9,7 @@ use tokio::select;
 use std::{future::Future, panic, path::PathBuf, process::exit, str::FromStr};
 use systems::{logger::init, player::player_system};
 
-use crate::consts::HEADER_TUTORIAL;
+use crate::{consts::HEADER_TUTORIAL, systems::logger::get_log_file_path};
 
 mod config;
 mod consts;
