@@ -11,22 +11,25 @@ use tokio::task::JoinSet;
 use ytpapi2::{Endpoint, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 
 use crate::{
-    run_service,
+    get_header_file, run_service,
     structures::performance,
     term::{ManagerMessage, Screens},
 };
 
-const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
-    "The `headers.txt` file is not configured correctly. \nThe cookies are expired or invalid.";
+pub fn get_text_cookies_expired_or_invalid() -> String {
+    let (Ok((_, path)) | Err((_, path))) = get_header_file();
+    format!(
+        "The `{}` file is not configured correctly. \nThe cookies are expired or invalid.",
+        path.display()
+    )
+}
 
 pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("API task on");
         let guard = performance::guard("API task");
-        let client = YoutubeMusicInstance::from_header_file(
-            PathBuf::from_str("headers.txt").unwrap().as_path(),
-        )
-        .await;
+        let client =
+            YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await;
         match client {
             Ok(api) => {
                 let api = Arc::new(api);
@@ -99,12 +102,12 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
                 | ytpapi2::YoutubeMusicError::CantFindInnerTubeClientVersion(_)
                 | ytpapi2::YoutubeMusicError::CantFindVisitorData(_)
                 | ytpapi2::YoutubeMusicError::IoError(_) => {
-                    error!("{}", TEXT_COOKIES_EXPIRED_OR_INVALID);
+                    error!("{}", get_text_cookies_expired_or_invalid());
                     error!("{e:?}");
                     updater_s
                         .send(
                             ManagerMessage::Error(
-                                TEXT_COOKIES_EXPIRED_OR_INVALID.to_string(),
+                                get_text_cookies_expired_or_invalid(),
                                 Box::new(Some(ManagerMessage::Quit)),
                             )
                             .pass_to(Screens::DeviceLost),

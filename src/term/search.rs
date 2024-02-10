@@ -17,8 +17,8 @@ use tokio::task::JoinHandle;
 use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
-    consts::CONFIG, run_service, structures::sound_action::SoundAction, tasks, utils::invert,
-    DATABASE,
+    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks,
+    utils::invert, DATABASE,
 };
 
 use super::{
@@ -222,12 +222,10 @@ impl Search {
             ))),
             goto: Screens::MusicPlayer,
             search_handle: None,
-            api: YoutubeMusicInstance::from_header_file(
-                PathBuf::from_str("headers.txt").unwrap().as_path(),
-            )
-            .await
-            .ok()
-            .map(Arc::new),
+            api: YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path())
+                .await
+                .ok()
+                .map(Arc::new),
             action_sender,
         }
     }
