@@ -107,6 +107,7 @@ async fn app_start() {
         println!("Can't read or find `{}`", filepath.display());
         println!("Error: {error}");
         println!("{HEADER_TUTORIAL}");
+        return;
     }
 
     STARTUP_TIME.log("Startup");

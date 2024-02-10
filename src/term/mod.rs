@@ -14,7 +14,8 @@ use std::{
 
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyModifiers, MouseEvent,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyEventKind, KeyModifiers,
+        MouseEvent,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -219,7 +220,7 @@ impl Manager {
                 .unwrap_or_else(|| Duration::from_secs(0));
             if crossterm::event::poll(timeout)? {
                 match event::read()? {
-                    Event::Key(key) => {
+                    Event::Key(key) if key.kind != KeyEventKind::Release => {
                         if (key.code == event::KeyCode::Char('c')
                             || key.code == event::KeyCode::Char('d'))
                             && key.modifiers == KeyModifiers::CONTROL
