@@ -1,8 +1,4 @@
-use std::{
-    path::PathBuf,
-    str::FromStr,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use flume::Sender;

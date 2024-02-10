@@ -1,8 +1,4 @@
-use std::{
-    path::PathBuf,
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use flume::Sender;
 use log::{error, info};
