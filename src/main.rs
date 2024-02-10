@@ -1,4 +1,4 @@
-use consts::{CACHE_DIR, HEADER_TUTORIAL};
+use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
 use log::error;
 use once_cell::sync::Lazy;
@@ -96,7 +96,6 @@ fn get_header_file() -> Result<(String, PathBuf), (std::io::Error, PathBuf)> {
     }
     let fp = fp.join("headers.txt");
     std::fs::read_to_string(&fp).map_or_else(|e| Err((e, fp.clone())), |e| Ok((e, fp.clone())))
-
 }
 async fn app_start() {
     std::fs::write(get_log_file_path(), "# YTerMusic log file\n\n").unwrap();
