@@ -84,7 +84,7 @@ fn get_header_file() -> Result<(String, PathBuf), (std::io::Error, PathBuf)> {
             (
                 std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    format!("Can't find project dir. This is a `directories` crate issue"),
+                    "Can't find project dir. This is a `directories` crate issue",
                 ),
                 Path::new("./").to_owned(),
             )
