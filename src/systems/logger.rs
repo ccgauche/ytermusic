@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, path::PathBuf};
 
 use flume::Sender;
 use once_cell::sync::Lazy;
@@ -7,10 +7,11 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
     let (tx, rx) = flume::unbounded::<String>();
     std::thread::spawn(move || {
         let mut buffer = String::new();
+        let filepath = get_log_file_path();
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open("log.txt")
+            .open(filepath)
             .unwrap();
         while let Ok(e) = rx.recv() {
             buffer.clear();
@@ -23,6 +24,17 @@ static LOG: Lazy<Sender<String>> = Lazy::new(|| {
     });
     tx
 });
+
+pub fn get_log_file_path() -> PathBuf {
+    if let Some(val) = get_project_dirs() {
+        if let Err(e) = std::fs::create_dir_all(val.cache_dir()) {
+            panic!("Failed to create cache dir: {}", e);
+        }
+        val.cache_dir().join("log.txt")
+    } else {
+        PathBuf::from("log.txt")
+    }
+}
 
 static LOGGER: SimpleLogger = SimpleLogger;
 static LEVEL: Lazy<(LevelFilter, Level)> = Lazy::new(|| {
@@ -40,13 +52,15 @@ static LEVEL: Lazy<(LevelFilter, Level)> = Lazy::new(|| {
 
 pub fn init() -> Result<(), SetLoggerError> {
     log::set_logger(&LOGGER).map(|()| log::set_max_level(LEVEL.0))?;
-    info!("Logger mode {}",LEVEL.1);
-    return Ok(());
+    info!("Logger mode {}", LEVEL.1);
+    Ok(())
 }
 
 use log::{info, Level, LevelFilter, Metadata, Record, SetLoggerError};
 
-static FILTER: &[&str] = &["rustls","tokio-util","want-","mio-"];
+use crate::utils::get_project_dirs;
+
+static FILTER: &[&str] = &["rustls", "tokio-util", "want-", "mio-"];
 
 struct SimpleLogger;
 

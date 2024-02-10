@@ -1,14 +1,21 @@
 use consts::{CACHE_DIR, HEADER_TUTORIAL};
 use flume::{Receiver, Sender};
-use log::{error};
+use log::error;
 use once_cell::sync::Lazy;
-use rustube::Error;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, str::FromStr, sync::Arc, process::exit};
-use systems::{player::player_system, logger::init};
+use std::{
+    future::Future,
+    panic,
+    path::{Path, PathBuf},
+    process::exit,
+    str::FromStr,
+};
+use systems::{logger::init, player::player_system};
+
+use crate::{consts::HEADER_TUTORIAL, systems::logger::get_log_file_path, utils::get_project_dirs};
 
 mod config;
 mod consts;
@@ -59,7 +66,7 @@ async fn main() {
     }));
     select! {
         _ = async {
-            app_start().await.unwrap()
+            app_start().await
         } => {},
         _ = SIGNALING_STOP.1.recv_async() => {},
         _ = tokio::signal::ctrl_c() => {
@@ -67,24 +74,42 @@ async fn main() {
         },
     };
 }
-async fn app_start() -> Result<(), Error> {
-    std::fs::write("log.txt", "# YTerMusic log file\n\n").unwrap();
+fn get_header_file() -> Result<(String, PathBuf), (std::io::Error, PathBuf)> {
+    let fp = PathBuf::from_str("headers.txt").unwrap();
+    if let Ok(e) = std::fs::read_to_string(&fp) {
+        return Ok((e, fp));
+    }
+    let fp = get_project_dirs()
+        .ok_or_else(|| {
+            (
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Can't find project dir. This is a `directories` crate issue",
+                ),
+                Path::new("./").to_owned(),
+            )
+        })?
+        .config_dir()
+        .to_owned();
+    if let Err(e) = std::fs::create_dir_all(&fp) {
+        println!("Can't create app directory {e} in `{}`", fp.display());
+    }
+    let fp = fp.join("headers.txt");
+    std::fs::read_to_string(&fp).map_or_else(|e| Err((e, fp.clone())), |e| Ok((e, fp.clone())))
+
+}
+async fn app_start() {
+    std::fs::write(get_log_file_path(), "# YTerMusic log file\n\n").unwrap();
     init().expect("Failed to initialize logger");
     STARTUP_TIME.log("Init");
 
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
-    if let Some(headers_path) = utils::locate_headers_file() {
-        //println!("Reading headers from {:?}", headers_path);
-        let headers = std::fs::read_to_string(headers_path).unwrap();
-        if !headers.to_lowercase().contains("cookie: ") {
-            println!("The `headers.txt` file is not configured correctly.");
-            println!("{HEADER_TUTORIAL}");
-            return Ok(());
-        }
-    } else {
-        println!("The `headers.txt` file was not found.");
+
+    if let Err((error, filepath)) = get_header_file() {
+        println!("Can't read or find `{}`", filepath.display());
+        println!("Error: {error}");
         println!("{HEADER_TUTORIAL}");
-        return Ok(());
+        return;
     }
 
     STARTUP_TIME.log("Startup");
@@ -94,11 +119,10 @@ async fn app_start() -> Result<(), Error> {
     tasks::clean::spawn_clean_task();
 
     STARTUP_TIME.log("Spawned clean task");
-    let updater_s = Arc::new(updater_s);
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
-    systems::download::spawn_system(sa.clone());
+    systems::download::spawn_system(&sa);
     STARTUP_TIME.log("Spawned system task");
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     STARTUP_TIME.log("Spawned last playlist task");
@@ -106,10 +130,9 @@ async fn app_start() -> Result<(), Error> {
     tasks::api::spawn_api_task(updater_s.clone());
     STARTUP_TIME.log("Spawned api task");
     // Spawn the database getter task
-    tasks::local_musics::spawn_local_musics_task(updater_s.clone());
+    tasks::local_musics::spawn_local_musics_task(updater_s);
 
     STARTUP_TIME.log("Running manager");
     let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
-    Ok(())
 }

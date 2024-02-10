@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use flume::Sender;
 use log::info;
 use rand::seq::SliceRandom;
@@ -13,7 +11,7 @@ use crate::{
     DATABASE,
 };
 
-pub fn spawn_local_musics_task(updater_s: Arc<Sender<ManagerMessage>>) {
+pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("Database getter task on");
         let guard = performance::guard("Local musics");

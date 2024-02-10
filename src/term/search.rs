@@ -1,22 +1,20 @@
-use std::{
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use flume::Sender;
 use log::error;
-use tokio::task::JoinHandle;
-use tui::{
+use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
+use tokio::task::JoinHandle;
 use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
-    consts::CONFIG, run_service, structures::sound_action::SoundAction,
-    tasks, utils::{invert, locate_headers_file}, DATABASE,
+    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks,
+    utils::invert, DATABASE,
 };
 
 use super::{
@@ -31,7 +29,7 @@ pub struct Search {
     pub list: Arc<RwLock<ListItem<Status>>>,
     pub search_handle: Option<JoinHandle<()>>,
     pub api: Option<Arc<YoutubeMusicInstance>>,
-    pub action_sender: Arc<Sender<SoundAction>>,
+    pub action_sender: Sender<SoundAction>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
@@ -179,7 +177,7 @@ impl Screen for Search {
         EventResponse::None
     }
 
-    fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, frame: &mut Frame) {
         let splitted = split_y_start(frame.size(), 3);
         frame.render_widget(
             Paragraph::new(self.text.clone())
@@ -212,7 +210,7 @@ impl Screen for Search {
     }
 }
 impl Search {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>) -> Self {
+    pub async fn new(action_sender: Sender<SoundAction>) -> Self {
         Self {
             text: String::new(),
             list: Arc::new(RwLock::new(ListItem::new(
@@ -220,12 +218,10 @@ impl Search {
             ))),
             goto: Screens::MusicPlayer,
             search_handle: None,
-            api: YoutubeMusicInstance::from_header_file(
-                locate_headers_file().unwrap().as_path(),
-            )
-            .await
-            .ok()
-            .map(Arc::new),
+            api: YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path())
+                .await
+                .ok()
+                .map(Arc::new),
             action_sender,
         }
     }

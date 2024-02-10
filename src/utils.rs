@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 use directories::ProjectDirs;
-use tui::style::Style;
+use ratatui::style::Style;
 
 /// Get directories for the project for config, cache, etc.
 pub fn get_project_dirs() -> Option<ProjectDirs> {
@@ -28,5 +28,6 @@ pub fn invert(style: Style) -> Style {
         bg: style.fg,
         add_modifier: style.add_modifier,
         sub_modifier: style.sub_modifier,
+        underline_color: style.underline_color,
     }
 }

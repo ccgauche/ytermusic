@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::time::Duration;
 
 use flume::Sender;
-use log::{info, error};
+use log::{error, info};
 use player::Player;
 use souvlaki::{
     Error, MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition,
+    SeekDirection,
 };
 use ytpapi2::YoutubeMusicVideoRef;
 
@@ -17,14 +18,10 @@ pub struct Media {
 
     current_meta: Option<(String, String, String)>,
     current_playback: Option<MediaPlayback>,
-
 }
 
 impl Media {
-    pub fn new(
-        updater: Arc<Sender<ManagerMessage>>,
-        soundaction_sender: Arc<Sender<SoundAction>>,
-    ) -> Self {
+    pub fn new(updater: Sender<ManagerMessage>, soundaction_sender: Sender<SoundAction>) -> Self {
         if !CONFIG.player.dbus {
             info!("Media controls disabled by config");
             return Self {
@@ -36,9 +33,7 @@ impl Media {
         let mut handle = get_handle(&updater);
         if let Some(e) = handle.as_mut() {
             if let Err(e) = connect(e, soundaction_sender) {
-                error!(
-                    "Media actions are not supported on this platform: {e:?}",
-                );
+                error!("Media actions are not supported on this platform: {e:?}",);
             }
         } else {
             error!("Media controls are not supported on this platform");
@@ -63,19 +58,29 @@ impl Media {
                 cover_url: None,
                 duration: None,
             };
-            if self.current_meta != Some((media_meta.title.unwrap_or("").to_string(), media_meta.album.unwrap_or("").to_string(), media_meta.artist.unwrap_or("").to_string())) {
-                self.current_meta = Some((media_meta.title.unwrap_or("").to_string(), media_meta.album.unwrap_or("").to_string(), media_meta.artist.unwrap_or("").to_string()));
+            if self.current_meta
+                != Some((
+                    media_meta.title.unwrap_or("").to_string(),
+                    media_meta.album.unwrap_or("").to_string(),
+                    media_meta.artist.unwrap_or("").to_string(),
+                ))
+            {
+                self.current_meta = Some((
+                    media_meta.title.unwrap_or("").to_string(),
+                    media_meta.album.unwrap_or("").to_string(),
+                    media_meta.artist.unwrap_or("").to_string(),
+                ));
                 e.set_metadata(media_meta)?;
             }
             let playback = if sink.is_finished() {
                 MediaPlayback::Stopped
             } else if sink.is_paused() {
                 MediaPlayback::Paused {
-                    progress: Some(MediaPosition(sink.elapsed())),
+                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
                 }
             } else {
                 MediaPlayback::Playing {
-                    progress: Some(MediaPosition(sink.elapsed())),
+                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
                 }
             };
             if self.current_playback != Some(playback.clone()) {
@@ -87,7 +92,7 @@ impl Media {
     }
 }
 
-fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Result<(), Error> {
+fn connect(mpris: &mut MediaControls, sender: Sender<SoundAction>) -> Result<(), Error> {
     mpris.attach(move |e| match e {
         MediaControlEvent::Toggle | MediaControlEvent::Play | MediaControlEvent::Pause => {
             sender.send(SoundAction::PlayPause).unwrap();
@@ -109,12 +114,29 @@ fn connect(mpris: &mut MediaControls, sender: Arc<Sender<SoundAction>>) -> Resul
                 sender.send(SoundAction::Backward).unwrap();
             }
         },
-        MediaControlEvent::SeekBy(_, _) => todo!(),
-        MediaControlEvent::SetPosition(_) => todo!(),
-        MediaControlEvent::OpenUri(_) => todo!(),
-        MediaControlEvent::Raise => todo!(),
+        // TODO(functionnality): implement seek amount
+        MediaControlEvent::SeekBy(a, _b) => {
+            if a == SeekDirection::Forward {
+                sender.send(SoundAction::Forward).unwrap();
+            } else {
+                sender.send(SoundAction::Backward).unwrap();
+            }
+        }
+
+        MediaControlEvent::SetPosition(a) => {
+            todo!("Can't set position to {a:?}")
+        }
+        MediaControlEvent::OpenUri(a) => {
+            todo!("Implement URI opening {a:?}")
+        }
+        MediaControlEvent::Raise => {
+            todo!("Implement raise")
+        }
         MediaControlEvent::Quit => {
             shutdown();
+        }
+        MediaControlEvent::SetVolume(e) => {
+            todo!("Implement volume setting {e:?}");
         }
     })
 }

@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent};
-use tui::{
+use ratatui::{
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph},
@@ -32,7 +32,7 @@ impl Screen for DeviceLost {
         }
     }
 
-    fn render(&mut self, frame: &mut Frame<tui::backend::CrosstermBackend<std::io::Stdout>>) {
+    fn render(&mut self, frame: &mut Frame) {
         frame.render_widget(
             Paragraph::new(format!(
                 "{}\nPress [Enter] or [Space] to retry.\nOr [Esc] to exit",

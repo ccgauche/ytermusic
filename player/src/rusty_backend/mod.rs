@@ -34,7 +34,7 @@ static VOLUME_STEP: u8 = 5;
 pub struct Player {
     sink: Sink,
     data: PlayerData,
-    error_sender: Arc<Sender<StreamError>>,
+    error_sender: Sender<StreamError>,
     options: PlayerOptions,
 }
 
@@ -61,7 +61,7 @@ impl Player {
     /// Returns a new stream & handle using the given output device.
     fn try_from_device(
         device: &cpal::Device,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
         let (mixer, stream) = device.try_new_output_stream(error_sender)?;
         stream.play()?;
@@ -79,7 +79,7 @@ impl Player {
     ///
     /// On failure will fallback to trying any non-default output devices.
     fn try_default(
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(OutputStream, OutputStreamHandle), StreamError> {
         let default_device = cpal::default_host()
             .default_output_device()
@@ -100,7 +100,7 @@ impl Player {
         })
     }
     pub fn new(
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
         options: PlayerOptions,
     ) -> Result<(Self, Guard), PlayError> {
         let (stream, handle) =
@@ -111,8 +111,8 @@ impl Player {
 
         Ok((
             Self {
-                sink: sink,
-                error_sender: error_sender,
+                sink,
+                error_sender,
                 data: PlayerData {
                     total_duration: None,
                     volume,
@@ -161,7 +161,7 @@ impl Player {
         self.sink.set_volume(f32::from(self.data.volume) / 100.0);
     }
     pub fn is_finished(&self) -> bool {
-        self.sink.is_empty() || self.sink.sleep_until_end()
+        self.sink.is_empty()
     }
     pub fn play(&mut self, path: &Path, guard: &Guard) -> Result<(), PlayError> {
         self.stop(guard);
@@ -179,7 +179,7 @@ impl Player {
         self.sink.set_volume(f32::from(self.data.volume) / 100.0);
         Ok(())
     }
-    pub fn elapsed(&self) -> Duration {
+    pub fn elapsed(&self) -> u32 {
         self.sink.elapsed()
     }
     pub fn duration(&self) -> Option<f64> {
@@ -191,7 +191,7 @@ impl Player {
         self.sink.toggle_playback();
     }
     pub fn seek_fw(&mut self) {
-        let new_pos = self.elapsed().as_secs_f64() + 5.0;
+        let new_pos = self.elapsed() as f64 + 5.0;
         if let Some(duration) = self.duration() {
             if new_pos > duration {
                 self.data.safe_guard = true;
@@ -201,7 +201,7 @@ impl Player {
         }
     }
     pub fn seek_bw(&self) {
-        let mut new_pos = self.elapsed().as_secs_f64() - 5.0;
+        let mut new_pos = self.elapsed()  as f64 - 5.0;
         if new_pos < 0.0 {
             new_pos = 0.0;
         }
@@ -214,7 +214,7 @@ impl Player {
     pub fn percentage(&self) -> f64 {
         self.duration().map_or(0.0, |duration| {
             let elapsed = self.elapsed();
-            elapsed.as_secs_f64() / duration
+            elapsed as f64 / duration
         })
     }
     pub fn volume_percent(&self) -> u8 {
@@ -277,9 +277,9 @@ impl Player {
         clippy::cast_precision_loss,
         clippy::cast_possible_truncation
     )]
-    pub fn get_progress(&self) -> (f64, i64, i64) {
-        let position = self.elapsed().as_secs() as i64;
-        let duration = self.duration().unwrap_or(99.0) as i64;
+    pub fn get_progress(&self) -> (f64, u32, u32) {
+        let position = self.elapsed();
+        let duration = self.duration().unwrap_or(99.0) as u32;
         let mut percent = self.percentage() * 100.0;
         if percent > 100.0 {
             percent = 100.0;

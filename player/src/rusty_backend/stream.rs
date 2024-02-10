@@ -30,7 +30,7 @@ impl OutputStream {
     /// Returns a new stream & handle using the given output device.
     pub fn try_from_device(
         device: &cpal::Device,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(Self, OutputStreamHandle), StreamError> {
         let (mixer, stream) = device.try_new_output_stream(error_sender)?;
         stream.play()?;
@@ -48,7 +48,7 @@ impl OutputStream {
     ///
     /// On failure will fallback to trying any non-default output devices.
     pub fn try_default(
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(Self, OutputStreamHandle), StreamError> {
         let default_device = cpal::default_host()
             .default_output_device()
@@ -200,20 +200,20 @@ impl error::Error for StreamError {
 pub trait CpalDeviceExt {
     fn new_output_stream_with_format(
         &self,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
         format: cpal::SupportedStreamConfig,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), cpal::BuildStreamError>;
 
     fn try_new_output_stream(
         &self,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), StreamError>;
 }
 
 impl CpalDeviceExt for cpal::Device {
     fn new_output_stream_with_format(
         &self,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
         format: cpal::SupportedStreamConfig,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), cpal::BuildStreamError> {
         let (mixer_tx, mut mixer_rx) =
@@ -255,7 +255,7 @@ impl CpalDeviceExt for cpal::Device {
 
     fn try_new_output_stream(
         &self,
-        error_sender: Arc<Sender<StreamError>>,
+        error_sender: Sender<StreamError>,
     ) -> Result<(Arc<DynamicMixerController<f32>>, cpal::Stream), StreamError> {
         // Determine the format to use for the new stream.
         let default_format = self.default_output_config()?;

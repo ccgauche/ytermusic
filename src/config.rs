@@ -1,5 +1,6 @@
+use log::info;
+use ratatui::style::{Color, Modifier, Style};
 use serde::{Deserialize, Serialize};
-use tui::style::{Color, Modifier, Style};
 
 use crate::utils::get_project_dirs;
 
@@ -16,6 +17,8 @@ pub struct MusicPlayerConfig {
     pub initial_volume: u8,
     #[serde(default = "default_true")]
     pub dbus: bool,
+    #[serde(default = "enable_volume_slider")]
+    pub volume_slider: bool,
     /// Whether to shuffle playlists before playing
     #[serde(default)]
     pub shuffle: bool,
@@ -48,6 +51,8 @@ struct StyleDef {
     add_modifier: Modifier,
     #[serde(default = "Modifier::empty")]
     sub_modifier: Modifier,
+    #[serde(default)]
+    underline_color: Option<Color>,
 }
 
 impl Default for MusicPlayerConfig {
@@ -64,11 +69,16 @@ impl Default for MusicPlayerConfig {
             text_next_style: default_nomusic_style(),
             text_previous_style: default_nomusic_style(),
             text_downloading_style: default_downloading_style(),
+            volume_slider: enable_volume_slider(),
         }
     }
 }
 
 fn default_true() -> bool {
+    true
+}
+
+fn enable_volume_slider() -> bool {
     true
 }
 
@@ -120,9 +130,26 @@ impl Config {
         let opt = || {
             let project_dirs = get_project_dirs()?;
             let config_path = project_dirs.config_dir().join("config.toml");
+            config_path
+                .parent()
+                .map(|p| std::fs::create_dir_all(p).ok());
+            info!("Loading config from {:?}", config_path);
+            if !config_path.exists() {
+                let default_config = Self::default();
+                std::fs::write(
+                    project_dirs.config_dir().join("config.toml"),
+                    toml::to_string_pretty(&default_config).ok()?,
+                )
+                .ok()?;
+                return Some(default_config);
+            }
             let config_string = std::fs::read_to_string(config_path).ok()?;
             let config = toml::from_str::<Self>(&config_string).ok()?;
-            std::fs::write(project_dirs.config_dir().join("config.applied.toml"), toml::to_string_pretty(&config).ok()?).ok()?;
+            std::fs::write(
+                project_dirs.config_dir().join("config.applied.toml"),
+                toml::to_string_pretty(&config).ok()?,
+            )
+            .ok()?;
             Some(config)
         };
         opt().unwrap_or_default()

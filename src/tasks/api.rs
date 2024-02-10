@@ -1,31 +1,32 @@
-use std::{
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use flume::Sender;
-use log::{info, error};
+use log::{error, info};
 use once_cell::sync::Lazy;
 use tokio::task::JoinSet;
-use ytpapi2::{YoutubeMusicInstance, YoutubeMusicPlaylistRef, Endpoint};
+use ytpapi2::{Endpoint, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 
 use crate::{
-    run_service,
+    get_header_file, run_service,
     structures::performance,
     term::{ManagerMessage, Screens},
     utils::locate_headers_file,
 };
 
-const TEXT_COOKIES_EXPIRED_OR_INVALID: &str =
-    "The `headers.txt` file is not configured correctly. \nThe cookies are expired or invalid.";
+pub fn get_text_cookies_expired_or_invalid() -> String {
+    let (Ok((_, path)) | Err((_, path))) = get_header_file();
+    format!(
+        "The `{}` file is not configured correctly. \nThe cookies are expired or invalid.",
+        path.display()
+    )
+}
 
-pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
+pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("API task on");
         let guard = performance::guard("API task");
-        let client = YoutubeMusicInstance::from_header_file(
-            locate_headers_file().unwrap().as_path(),
-        )
-        .await;
+        let client =
+            YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await;
         match client {
             Ok(api) => {
                 let api = Arc::new(api);
@@ -50,7 +51,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 let api_ = api.clone();
                 let updater_s_ = updater_s.clone();
                 set.spawn(async move {
-                    let search_results = api_.get_library(&Endpoint::MusicLikedPlaylists,2).await;
+                    let search_results = api_.get_library(&Endpoint::MusicLikedPlaylists, 2).await;
                     match search_results {
                         Ok(e) => {
                             for playlist in e {
@@ -69,7 +70,7 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 let api_ = api.clone();
                 let updater_s_ = updater_s.clone();
                 set.spawn(async move {
-                    let search_results = api_.get_library(&Endpoint::MusicLibraryLanding,2).await;
+                    let search_results = api_.get_library(&Endpoint::MusicLibraryLanding, 2).await;
                     match search_results {
                         Ok(e) => {
                             for playlist in e {
@@ -98,12 +99,12 @@ pub fn spawn_api_task(updater_s: Arc<Sender<ManagerMessage>>) {
                 | ytpapi2::YoutubeMusicError::CantFindInnerTubeClientVersion(_)
                 | ytpapi2::YoutubeMusicError::CantFindVisitorData(_)
                 | ytpapi2::YoutubeMusicError::IoError(_) => {
-                    error!("{}",TEXT_COOKIES_EXPIRED_OR_INVALID);
+                    error!("{}", get_text_cookies_expired_or_invalid());
                     error!("{e:?}");
                     updater_s
                         .send(
                             ManagerMessage::Error(
-                                TEXT_COOKIES_EXPIRED_OR_INVALID.to_string(),
+                                get_text_cookies_expired_or_invalid(),
                                 Box::new(Some(ManagerMessage::Quit)),
                             )
                             .pass_to(Screens::DeviceLost),
@@ -124,7 +125,7 @@ static BROWSED_PLAYLISTS: Lazy<Mutex<Vec<(String, String)>>> = Lazy::new(|| Mute
 fn spawn_browse_playlist_task(
     playlist: YoutubeMusicPlaylistRef,
     api: Arc<YoutubeMusicInstance>,
-    updater_s: Arc<Sender<ManagerMessage>>,
+    updater_s: Sender<ManagerMessage>,
 ) {
     {
         let mut k = BROWSED_PLAYLISTS.lock().unwrap();
@@ -141,18 +142,17 @@ fn spawn_browse_playlist_task(
         let guard = performance::guard(&guard);
         match api.get_playlist(&playlist, 5).await {
             Ok(videos) => {
-                if videos.len() < 2{
+                if videos.len() < 2 {
                     info!("Playlist {} is too small so skipped", playlist.name);
                     return;
                 }
-                let _ = updater_s
-                    .send(
-                        ManagerMessage::AddElementToChooser((
-                            format!("{} ({})", playlist.name, playlist.subtitle),
-                            videos,
-                        ))
-                        .pass_to(Screens::Playlist),
-                    );
+                let _ = updater_s.send(
+                    ManagerMessage::AddElementToChooser((
+                        format!("{} ({})", playlist.name, playlist.subtitle),
+                        videos,
+                    ))
+                    .pass_to(Screens::Playlist),
+                );
             }
             Err(e) => {
                 error!("{e:?}");

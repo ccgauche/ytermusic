@@ -52,7 +52,7 @@ pub fn mesure<T>(name: &str, f: impl FnOnce() -> T) -> T {
     let start = Instant::now();
     let t = f();
     let end = Instant::now();
-    info!(target: "performance", 
+    info!(target: "performance",
         "{}: {}ms",
         name,
         end.duration_since(start).as_millis()

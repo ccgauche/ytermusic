@@ -1,5 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, MouseEventKind};
-use tui::{
+use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::Style,
@@ -164,7 +164,7 @@ impl<Action: ListItemAction + Clone> Widget for &ListItem<Action> {
                     .iter()
                     .map(|(i, (string, action))| {
                         let style = action.render_style(string, self.current_position == *i);
-                        tui::widgets::ListItem::new(Text::from(string.as_str())).style(style)
+                        ratatui::widgets::ListItem::new(Text::from(string.as_str())).style(style)
                     })
                     .collect::<Vec<_>>(),
             )

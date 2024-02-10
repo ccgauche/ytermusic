@@ -26,13 +26,12 @@ where
     S: Sample + Send + 'static,
 {
     let input = Arc::new(SourcesQueueInput {
-        next_sounds: Mutex::new(Vec::new()),
+        next_sounds: Mutex::new(None),
         keep_alive_if_empty: AtomicBool::new(keep_alive_if_empty),
     });
 
     let output = SourcesQueueOutput {
         current: Box::new(Empty::<S>::new()) as Box<_>,
-        signal_after_end: None,
         input: input.clone(),
         sample_cache: VecDeque::new(),
     };
@@ -45,7 +44,7 @@ where
 /// The input of the queue.
 #[allow(clippy::type_complexity)]
 pub struct SourcesQueueInput<S> {
-    next_sounds: Mutex<Vec<(Box<dyn Source<Item = S> + Send>, Option<flume::Sender<()>>)>>,
+    next_sounds: Mutex<Option<Box<dyn Source<Item = S> + Send>>>,
 
     /// See constructor.
     keep_alive_if_empty: AtomicBool,
@@ -62,26 +61,10 @@ where
     where
         T: Source<Item = S> + Send + 'static,
     {
-        self.next_sounds
+        *self.next_sounds
             .lock()
             .unwrap()
-            .push((Box::new(source) as Box<_>, None));
-    }
-
-    /// Adds a new source to the end of the queue.
-    ///
-    /// The `Receiver` will be signalled when the sound has finished playing.
-    #[inline]
-    pub fn append_with_signal<T>(&self, source: T) -> flume::Receiver<()>
-    where
-        T: Source<Item = S> + Send + 'static,
-    {
-        let (tx, rx) = flume::unbounded();
-        self.next_sounds
-            .lock()
-            .unwrap()
-            .push((Box::new(source) as Box<_>, Some(tx)));
-        rx
+            = Some(Box::new(source) as Box<_>);
     }
 
     /// Sets whether the queue stays alive if there's no more sound to play.
@@ -97,9 +80,6 @@ where
 pub struct SourcesQueueOutput<S> {
     /// The current iterator that produces samples.
     current: Box<dyn Source<Item = S> + Send>,
-
-    /// Signal this sender before picking from `next`.
-    signal_after_end: Option<flume::Sender<()>>,
 
     /// The next sounds.
     input: Arc<SourcesQueueInput<S>>,
@@ -208,26 +188,21 @@ where
     ///
     /// This method is separate so that it is not inlined.
     fn go_next(&mut self) -> Result<(), ()> {
-        if let Some(signal_after_end) = self.signal_after_end.take() {
-            let _ = signal_after_end.send(());
-        }
 
-        let (next, signal_after_end) = {
+        let next = {
             let mut next = self.input.next_sounds.lock().unwrap();
 
-            if next.len() == 0 {
+            if next.is_none() {
                 if self.input.keep_alive_if_empty.load(Ordering::Acquire) {
                     // Play a short silence in order to avoid spinlocking.
                     let silence = Zero::<S>::new(1, 44100); // TODO: meh
-                    (
-                        Box::new(silence.take_duration(Duration::from_millis(10))) as Box<_>,
-                        None,
-                    )
+                    
+                        Box::new(silence.take_duration(Duration::from_millis(10))) as Box<_>
                 } else {
                     return Err(());
                 }
             } else {
-                let (mut next, signal_after_end) = next.remove(0);
+                let mut next = next.take().unwrap();
                 loop {
                     let l = next.next();
                     let r = next.next();
@@ -245,13 +220,11 @@ where
                     self.sample_cache.push_back(r);
                     break;
                 }
-                (next, signal_after_end)
+                next
             }
         };
 
         self.current = next;
-
-        self.signal_after_end = signal_after_end;
         Ok(())
     }
 }

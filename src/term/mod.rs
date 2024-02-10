@@ -8,20 +8,20 @@ pub mod search;
 pub mod vertical_gauge;
 
 use std::{
-    io::{self, Stdout},
-    sync::Arc,
+    io::{self},
     time::{Duration, Instant},
 };
 
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyModifiers, MouseEvent,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyEvent, KeyEventKind, KeyModifiers,
+        MouseEvent,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use flume::{Receiver, Sender};
-use tui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
+use ratatui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP};
@@ -34,7 +34,7 @@ use crate::term::playlist_view::PlaylistView;
 pub trait Screen {
     fn on_mouse_press(&mut self, mouse_event: MouseEvent, frame_data: &Rect) -> EventResponse;
     fn on_key_press(&mut self, mouse_event: KeyEvent, frame_data: &Rect) -> EventResponse;
-    fn render(&mut self, frame: &mut Frame<CrosstermBackend<Stdout>>);
+    fn render(&mut self, frame: &mut Frame);
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse;
     fn close(&mut self, new_screen: Screens) -> EventResponse;
     fn open(&mut self) -> EventResponse;
@@ -93,7 +93,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub async fn new(action_sender: Arc<Sender<SoundAction>>, music_player: PlayerState) -> Self {
+    pub async fn new(action_sender: Sender<SoundAction>, music_player: PlayerState) -> Self {
         Self {
             music_player,
             chooser: Chooser {
@@ -220,7 +220,7 @@ impl Manager {
                 .unwrap_or_else(|| Duration::from_secs(0));
             if crossterm::event::poll(timeout)? {
                 match event::read()? {
-                    Event::Key(key) => {
+                    Event::Key(key) if key.kind != KeyEventKind::Release => {
                         if (key.code == event::KeyCode::Char('c')
                             || key.code == event::KeyCode::Char('d'))
                             && key.modifiers == KeyModifiers::CONTROL

@@ -6,47 +6,116 @@ use std::{
 use flume::Sender;
 use log::error;
 use once_cell::sync::Lazy;
-use rustube::{Callback, Id};
+use rusty_ytdl::{
+    DownloadOptions, Video, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
+};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::CACHE_DIR,
     run_service,
     structures::{app_status::MusicDownloadStatus, sound_action::SoundAction},
-    systems::{download::HANDLES},
-    Error,
+    systems::download::HANDLES,
 };
 
-async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), Error> {
+fn new_video_with_id(id: &str) -> Result<Video, VideoError> {
+    let search_options = VideoSearchOptions::Custom(Arc::new(|format| {
+        format.has_audio && !format.has_video && format.container == Some("mp4".to_owned())
+    }));
+    let video_options = VideoOptions {
+        quality: VideoQuality::Custom(
+            search_options.clone(),
+            Arc::new(|x, y| x.audio_bitrate.cmp(&y.audio_bitrate)),
+        ),
+        filter: search_options,
+        download_options: DownloadOptions {
+            dl_chunk_size: Some(1024 * 100_u64),
+        },
+        ..Default::default()
+    };
+
+    Video::new_with_options(id, video_options)
+}
+
+pub async fn download<P: AsRef<std::path::Path>>(
+    video: &Video,
+    path: P,
+    sender: Sender<SoundAction>,
+) -> Result<(), VideoError> {
+    use std::io::Write;
+    let stream = video.stream().await.unwrap();
+
+    let length = stream.content_length();
+
+    let mut file =
+        std::fs::File::create(path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
+
+    let mut total = 0;
+    while let Some(chunk) = stream.chunk().await.unwrap() {
+        total += chunk.len();
+
+        sender
+            .send(SoundAction::VideoStatusUpdate(
+                video.get_video_id(),
+                MusicDownloadStatus::Downloading((total as f64 / length as f64 * 100.0) as usize),
+            ))
+            .unwrap();
+
+        file.write_all(&chunk)
+            .map_err(|e| VideoError::DownloadError(e.to_string()))?;
+    }
+
+    Ok(())
+}
+
+async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), VideoError> {
     let idc = id.to_string();
-    rustube::Video::from_id(Id::from_str(id)?.into_owned())
-        .await?
-        .streams()
-        .iter()
-        .filter(|stream| {
-            stream.mime == "audio/mp4"
-                && stream.includes_audio_track
-                && !stream.includes_video_track
-        })
-        .max_by_key(|stream| stream.bitrate)
-        .ok_or(Error::NoStreams)?
-        .download_to_dir_with_callback(
-            CACHE_DIR.join("downloads"),
-            Callback::new().connect_on_progress_closure(move |progress| {
-                let perc = progress
-                    .content_length
-                    .as_ref()
-                    .map(|x| progress.current_chunk * 100 / *x as usize)
-                    .unwrap_or(0);
-                sender
-                    .send(SoundAction::VideoStatusUpdate(
-                        idc.clone(),
-                        MusicDownloadStatus::Downloading(perc),
-                    ))
-                    .unwrap();
-            }),
-        )
-        .await?;
+
+    let video = new_video_with_id(id)?;
+
+    sender
+        .send(SoundAction::VideoStatusUpdate(
+            idc.clone(),
+            MusicDownloadStatus::Downloading(0),
+        ))
+        .unwrap();
+    let file = CACHE_DIR.join("downloads").join(format!("{id}.mp4"));
+    download(&video, file, sender.clone()).await?;
+    sender
+        .send(SoundAction::VideoStatusUpdate(
+            idc.clone(),
+            MusicDownloadStatus::Downloading(100),
+        ))
+        .unwrap();
+
+    // rustube::Video::from_id(Id::from_str(id)?.into_owned())
+    //     .await?
+    //     .streams()
+    //     .iter()
+    //     .filter(|stream| {
+    //         stream.mime == "audio/mp4"
+    //             && stream.includes_audio_track
+    //             && !stream.includes_video_track
+    //     })
+    //     .max_by_key(|stream| stream.bitrate)
+    //     .ok_or(Error::NoStreams)?
+    //     .download_to_dir_with_callback(
+    //         CACHE_DIR.join("downloads"),
+    //         Callback::new().connect_on_progress_closure(move |progress| {
+    //             let perc = progress
+    //                 .content_length
+    //                 .as_ref()
+    //                 .map(|x| progress.current_chunk * 100 / *x as usize)
+    //                 .unwrap_or(0);
+    //             sender
+    //                 .send(SoundAction::VideoStatusUpdate(
+    //                     idc.clone(),
+    //                     MusicDownloadStatus::Downloading(perc),
+    //                 ))
+    //                 .unwrap();
+    //         }),
+    //     )
+    //     .await?;
     Ok(())
 }
 
@@ -104,7 +173,7 @@ pub async fn start_download(song: YoutubeMusicVideoRef, s: &Sender<SoundAction>)
         }
     }
 }
-pub fn start_task_unary(s: Arc<Sender<SoundAction>>, song: YoutubeMusicVideoRef) {
+pub fn start_task_unary(s: Sender<SoundAction>, song: YoutubeMusicVideoRef) {
     HANDLES.lock().unwrap().push(run_service(async move {
         start_download(song, &s).await;
     }));
