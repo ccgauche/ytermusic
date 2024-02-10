@@ -77,6 +77,13 @@ $ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
 
 ## Changelog
 
+Beta b0.1.0
+ - Fixed keyboard handling on windows
+ - Improved error handling
+ - Fixed youtube downloads
+ - Made volume bar optional in config
+ - Improved performance and updated dependencies
+
 Alpha a0.0.11
 
 - Added scrollable music view
