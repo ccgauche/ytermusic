@@ -43,7 +43,7 @@ pub async fn download<P: AsRef<std::path::Path>>(
     sender: Sender<SoundAction>,
 ) -> Result<(), VideoError> {
     use std::io::Write;
-    let stream = video.stream().await.unwrap();
+    let stream = video.stream().await?;
 
     let length = stream.content_length();
 
@@ -51,7 +51,7 @@ pub async fn download<P: AsRef<std::path::Path>>(
         std::fs::File::create(path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
 
     let mut total = 0;
-    while let Some(chunk) = stream.chunk().await.unwrap() {
+    while let Some(chunk) = stream.chunk().await? {
         total += chunk.len();
 
         sender
