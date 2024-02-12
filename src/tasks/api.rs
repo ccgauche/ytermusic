@@ -44,7 +44,9 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
                                 )
                             }
                         }
-                        Err(_) => todo!(),
+                        Err(e) => {
+                            error!("get_home {e:?}")
+                        },
                     }
                 });
                 let api_ = api.clone();
@@ -62,7 +64,7 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
                             }
                         }
                         Err(e) => {
-                            error!("{e:?}");
+                            error!("MusicLikedPlaylists -> {e:?}");
                         }
                     }
                 });
@@ -81,7 +83,7 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
                             }
                         }
                         Err(e) => {
-                            error!("{e:?}");
+                            error!("MusicLibraryLanding -> {e:?}");
                         }
                     }
                 });

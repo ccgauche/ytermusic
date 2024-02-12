@@ -314,7 +314,7 @@ impl YoutubeMusicInstance {
         .map_err(YoutubeMusicError::SerdeJson)?; 
         debug!("Browse response: {playlist_json}");
         if playlist_json.get("error").is_some() {
-            error!("Error in browse");
+            error!("Error in browse ({endpoint:?})");
             error!("{:?}", playlist_json);
             return Err(YoutubeMusicError::YoutubeMusicError(playlist_json));
         }
@@ -340,7 +340,7 @@ impl YoutubeMusicInstance {
         debug!("Library: {library:?}");
         while let Some(continuation) = continuations.pop() {
             n_continuations -= 1;
-            trace!("Fetching continuation {continuation:?}");
+            trace!("Fetching continuation {continuation:?} ({endpoint:?})");
             let (library_json, new_continuations) = self
                 .browse_continuation(&continuation, (n_continuations - 1) > 0)
                 .await?;
