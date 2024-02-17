@@ -1,43 +1,70 @@
 # YTerMusic
 
-![index](https://user-images.githubusercontent.com/16625987/202790566-9b114019-63f9-4c4b-965d-820fd0d80a17.png)
+![YTeRMUSiC](./assets/banner/YTeRMUSiC.png "YTeRMUSiC")
 
-YTerMusic is a terminal based Youtube Music Player.
-It's aims to be as fast and simple as possible.
+YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple as possible.
 
-## Features
+## Screenshots
+<p>
+  <img
+  src="./assets/screenshots/Choose-A-Playlist.png"
+  alt="Choose a playlist"
+  title="Choose a Playlist"
+  />
+  <img
+  src="./assets/screenshots/Playlist-All.gif"
+  alt="Playlist RGB"
+  title="Playlist RGB"
+  />
+</p>
+
+
+## Features and upcoming features
 
 - Play your Youtube Music Playlist and Supermix.
 - Memory efficient (Around 20MB of RAM while fully loaded)
 - Cache all downloads and store them
 - Work even without connection (If musics were already downloaded)
 - Automatic background download manager
+	### Check List 
+	- [x] Playlist selector
+	- [x] Error message display in the TUI
+	- [x] Enable connection less music playing
+	- [ ] Cache limit to not exceed some given disk space
+	- [x] A download limit to stop downloading after the queue is full
+	- [x] Mouse support
+	- [x] Search
+	- [ ] Custom theming (You can use hex! #05313d = ![05313d](./assets/hex/05313d.png "#05313d") )
+
+## Install
+> [!TIP]
+> 3rd party AUR packages are available [here](https://aur.archlinux.org/packages?O=0&K=ytermusic).
+
+- Download the latest version from [releases](https://github.com/ccgauche/ytermusic/releases/latest).
+	### Linux
+	Install the following libraries: 
+	```sh
+	sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
+	```
 
 ## Setup
+> [!IMPORTANT] 
+> If you're using Firefox enable the "Raw" switch so the cookie isn't mangled.
+> ![Firefox Raw Switch](./assets/screenshots/Firefox-Raw-Switch.png "Firefox Raw Switch")
 
-- Download the latest version from `releases`
 - Give `ytermusic` authentication to your account, by copying out the headers
-  1. Open the https://music.youtube.com website in your browser
-  2. Open the developer tools (F12)
-  3. Go to the Network tab
-  4. Find the request to the `music.youtube.com` document / page
-  5. Copy the `Cookie` header from the associated response request
-  6. Create a file in the same directory as the binary called `headers.txt`
-  7. Create an entry like this `Cookie: <cookie>`
-  8. Add a valid "User Agent" below the cookie, like `User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36`
+	1. Open the https://music.youtube.com website in your browser
+	2. Open the developer tools (<kbd>F12</kbd> or <kbd>Fn</kbd> + <kbd>F12</kbd>)
+	3. Go to the Network tab
+	4. Find the request to the `music.youtube.com` document `/` page
+	5. Copy the `Cookie` header from the associated response request
+	6. Create a `headers.txt` file in one of the checked [paths](https://docs.rs/directories/latest/directories/struct.ProjectDirs.html#method.config_dir).
+	7. Create an entry like this :
+	```
+	Cookie: <cookie>
+	User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36
+	```
 - Then you can start `ytermusic`
-
-## Linux
-
-Install the following libraries:
-```
-$ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
-```
-
-## Screenshots
-
-![Screenshot 2022-11-23 145422](https://user-images.githubusercontent.com/16625987/203564779-d3ae13f9-b262-41c0-8deb-0a486124cdca.png)
-![https://user-images.githubusercontent.com/16625987/163998477-0feb87a0-dfde-4940-a5d1-09807968ec6d.png](https://user-images.githubusercontent.com/16625987/163998477-0feb87a0-dfde-4940-a5d1-09807968ec6d.png)
 
 ## Building from source
 
@@ -48,35 +75,25 @@ $ sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
 
 ## Usage
 
-- Use your mouse to click in lists if your terminal has mouse support
-- Press `Space` to play/pause
-- Press `Enter` to select a playlist or a music
-- Press `f` to search
-- Press `s` to shuffle
-- Press `Arrow Right` or `>` to skip 5 seconds
-- Press `Arrow Left` or `<` to go back 5 seconds
-- Press `CTRL + Arrow Right` or `CTRL + >` to go to the next song
-- Press `CTRL + Arrow Left` or `CTRL + <` to go to the previous song
-- Press `+` for volume up
-- Press `-` for volume down
-- Press `Arrow down` to scroll down
-- Press `Arrow up` to scroll up
-- Press `ESC` to exit the current menu
-- Press `CTRL + C` or `CTRL + D` to exit
-
-## Features and upcoming features
-
-- [x] Playlist selector
-- [x] Error message display in the TUI
-- [x] Enable connection less music playing
-- [ ] Cache limit to not exceed some given disk space
-- [x] A download limit to stop downloading after the queue is full
-- [x] Mouse support
-- [x] Search
-- [ ] Custom theming
+- Use your mouse to <kbd>click</kbd> in lists if your terminal has mouse support
+- Press <kbd>Space</kbd> to play/pause
+- Press <kbd>Enter</kbd> to select a playlist or a music
+- Press <kbd>f</kbd> to search
+- Press <kbd>s</kbd> to shuffle
+- Press <kbd>Arrow Right</kbd> or <kbd>\></kbd> to skip 5 seconds
+- Press <kbd>Arrow Left</kbd> or <kbd>\<</kbd> to go back 5 seconds
+- Press <kbd>CTRL</kbd> + <kbd>Arrow Right</kbd> or <kbd>CTRL</kbd> + <kbd>\></kbd> to go to the next song
+- Press <kbd>CTRL</kbd> + <kbd>Arrow Left</kbd> or <kbd>CTRL</kbd> + <kbd>\<</kbd> to go to the previous song
+- Press <kbd>+</kbd> for volume up
+- Press <kbd>-</kbd> for volume down
+- Press <kbd>Arrow down</kbd> to scroll down
+- Press <kbd>Arrow up</kbd> to scroll up
+- Press <kbd>ESC</kbd> to exit the current menu
+- Press <kbd>CTRL</kbd> + <kbd>C</kbd> or <kbd>CTRL</kbd> + <kbd>D</kbd> to exit
 
 ## Changelog
 
+```
 Beta b0.1.0
  - Fixed keyboard handling on windows
  - Improved error handling
@@ -159,3 +176,4 @@ Alpha a0.0.2
 - Improved TUI
 - Performance upgrade
 - Switch to Rustls instead of openSSL
+```
