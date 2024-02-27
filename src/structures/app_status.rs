@@ -1,4 +1,4 @@
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 
 use crate::consts::CONFIG;
 
@@ -39,20 +39,20 @@ impl MusicDownloadStatus {
     }
     pub fn style(&self, playing: Option<bool>) -> Style {
         let k = match self {
-            Self::NotDownloaded => Style::default().fg(Color::Gray).bg(Color::Black),
+            Self::NotDownloaded => CONFIG.player.text_waiting_style,
             Self::Downloaded => {
                 if let Some(e) = playing {
                     if e {
-                        Style::default().fg(Color::Green).bg(Color::Black)
+                        CONFIG.player.text_playing_style
                     } else {
-                        Style::default().fg(Color::Yellow).bg(Color::Black)
+                        CONFIG.player.text_paused_style
                     }
                 } else {
-                    Style::default().fg(Color::White).bg(Color::Black)
+                    CONFIG.player.text_next_style
                 }
             }
-            Self::Downloading(_) => Style::default().fg(Color::Cyan).bg(Color::Black),
-            Self::DownloadFailed => Style::default().fg(Color::Red).bg(Color::Black),
+            Self::Downloading(_) => CONFIG.player.text_downloading_style,
+            Self::DownloadFailed => CONFIG.player.text_error_style,
         };
         if playing.is_some() {
             k.add_modifier(Modifier::BOLD)

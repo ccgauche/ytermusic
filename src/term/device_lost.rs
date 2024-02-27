@@ -1,10 +1,11 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Alignment, Rect},
-    style::{Color, Style},
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
+
+use crate::consts::CONFIG;
 
 use super::{EventResponse, ManagerMessage, Screen, Screens};
 
@@ -38,12 +39,12 @@ impl Screen for DeviceLost {
                 "{}\nPress [Enter] or [Space] to retry.\nOr [Esc] to exit",
                 self.0.join("\n")
             ))
-            .style(Style::default().fg(Color::Red))
+            .style(CONFIG.player.text_error_style)
             .alignment(Alignment::Center)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .style(Style::default().fg(Color::White))
+                    .style(CONFIG.player.text_next_style)
                     .title(" Error ")
                     .border_type(BorderType::Plain),
             ),

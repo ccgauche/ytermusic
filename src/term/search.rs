@@ -5,7 +5,7 @@ use flume::Sender;
 use log::error;
 use ratatui::{
     layout::{Alignment, Rect},
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
@@ -181,12 +181,12 @@ impl Screen for Search {
         let splitted = split_y_start(frame.size(), 3);
         frame.render_widget(
             Paragraph::new(self.text.clone())
-                .style(Style::default().fg(Color::LightCyan))
+                .style(CONFIG.player.text_searching_style)
                 .alignment(Alignment::Center)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .style(Style::default().fg(Color::White))
+                        .style(CONFIG.player.text_next_style)
                         .title(" Search ")
                         .border_type(BorderType::Plain),
                 ),

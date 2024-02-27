@@ -2,15 +2,15 @@ use std::sync::atomic::AtomicBool;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use flume::Sender;
-use ratatui::{
-    layout::Rect,
-    style::{Color, Style},
-    Frame,
-};
+use ratatui::{layout::Rect, style::Style, Frame};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
-    consts::CACHE_DIR, structures::sound_action::SoundAction, systems::download, DATABASE,
+    consts::{CACHE_DIR, CONFIG},
+    structures::sound_action::SoundAction,
+    systems::download,
+    utils::invert,
+    DATABASE,
 };
 
 use super::{
@@ -26,9 +26,9 @@ pub enum ChooserAction {
 impl ListItemAction for ChooserAction {
     fn render_style(&self, _: &str, selected: bool) -> Style {
         if selected {
-            Style::default().fg(Color::Black).bg(Color::White)
+            invert(CONFIG.player.text_next_style)
         } else {
-            Style::default().fg(Color::White).bg(Color::Black)
+            CONFIG.player.text_next_style
         }
     }
 }
