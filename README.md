@@ -94,6 +94,10 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 ## Changelog
 
 ```
+Beta b0.1.1
+ - Added `hide_channels_on_homepage` with a default value of `true` to the config file
+ - Added `hide_albums_on_homepage` with a default value of `false` to the config file
+
 Beta b0.1.0
  - Fixed keyboard handling on windows
  - Improved error handling
