@@ -46,7 +46,10 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 	```sh
 	sudo apt install alsa-tools libasound2-dev libdbus-1-dev pkg-config
 	```
-
+- Use `cargo` to install the latest version
+	```sh
+	cargo install ytermusic --git https://github.com/ccgauche/ytermusic
+	```
 ## Setup
 > [!IMPORTANT] 
 > If you're using Firefox enable the "Raw" switch so the cookie isn't mangled.
