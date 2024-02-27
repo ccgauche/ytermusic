@@ -17,6 +17,10 @@ pub struct MusicPlayerConfig {
     pub initial_volume: u8,
     #[serde(default = "default_true")]
     pub dbus: bool,
+    #[serde(default = "default_true")]
+    pub hide_channels_on_homepage: bool,
+    #[serde(default = "default_false")]
+    pub hide_albums_on_homepage: bool,
     #[serde(default = "enable_volume_slider")]
     pub volume_slider: bool,
     /// Whether to shuffle playlists before playing
@@ -58,6 +62,8 @@ struct StyleDef {
 impl Default for MusicPlayerConfig {
     fn default() -> Self {
         Self {
+            hide_albums_on_homepage: default_false(),
+            hide_channels_on_homepage: default_true(),
             dbus: default_true(),
             initial_volume: default_volume(),
             shuffle: Default::default(),
@@ -72,6 +78,10 @@ impl Default for MusicPlayerConfig {
             volume_slider: enable_volume_slider(),
         }
     }
+}
+
+fn default_false() -> bool {
+    false
 }
 
 fn default_true() -> bool {

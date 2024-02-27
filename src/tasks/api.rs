@@ -7,9 +7,7 @@ use tokio::task::JoinSet;
 use ytpapi2::{Endpoint, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 
 use crate::{
-    get_header_file, run_service,
-    structures::performance,
-    term::{ManagerMessage, Screens},
+    consts::CONFIG, get_header_file, run_service, structures::performance, term::{ManagerMessage, Screens}
 };
 
 pub fn get_text_cookies_expired_or_invalid() -> String {
@@ -128,6 +126,14 @@ fn spawn_browse_playlist_task(
     api: Arc<YoutubeMusicInstance>,
     updater_s: Sender<ManagerMessage>,
 ) {
+    if playlist.browse_id.starts_with("UC") && CONFIG.player.hide_channels_on_homepage {
+        log::info!("Skipping channel (CONFIG) {} {}", playlist.name, playlist.browse_id);
+        return;
+    }
+    if playlist.browse_id.starts_with("MPREb_") && CONFIG.player.hide_albums_on_homepage {
+        log::info!("Skipping album (CONFIG) {} {}", playlist.name, playlist.browse_id);
+        return;
+    }
     {
         let mut k = BROWSED_PLAYLISTS.lock().unwrap();
         if k.iter()
@@ -139,7 +145,7 @@ fn spawn_browse_playlist_task(
     }
 
     run_service(async move {
-        let guard = format!("Browse playlist {}", playlist.name);
+        let guard = format!("Browse playlist {} {}", playlist.name, playlist.browse_id);
         let guard = performance::guard(&guard);
         match api.get_playlist(&playlist, 5).await {
             Ok(videos) => {
