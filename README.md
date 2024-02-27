@@ -34,7 +34,7 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 	- [x] A download limit to stop downloading after the queue is full
 	- [x] Mouse support
 	- [x] Search
-	- [ ] Custom theming (You can use hex! #05313d = ![05313d](./assets/hex/05313d.png "#05313d") )
+	- [x] Custom theming (You can use hex! #05313d = ![05313d](./assets/hex/05313d.png "#05313d") )
 
 ## Install
 > [!TIP]
@@ -97,6 +97,8 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 Beta b0.1.1
  - Added `hide_channels_on_homepage` with a default value of `true` to the config file
  - Added `hide_albums_on_homepage` with a default value of `false` to the config file
+ - Fixed default style to support transparency
+ - Added more color configuration options
 
 Beta b0.1.0
  - Fixed keyboard handling on windows
