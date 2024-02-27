@@ -7,7 +7,10 @@ use tokio::task::JoinSet;
 use ytpapi2::{Endpoint, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 
 use crate::{
-    consts::CONFIG, get_header_file, run_service, structures::performance, term::{ManagerMessage, Screens}
+    consts::CONFIG,
+    get_header_file, run_service,
+    structures::performance,
+    term::{ManagerMessage, Screens},
 };
 
 pub fn get_text_cookies_expired_or_invalid() -> String {
@@ -44,7 +47,7 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
                         }
                         Err(e) => {
                             error!("get_home {e:?}")
-                        },
+                        }
                     }
                 });
                 let api_ = api.clone();
@@ -127,11 +130,19 @@ fn spawn_browse_playlist_task(
     updater_s: Sender<ManagerMessage>,
 ) {
     if playlist.browse_id.starts_with("UC") && CONFIG.player.hide_channels_on_homepage {
-        log::info!("Skipping channel (CONFIG) {} {}", playlist.name, playlist.browse_id);
+        log::info!(
+            "Skipping channel (CONFIG) {} {}",
+            playlist.name,
+            playlist.browse_id
+        );
         return;
     }
     if playlist.browse_id.starts_with("MPREb_") && CONFIG.player.hide_albums_on_homepage {
-        log::info!("Skipping album (CONFIG) {} {}", playlist.name, playlist.browse_id);
+        log::info!(
+            "Skipping album (CONFIG) {} {}",
+            playlist.name,
+            playlist.browse_id
+        );
         return;
     }
     {

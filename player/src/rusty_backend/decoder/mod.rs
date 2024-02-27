@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
 use std::io::{Read, Seek};
-use std::marker::Sync;
 use std::str::FromStr;
 use std::time::Duration;
 

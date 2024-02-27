@@ -26,7 +26,6 @@ pub fn remove_video(video: &YoutubeMusicVideoRef) {
 /// Append a video to the database
 pub fn append(video: YoutubeMusicVideoRef) {
     let mut file = OpenOptions::new()
-        .write(true)
         .append(true)
         .create(true)
         .open(CACHE_DIR.join("db.bin"))

@@ -12,6 +12,7 @@ pub fn write() {
         .write(true)
         .append(false)
         .create(true)
+        .truncate(true)
         .open(CACHE_DIR.join("db.bin"))
         .unwrap();
     for video in db.iter() {
