@@ -39,9 +39,13 @@ pub struct MusicPlayerConfig {
     #[serde(default = "default_nomusic_style", with = "StyleDef")]
     pub text_next_style: Style,
     #[serde(default = "default_nomusic_style", with = "StyleDef")]
-    pub text_previous_style: Style,
+    pub text_waiting_style: Style,
     #[serde(default = "default_downloading_style", with = "StyleDef")]
     pub text_downloading_style: Style,
+    #[serde(default = "default_error_style", with = "StyleDef")]
+    pub text_error_style: Style,
+    #[serde(default = "default_searching_style", with = "StyleDef")]
+    pub text_searching_style: Style,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -73,11 +77,21 @@ impl Default for MusicPlayerConfig {
             text_paused_style: default_paused_style(),
             text_playing_style: default_playing_style(),
             text_next_style: default_nomusic_style(),
-            text_previous_style: default_nomusic_style(),
+            text_waiting_style: default_nomusic_style(),
+            text_error_style: default_error_style(),
+            text_searching_style: default_searching_style(),
             text_downloading_style: default_downloading_style(),
             volume_slider: enable_volume_slider(),
         }
     }
+}
+
+fn default_searching_style() -> Style {
+    Style::default().fg(Color::LightCyan)
+}
+
+fn default_error_style() -> Style {
+    Style::default().fg(Color::Red)
 }
 
 fn default_false() -> bool {
@@ -93,19 +107,19 @@ fn enable_volume_slider() -> bool {
 }
 
 fn default_paused_style() -> Style {
-    Style::default().fg(Color::Yellow).bg(Color::Black)
+    Style::default().fg(Color::Yellow)
 }
 
 fn default_playing_style() -> Style {
-    Style::default().fg(Color::Green).bg(Color::Black)
+    Style::default().fg(Color::Green)
 }
 
 fn default_nomusic_style() -> Style {
-    Style::default().fg(Color::White).bg(Color::Black)
+    Style::default().fg(Color::White)
 }
 
 fn default_downloading_style() -> Style {
-    Style::default().fg(Color::Blue).bg(Color::Black)
+    Style::default().fg(Color::Blue)
 }
 
 fn default_volume() -> u8 {
