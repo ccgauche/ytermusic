@@ -15,9 +15,7 @@ use crate::{
     errors::{handle_error, handle_error_option},
     structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
     term::{
-        list_selector::{ListSelector, ListSelectorAction},
-        playlist::PLAYER_RUNNING,
-        ManagerMessage, Screens,
+        list_selector::{ListSelector, ListSelectorAction}, list_selector_opt::ListSelectorOpt, playlist::PLAYER_RUNNING, ManagerMessage, Screens
     },
     utils::invert,
 };
@@ -58,7 +56,7 @@ pub struct PlayerState {
     pub current: usize,
     pub rtcurrent: Option<YoutubeMusicVideoRef>,
     pub music_status: HashMap<String, MusicDownloadStatus>,
-    pub list_selector: ListSelector<PlayerAction>,
+    pub list_selector: ListSelectorOpt,
     pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
@@ -89,7 +87,7 @@ impl PlayerState {
         Self {
             controls: Media::new(updater.clone(), soundaction_sender.clone()),
             soundaction_receiver,
-            list_selector: ListSelector::default(),
+            list_selector: ListSelectorOpt::default(),
             music_status: HashMap::new(),
             updater,
             stream_error_receiver,
