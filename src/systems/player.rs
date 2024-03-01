@@ -6,7 +6,6 @@ use std::{
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
 
-use ratatui::style::Style;
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{

@@ -6,24 +6,11 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
 };
 
-pub trait ListSelectorAction {
-    fn render_style(&self, string: &str, selected: bool, scrolling_on: bool) -> Style;
-}
-
+#[derive(Default)]
 pub struct ListSelector {
     pub list_size: usize,
     current_position: usize,
     scroll_position: usize,
-}
-
-impl Default for ListSelector {
-    fn default() -> Self {
-        Self {
-            list_size: Default::default(),
-            current_position: Default::default(),
-            scroll_position: Default::default(),
-        }
-    }
 }
 
 impl ListSelector {
@@ -70,32 +57,12 @@ impl ListSelector {
         self.scroll_position = position.min(self.list_size.saturating_sub(1));
     }
 
-    pub fn scroll(&self) -> Option<usize> {
-        if self.scroll_position < self.list_size {
-            Some(self.scroll_position)
-        } else {
-            None
-        }
-    }
-
     pub fn select(&self) -> Option<usize> {
         if self.current_position < self.list_size {
             Some(self.current_position)
         } else {
             None
         }
-    }
-
-    pub fn select_down(&mut self) {
-        self.select_to(self.current_position.saturating_add(1));
-    }
-
-    pub fn select_up(&mut self) {
-        self.select_to(self.current_position.saturating_sub(1));
-    }
-
-    pub fn select_to(&mut self, position: usize) {
-        self.current_position = position.min(self.list_size.saturating_sub(1));
     }
 
     pub fn update(&mut self, list_size: usize, current: usize) {

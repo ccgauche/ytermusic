@@ -10,10 +10,7 @@ use crate::{
         app_status::{AppStatus, MusicDownloadStatus},
         sound_action::SoundAction,
     },
-    systems::{
-        download::DOWNLOAD_LIST,
-        player::{PlayerState},
-    },
+    systems::{download::DOWNLOAD_LIST, player::PlayerState},
     utils::invert,
 };
 
@@ -22,6 +19,21 @@ use super::{
     ManagerMessage, Screen, Screens,
 };
 
+impl PlayerState {
+    pub fn activate(&mut self, index: usize) {
+        match index.cmp(&self.current) {
+            std::cmp::Ordering::Less => {
+                SoundAction::Previous(self.current - index).apply_sound_action(self);
+            }
+            std::cmp::Ordering::Equal => {
+                SoundAction::PlayPause.apply_sound_action(self);
+            }
+            std::cmp::Ordering::Greater => {
+                SoundAction::Next(index - self.current).apply_sound_action(self)
+            }
+        }
+    }
+}
 impl Screen for PlayerState {
     fn on_mouse_press(
         &mut self,
@@ -39,13 +51,7 @@ impl Screen for PlayerState {
                     .list_selector
                     .click_on(y as usize, list_rect.height as usize)
                 {
-                    if e < self.current {
-                        SoundAction::Previous(self.current - e).apply_sound_action(self);
-                    } else if e > self.current {
-                        SoundAction::Next(e - self.current).apply_sound_action(self);
-                    } else {
-                        SoundAction::PlayPause.apply_sound_action(self);
-                    }
+                    self.activate(e);
                 }
             }
             if rect_contains(&bottom, x, y, 1) {
@@ -130,13 +136,7 @@ impl Screen for PlayerState {
             }
             KeyCode::Enter => {
                 if let Some(e) = self.list_selector.play() {
-                    if e < self.current {
-                        SoundAction::Previous(self.current - e).apply_sound_action(self);
-                    } else if e > self.current {
-                        SoundAction::Next(e - self.current).apply_sound_action(self);
-                    } else {
-                        SoundAction::PlayPause.apply_sound_action(self);
-                    }
+                    self.activate(e);
                 }
                 EventResponse::None
             }
