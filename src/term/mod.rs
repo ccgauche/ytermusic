@@ -6,7 +6,6 @@ pub mod playlist;
 pub mod playlist_view;
 pub mod search;
 pub mod vertical_gauge;
-pub mod list_selector_opt;
 
 use std::{
     io::{self},

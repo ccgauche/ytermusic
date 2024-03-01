@@ -12,7 +12,7 @@ use crate::{
     },
     systems::{
         download::DOWNLOAD_LIST,
-        player::{generate_music, PlayerAction, PlayerState},
+        player::{PlayerState},
     },
     utils::invert,
 };
@@ -221,15 +221,6 @@ impl Screen for PlayerState {
             progress_rect,
         );
         // Create a List from all list items and highlight the currently selected one
-        // self.list_selector.update(
-        //     generate_music(
-        //         &self.list,
-        //         &self.music_status,
-        //         self.current,
-        //         &self.sink,
-        //     ),
-        //     self.current,
-        // );
         self.list_selector.update(self.list.len(), self.current);
         self.list_selector.render(
             list_rect,

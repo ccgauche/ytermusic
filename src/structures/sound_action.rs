@@ -88,7 +88,7 @@ impl SoundAction {
                 }
             }
             Self::Previous(a) => {
-                player.set_relative_current(- (a as isize));
+                player.set_relative_current(-(a as isize));
                 handle_error(
                     &player.updater,
                     "sink stop",

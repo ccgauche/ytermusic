@@ -15,40 +15,12 @@ use crate::{
     errors::{handle_error, handle_error_option},
     structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
     term::{
-        list_selector::{ListSelector, ListSelectorAction}, list_selector_opt::ListSelectorOpt, playlist::PLAYER_RUNNING, ManagerMessage, Screens
+        list_selector::ListSelector, playlist::PLAYER_RUNNING,
+        ManagerMessage, Screens,
     },
-    utils::invert,
 };
 
 use super::download::DOWNLOAD_LIST;
-
-pub enum PlayerAction {
-    Current(MusicDownloadStatus, bool), // Is paused
-    Next(MusicDownloadStatus, usize),
-    Previous(MusicDownloadStatus, usize),
-}
-
-impl ListSelectorAction for PlayerAction {
-    fn render_style(&self, _: &str, _: bool, scrolling_on: bool) -> Style {
-        match self {
-            Self::Current(e, paused) => e.style(Some(!paused)),
-            Self::Next(e, _) => {
-                if scrolling_on {
-                    invert(e.style(None))
-                } else {
-                    e.style(None)
-                }
-            }
-            Self::Previous(e, _) => {
-                if scrolling_on {
-                    invert(e.style(None))
-                } else {
-                    e.style(None)
-                }
-            }
-        }
-    }
-}
 
 pub struct PlayerState {
     pub goto: Screens,
@@ -56,7 +28,7 @@ pub struct PlayerState {
     pub current: usize,
     pub rtcurrent: Option<YoutubeMusicVideoRef>,
     pub music_status: HashMap<String, MusicDownloadStatus>,
-    pub list_selector: ListSelectorOpt,
+    pub list_selector: ListSelector,
     pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
@@ -87,7 +59,7 @@ impl PlayerState {
         Self {
             controls: Media::new(updater.clone(), soundaction_sender.clone()),
             soundaction_receiver,
-            list_selector: ListSelectorOpt::default(),
+            list_selector: ListSelector::default(),
             music_status: HashMap::new(),
             updater,
             stream_error_receiver,
@@ -136,7 +108,9 @@ impl PlayerState {
                 .as_ref()
                 .zip(self.current())
                 .map(|(x, y)| {
-                    x == y && self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::Downloaded)
+                    x == y
+                        && self.music_status.get(&x.video_id)
+                            == Some(&MusicDownloadStatus::Downloaded)
                 })
                 .unwrap_or(false)
             {
@@ -229,33 +203,4 @@ impl PlayerState {
 pub fn player_system(updater: Sender<ManagerMessage>) -> (Sender<SoundAction>, PlayerState) {
     let (tx, rx) = flume::unbounded::<SoundAction>();
     (tx.clone(), PlayerState::new(tx, rx, updater))
-}
-
-pub fn generate_music<'a>(
-    list: &'a [YoutubeMusicVideoRef],
-    music_status: &'a HashMap<String, MusicDownloadStatus>,
-    current: usize,
-    sink: &'a Player,
-) -> Vec<(String, PlayerAction)> {
-    list.iter()
-        .enumerate()
-        .map(|(index, e)| {
-            let mstatus = music_status
-                .get(&e.video_id)
-                .copied()
-                .unwrap_or(MusicDownloadStatus::Downloaded);
-            let status = mstatus.character(Some(!sink.is_paused()));
-
-            (
-                format!(" {status} {} | {}", e.author, e.title),
-                if index < current {
-                    PlayerAction::Previous(mstatus, current - index)
-                } else if index > current {
-                    PlayerAction::Next(mstatus, index - current)
-                } else {
-                    PlayerAction::Current(mstatus, sink.is_paused())
-                },
-            )
-        })
-        .collect()
 }
