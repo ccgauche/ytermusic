@@ -13,10 +13,7 @@ use crate::{
     database,
     errors::{handle_error, handle_error_option},
     structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
-    term::{
-        list_selector::ListSelector, playlist::PLAYER_RUNNING,
-        ManagerMessage, Screens,
-    },
+    term::{list_selector::ListSelector, playlist::PLAYER_RUNNING, ManagerMessage, Screens},
 };
 
 use super::download::DOWNLOAD_LIST;
@@ -88,6 +85,9 @@ impl PlayerState {
         PLAYER_RUNNING.store(self.current().is_some(), Ordering::SeqCst);
         self.update_controls();
         self.handle_stream_errors();
+        if self.current > self.list.len() {
+            self.current = self.list.len();
+        }
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             e.apply_sound_action(self);
         }
