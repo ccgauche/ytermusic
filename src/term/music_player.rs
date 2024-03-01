@@ -98,17 +98,7 @@ impl Screen for PlayerState {
                         if MusicDownloadStatus::DownloadFailed != *music_status {
                             return;
                         }
-                        if let Some(e) = self.previous.iter().find(|x| &x.video_id == key) {
-                            musics.push(e.clone());
-                            *music_status = MusicDownloadStatus::NotDownloaded;
-                            return;
-                        }
-                        if let Some(e) = self.current.as_ref().filter(|x| &x.video_id == key) {
-                            musics.push(e.clone());
-                            *music_status = MusicDownloadStatus::NotDownloaded;
-                            return;
-                        }
-                        if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
+                        if let Some(e) = self.list.iter().find(|x| &x.video_id == key) {
                             musics.push(e.clone());
                             *music_status = MusicDownloadStatus::NotDownloaded;
                         }
@@ -119,15 +109,9 @@ impl Screen for PlayerState {
             }
             KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
             KeyCode::Char('s') => {
-                let mut musics = Vec::with_capacity(self.previous.len() + self.queue.len() + 1);
-                musics.append(&mut self.previous);
-                if let Some(e) = self.current.take() {
-                    musics.push(e);
-                }
-                let queue = std::mem::take(&mut self.queue);
-                musics.extend(queue);
-                musics.shuffle(&mut rand::thread_rng());
-                self.queue = musics.into();
+                
+                self.list.shuffle(&mut rand::thread_rng());
+                self.current = 0;
                 handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
                 EventResponse::None
             }
@@ -219,8 +203,7 @@ impl Screen for PlayerState {
                 .block(
                     Block::default()
                         .title(
-                            self.current
-                                .as_ref()
+                            self.current()
                                 .map(|x| format!(" {x} "))
                                 .unwrap_or_else(|| " No music playing ".to_owned()),
                         )
@@ -247,13 +230,12 @@ impl Screen for PlayerState {
         // Create a List from all list items and highlight the currently selected one
         self.list_selector.update(
             generate_music(
-                &self.queue,
+                &self.list,
                 &self.music_status,
-                &self.previous,
-                &self.current,
+                self.current,
                 &self.sink,
             ),
-            self.previous.len(),
+            self.current,
         );
         f.render_widget(&self.list_selector, list_rect);
     }

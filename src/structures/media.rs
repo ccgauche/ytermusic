@@ -47,7 +47,7 @@ impl Media {
 
     pub fn update(
         &mut self,
-        current: &Option<YoutubeMusicVideoRef>,
+        current: Option<YoutubeMusicVideoRef>,
         sink: &Player,
     ) -> Result<(), souvlaki::Error> {
         if let Some(e) = &mut self.controls {
