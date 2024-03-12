@@ -20,7 +20,7 @@ use crate::{
 
 fn new_video_with_id(id: &str) -> Result<Video, VideoError> {
     let search_options = VideoSearchOptions::Custom(Arc::new(|format| {
-        format.has_audio && !format.has_video && format.container == Some("mp4".to_owned())
+        format.has_audio && !format.has_video && format.mime_type.container == "mp4"
     }));
     let video_options = VideoOptions {
         quality: VideoQuality::Custom(
