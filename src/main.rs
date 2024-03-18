@@ -108,6 +108,8 @@ async fn app_start() {
         println!("Can't read or find `{}`", filepath.display());
         println!("Error: {error}");
         println!("{HEADER_TUTORIAL}");
+        // prevent console window closing on windows, does nothing on linux
+        std::io::stdin().read_line(&mut String::new()).unwrap();
         return;
     }
 
