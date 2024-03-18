@@ -6,7 +6,6 @@ use std::{
 use flume::{unbounded, Receiver, Sender};
 use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
 
-use ratatui::style::Style;
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
@@ -14,51 +13,18 @@ use crate::{
     database,
     errors::{handle_error, handle_error_option},
     structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
-    term::{
-        list_selector::{ListSelector, ListSelectorAction},
-        playlist::PLAYER_RUNNING,
-        ManagerMessage, Screens,
-    },
-    utils::invert,
+    term::{list_selector::ListSelector, playlist::PLAYER_RUNNING, ManagerMessage, Screens},
 };
 
 use super::download::DOWNLOAD_LIST;
 
-pub enum PlayerAction {
-    Current(MusicDownloadStatus, bool), // Is paused
-    Next(MusicDownloadStatus, usize),
-    Previous(MusicDownloadStatus, usize),
-}
-
-impl ListSelectorAction for PlayerAction {
-    fn render_style(&self, _: &str, _: bool, scrolling_on: bool) -> Style {
-        match self {
-            Self::Current(e, paused) => e.style(Some(!paused)),
-            Self::Next(e, _) => {
-                if scrolling_on {
-                    invert(e.style(None))
-                } else {
-                    e.style(None)
-                }
-            }
-            Self::Previous(e, _) => {
-                if scrolling_on {
-                    invert(e.style(None))
-                } else {
-                    e.style(None)
-                }
-            }
-        }
-    }
-}
-
 pub struct PlayerState {
     pub goto: Screens,
-    pub queue: VecDeque<YoutubeMusicVideoRef>,
-    pub current: Option<YoutubeMusicVideoRef>,
-    pub previous: Vec<YoutubeMusicVideoRef>,
+    pub list: Vec<YoutubeMusicVideoRef>,
+    pub current: usize,
+    pub rtcurrent: Option<YoutubeMusicVideoRef>,
     pub music_status: HashMap<String, MusicDownloadStatus>,
-    pub list_selector: ListSelector<PlayerAction>,
+    pub list_selector: ListSelector,
     pub controls: Media,
     pub sink: Player,
     pub guard: Guard,
@@ -97,21 +63,36 @@ impl PlayerState {
             sink,
             goto: Screens::Playlist,
             guard,
-            queue: Default::default(),
-            current: Default::default(),
-            previous: Default::default(),
+            list: Vec::new(),
+            current: 0,
+            rtcurrent: None,
         }
     }
 
+    pub fn current(&self) -> Option<&YoutubeMusicVideoRef> {
+        self.relative_current(0)
+    }
+
+    pub fn relative_current(&self, n: isize) -> Option<&YoutubeMusicVideoRef> {
+        self.list.get(self.current.saturating_add_signed(n))
+    }
+
+    pub fn set_relative_current(&mut self, n: isize) {
+        self.current = self.current.saturating_add_signed(n);
+    }
+
     pub fn update(&mut self) {
-        PLAYER_RUNNING.store(self.current.is_some(), Ordering::SeqCst);
+        PLAYER_RUNNING.store(self.current().is_some(), Ordering::SeqCst);
         self.update_controls();
         self.handle_stream_errors();
+        if self.current > self.list.len() {
+            self.current = self.list.len();
+        }
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             e.apply_sound_action(self);
         }
         if self
-            .current
+            .current()
             .as_ref()
             .map(|x| {
                 self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
@@ -121,36 +102,42 @@ impl PlayerState {
             SoundAction::Next(1).apply_sound_action(self);
         }
         if self.sink.is_finished() {
+            if self
+                .rtcurrent
+                .as_ref()
+                .zip(self.current())
+                .map(|(x, y)| {
+                    x == y
+                        && self.music_status.get(&x.video_id)
+                            == Some(&MusicDownloadStatus::Downloaded)
+                })
+                .unwrap_or(false)
+            {
+                self.set_relative_current(1);
+            }
             self.handle_stream_errors();
             self.update_controls();
             // If the current song is finished, we play the next one but if the next one has failed to download, we skip it
+            // TODO(optimize this)
             while self
-                .queue
-                .front()
+                .current()
                 .map(|x| {
                     self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
                 })
                 .unwrap_or(false)
             {
-                if let Some(e) = self.current.take() {
-                    self.previous.push(e);
-                }
-                self.previous.push(self.queue.pop_front().unwrap());
+                self.set_relative_current(1);
             }
 
             if !self
-                .queue
-                .front()
+                .current()
                 .map(|x| {
                     self.music_status.get(&x.video_id) != Some(&MusicDownloadStatus::Downloaded)
                 })
                 .unwrap_or(true)
             {
-                if let Some(video) = self.queue.pop_front() {
+                if let Some(video) = self.current().cloned() {
                     let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
-                    if let Some(e) = self.current.replace(video.clone()) {
-                        self.previous.push(e);
-                    }
                     if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
                         if matches!(e, PlayError::DecoderError(_)) {
                             // Cleaning the file
@@ -168,7 +155,7 @@ impl PlayerState {
                                     CACHE_DIR.join(format!("downloads/{}.json", &video.video_id)),
                                 ),
                             );
-                            self.current = None;
+                            self.current = 0;
                             crate::write();
                         } else {
                             self.updater
@@ -179,26 +166,21 @@ impl PlayerState {
                                 .unwrap();
                         }
                     }
-                } else if let Some(e) = self.current.take() {
-                    self.previous.push(e);
                 }
             }
         }
-        let mut to_download = self
-            .queue
+        self.rtcurrent = self.current().cloned();
+        let to_download = self
+            .list
             .iter()
-            .chain(self.previous.iter().rev())
+            .skip(self.current)
+            .chain(self.list.iter().take(self.current).rev())
             .filter(|x| {
                 self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::NotDownloaded)
             })
             .take(12)
             .cloned()
             .collect::<VecDeque<_>>();
-        if let Some(e) = self.current.as_ref() {
-            if self.music_status.get(&e.video_id) == Some(&MusicDownloadStatus::NotDownloaded) {
-                to_download.push_front(e.clone());
-            }
-        }
         *DOWNLOAD_LIST.lock().unwrap() = to_download;
     }
 
@@ -208,9 +190,10 @@ impl PlayerState {
         }
     }
     fn update_controls(&mut self) {
+        let current = self.current().cloned();
         let result = self
             .controls
-            .update(&self.current, &self.sink)
+            .update(current, &self.sink)
             .map_err(|x| format!("{x:?}"));
         handle_error::<String>(&self.updater, "Can't update finished media control", result);
     }
@@ -219,48 +202,4 @@ impl PlayerState {
 pub fn player_system(updater: Sender<ManagerMessage>) -> (Sender<SoundAction>, PlayerState) {
     let (tx, rx) = flume::unbounded::<SoundAction>();
     (tx.clone(), PlayerState::new(tx, rx, updater))
-}
-
-pub fn generate_music<'a>(
-    queue: &'a VecDeque<YoutubeMusicVideoRef>,
-    music_status: &'a HashMap<String, MusicDownloadStatus>,
-    previous: &'a [YoutubeMusicVideoRef],
-    current: &'a Option<YoutubeMusicVideoRef>,
-    sink: &'a Player,
-) -> Vec<(String, PlayerAction)> {
-    let mut music = Vec::with_capacity(10 + queue.len() + previous.len());
-
-    music.extend(previous.iter().rev().enumerate().rev().map(|(i, e)| {
-        let status = music_status
-            .get(&e.video_id)
-            .copied()
-            .unwrap_or(MusicDownloadStatus::Downloaded);
-        (
-            format!(" {} {} | {}", status.character(None), e.author, e.title),
-            PlayerAction::Previous(status, i + 1),
-        )
-    }));
-    if let Some(e) = current {
-        let mstatus = music_status
-            .get(&e.video_id)
-            .copied()
-            .unwrap_or(MusicDownloadStatus::Downloaded);
-        let status = mstatus.character(Some(!sink.is_paused()));
-
-        music.push((
-            format!(" {status} {} | {}", e.author, e.title),
-            PlayerAction::Current(mstatus, sink.is_paused()),
-        ));
-    }
-    music.extend(queue.iter().enumerate().map(|(i, e)| {
-        let status = music_status
-            .get(&e.video_id)
-            .copied()
-            .unwrap_or(MusicDownloadStatus::Downloaded);
-        (
-            format!(" {} {} | {}", status.character(None), e.author, e.title),
-            PlayerAction::Next(status, i + 1),
-        )
-    }));
-    music
 }

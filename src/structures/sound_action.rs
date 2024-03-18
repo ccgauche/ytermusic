@@ -49,9 +49,8 @@ impl SoundAction {
             Self::Forward => player.sink.seek_fw(),
             Self::PlayPause => player.sink.toggle_playback(),
             Self::Cleanup => {
-                player.queue.clear();
-                player.previous.clear();
-                player.current = None;
+                player.list.clear();
+                player.current = 0;
                 player.music_status.clear();
                 handle_error(
                     &player.updater,
@@ -68,12 +67,7 @@ impl SoundAction {
                     player.sink.stop(&player.guard),
                 );
 
-                if let Some(e) = player.current.take() {
-                    player.previous.push(e);
-                }
-                for _ in 1..a {
-                    player.previous.push(player.queue.pop_front().unwrap());
-                }
+                player.set_relative_current(a as _);
             }
             Self::VideoStatusUpdate(video, status) => {
                 player.music_status.insert(video, status);
@@ -90,18 +84,11 @@ impl SoundAction {
                             MusicDownloadStatus::NotDownloaded
                         },
                     );
-                    player.queue.push_back(v)
+                    player.list.push(v)
                 }
             }
             Self::Previous(a) => {
-                for _ in 0..a {
-                    if let Some(e) = player.previous.pop() {
-                        if let Some(c) = player.current.take() {
-                            player.queue.push_front(c);
-                        }
-                        player.queue.push_front(e);
-                    }
-                }
+                player.set_relative_current(-(a as isize));
                 handle_error(
                     &player.updater,
                     "sink stop",
@@ -112,7 +99,7 @@ impl SoundAction {
                 (player.sink, player.guard) =
                     handle_error_option(&player.updater, "update player", player.sink.update())
                         .unwrap();
-                if let Some(e) = player.current.clone() {
+                if let Some(e) = player.current().cloned() {
                     Self::AddVideoUnary(e).apply_sound_action(player);
                 }
             }
@@ -131,10 +118,10 @@ impl SoundAction {
                         MusicDownloadStatus::NotDownloaded
                     },
                 );
-                player.queue.push_front(video);
+                player.list.insert(player.current + 1, video);
             }
             Self::ReplaceQueue(videos) => {
-                player.queue.clear();
+                player.list.truncate(player.current + 1);
                 download::clean(&player.soundaction_sender);
                 Self::AddVideosToQueue(videos).apply_sound_action(player);
                 Self::Next(1).apply_sound_action(player);

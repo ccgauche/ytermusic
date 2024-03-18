@@ -10,10 +10,8 @@ use crate::{
         app_status::{AppStatus, MusicDownloadStatus},
         sound_action::SoundAction,
     },
-    systems::{
-        download::DOWNLOAD_LIST,
-        player::{generate_music, PlayerAction, PlayerState},
-    },
+    systems::{download::DOWNLOAD_LIST, player::PlayerState},
+    utils::invert,
 };
 
 use super::{
@@ -21,6 +19,21 @@ use super::{
     ManagerMessage, Screen, Screens,
 };
 
+impl PlayerState {
+    pub fn activate(&mut self, index: usize) {
+        match index.cmp(&self.current) {
+            std::cmp::Ordering::Less => {
+                SoundAction::Previous(self.current - index).apply_sound_action(self);
+            }
+            std::cmp::Ordering::Equal => {
+                SoundAction::PlayPause.apply_sound_action(self);
+            }
+            std::cmp::Ordering::Greater => {
+                SoundAction::Next(index - self.current).apply_sound_action(self)
+            }
+        }
+    }
+}
 impl Screen for PlayerState {
     fn on_mouse_press(
         &mut self,
@@ -34,20 +47,11 @@ impl Screen for PlayerState {
         if let MouseEventKind::Down(_) = &mouse_event.kind {
             if rect_contains(&list_rect, x, y, 1) {
                 let (_, y) = relative_pos(&list_rect, x, y, 1);
-                match self
+                if let Some(e) = self
                     .list_selector
                     .click_on(y as usize, list_rect.height as usize)
                 {
-                    None => {}
-                    Some((_, PlayerAction::Current(..))) => {
-                        SoundAction::PlayPause.apply_sound_action(self);
-                    }
-                    Some((_, PlayerAction::Next(_, a))) => {
-                        SoundAction::Next(*a).apply_sound_action(self);
-                    }
-                    Some((_, PlayerAction::Previous(_, a))) => {
-                        SoundAction::Previous(*a).apply_sound_action(self);
-                    }
+                    self.activate(e);
                 }
             }
             if rect_contains(&bottom, x, y, 1) {
@@ -98,17 +102,7 @@ impl Screen for PlayerState {
                         if MusicDownloadStatus::DownloadFailed != *music_status {
                             return;
                         }
-                        if let Some(e) = self.previous.iter().find(|x| &x.video_id == key) {
-                            musics.push(e.clone());
-                            *music_status = MusicDownloadStatus::NotDownloaded;
-                            return;
-                        }
-                        if let Some(e) = self.current.as_ref().filter(|x| &x.video_id == key) {
-                            musics.push(e.clone());
-                            *music_status = MusicDownloadStatus::NotDownloaded;
-                            return;
-                        }
-                        if let Some(e) = self.queue.iter().find(|x| &x.video_id == key) {
+                        if let Some(e) = self.list.iter().find(|x| &x.video_id == key) {
                             musics.push(e.clone());
                             *music_status = MusicDownloadStatus::NotDownloaded;
                         }
@@ -119,15 +113,8 @@ impl Screen for PlayerState {
             }
             KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),
             KeyCode::Char('s') => {
-                let mut musics = Vec::with_capacity(self.previous.len() + self.queue.len() + 1);
-                musics.append(&mut self.previous);
-                if let Some(e) = self.current.take() {
-                    musics.push(e);
-                }
-                let queue = std::mem::take(&mut self.queue);
-                musics.extend(queue);
-                musics.shuffle(&mut rand::thread_rng());
-                self.queue = musics.into();
+                self.list.shuffle(&mut rand::thread_rng());
+                self.current = 0;
                 handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
                 EventResponse::None
             }
@@ -149,17 +136,7 @@ impl Screen for PlayerState {
             }
             KeyCode::Enter => {
                 if let Some(e) = self.list_selector.play() {
-                    match e {
-                        PlayerAction::Current(..) => {
-                            SoundAction::PlayPause.apply_sound_action(self);
-                        }
-                        PlayerAction::Next(_, a) => {
-                            SoundAction::Next(*a).apply_sound_action(self);
-                        }
-                        PlayerAction::Previous(_, a) => {
-                            SoundAction::Previous(*a).apply_sound_action(self);
-                        }
-                    }
+                    self.activate(e);
                 }
                 EventResponse::None
             }
@@ -219,8 +196,7 @@ impl Screen for PlayerState {
                 .block(
                     Block::default()
                         .title(
-                            self.current
-                                .as_ref()
+                            self.current()
                                 .map(|x| format!(" {x} "))
                                 .unwrap_or_else(|| " No music playing ".to_owned()),
                         )
@@ -245,17 +221,35 @@ impl Screen for PlayerState {
             progress_rect,
         );
         // Create a List from all list items and highlight the currently selected one
-        self.list_selector.update(
-            generate_music(
-                &self.queue,
-                &self.music_status,
-                &self.previous,
-                &self.current,
-                &self.sink,
-            ),
-            self.previous.len(),
-        );
-        f.render_widget(&self.list_selector, list_rect);
+        self.list_selector.update(self.list.len(), self.current);
+        self.list_selector.render(
+            list_rect,
+            f.buffer_mut(),
+            |index, select, scroll| {
+                let music_state = self
+                    .list
+                    .get(index)
+                    .and_then(|x| self.music_status.get(&x.video_id))
+                    .copied()
+                    .unwrap_or(MusicDownloadStatus::Downloaded);
+                let music_state_c = music_state.character(Some(!self.sink.is_paused()));
+                (
+                    if select {
+                        music_state.style(Some(!self.sink.is_paused()))
+                    } else if scroll {
+                        invert(music_state.style(None))
+                    } else {
+                        music_state.style(None)
+                    },
+                    if let Some(e) = self.list.get(index) {
+                        format!(" {music_state_c} {} | {}", e.author, e.title)
+                    } else {
+                        String::new()
+                    },
+                )
+            },
+            " Playlist ",
+        )
     }
 
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {
@@ -269,12 +263,10 @@ impl Screen for PlayerState {
     }
 
     fn close(&mut self, _: Screens) -> EventResponse {
-        //SoundAction::ForcePause.apply_sound_action(self);
         EventResponse::None
     }
 
     fn open(&mut self) -> EventResponse {
-        //SoundAction::ForcePlay.apply_sound_action(self);
         EventResponse::None
     }
 }
