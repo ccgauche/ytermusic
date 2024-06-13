@@ -118,9 +118,10 @@ impl SoundAction {
                         MusicDownloadStatus::NotDownloaded
                     },
                 );
-                match player.list.len() {
-                    0 => player.list.push(video),
-                    _ => player.list.insert(player.current + 1, video),
+                if player.list.is_empty() {
+                    player.list.push(video);
+                } else {
+                    player.list.insert(player.current + 1, video);
                 }
             }
             Self::ReplaceQueue(videos) => {
