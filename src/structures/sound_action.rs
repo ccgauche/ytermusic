@@ -119,7 +119,7 @@ impl SoundAction {
                     },
                 );
                 match player.list.len() {
-                    0 => player.list.insert(0, video),
+                    0 => player.list.push(video),
                     _ => player.list.insert(player.current + 1, video),
                 }
             }
