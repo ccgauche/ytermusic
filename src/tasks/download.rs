@@ -65,11 +65,15 @@ pub async fn download<P: AsRef<std::path::Path>>(
             .map_err(|e| VideoError::DownloadError(e.to_string()))?;
     }
 
-    file.flush().map_err(|e| VideoError::DownloadError(e.to_string()))?;
+    file.flush()
+        .map_err(|e| VideoError::DownloadError(e.to_string()))?;
 
     if total != length || length == 0 {
         std::fs::remove_file(path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
-        return Err(VideoError::DownloadError(format!("Downloaded file is not the same size as the content length ({}/{})", total, length)));
+        return Err(VideoError::DownloadError(format!(
+            "Downloaded file is not the same size as the content length ({}/{})",
+            total, length
+        )));
     }
 
     Ok(())
