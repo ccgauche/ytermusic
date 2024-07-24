@@ -59,6 +59,14 @@ fn shutdown() {
 
 #[tokio::main]
 async fn main() {
+    // Check if the first param is --files
+    if std::env::args().nth(1).as_deref() == Some("--files") {
+        println!("# Location of ytermusic files");
+        println!(" - Logs: {}", get_log_file_path().display());
+        println!(" - Headers: {}", get_header_file().unwrap().1.display());
+        println!(" - Cache: {}", CACHE_DIR.display());
+        return;
+    }
     panic::set_hook(Box::new(|e| {
         println!("{e}");
         error!("{e}");

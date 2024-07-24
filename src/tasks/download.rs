@@ -48,7 +48,7 @@ pub async fn download<P: AsRef<std::path::Path>>(
     let length = stream.content_length();
 
     let mut file =
-        std::fs::File::create(path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
+        std::fs::File::create(&path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
 
     let mut total = 0;
     while let Some(chunk) = stream.chunk().await? {
@@ -63,6 +63,13 @@ pub async fn download<P: AsRef<std::path::Path>>(
 
         file.write_all(&chunk)
             .map_err(|e| VideoError::DownloadError(e.to_string()))?;
+    }
+
+    file.flush().map_err(|e| VideoError::DownloadError(e.to_string()))?;
+
+    if total != length || length == 0 {
+        std::fs::remove_file(path).map_err(|e| VideoError::DownloadError(e.to_string()))?;
+        return Err(VideoError::DownloadError(format!("Downloaded file is not the same size as the content length ({}/{})", total, length)));
     }
 
     Ok(())
@@ -177,4 +184,19 @@ pub fn start_task_unary(s: Sender<SoundAction>, song: YoutubeMusicVideoRef) {
     HANDLES.lock().unwrap().push(run_service(async move {
         start_download(song, &s).await;
     }));
+}
+
+#[tokio::test]
+async fn video_download_test() {
+    let ids = vec!["iFbNzVFgjCk"];
+    for id in ids {
+        let video = Video::new(id).unwrap();
+        let stream = video.stream().await.unwrap();
+        let content_length = stream.content_length();
+        let mut total = 0;
+        while let Some(chunk) = stream.chunk().await.unwrap() {
+            total += chunk.len();
+        }
+        assert_eq!(total, content_length);
+    }
 }
