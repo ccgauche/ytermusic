@@ -37,7 +37,7 @@ pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
 }
 
 fn shuffle_and_send(mut videos: Vec<YoutubeMusicVideoRef>, updater_s: &Sender<ManagerMessage>) {
-    *DATABASE.write().unwrap() = videos.clone();
+    DATABASE.write().unwrap().clone_from(&videos);
 
     if CONFIG.player.shuffle {
         videos.shuffle(&mut rand::thread_rng());

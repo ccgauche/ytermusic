@@ -60,12 +60,39 @@ fn shutdown() {
 #[tokio::main]
 async fn main() {
     // Check if the first param is --files
-    if std::env::args().nth(1).as_deref() == Some("--files") {
-        println!("# Location of ytermusic files");
-        println!(" - Logs: {}", get_log_file_path().display());
-        println!(" - Headers: {}", get_header_file().unwrap().1.display());
-        println!(" - Cache: {}", CACHE_DIR.display());
-        return;
+    if let Some(arg) = std::env::args().nth(1) {
+        match arg.as_str() {
+            "--files" => {
+                println!("# Location of ytermusic files");
+                println!(" - Logs: {}", get_log_file_path().display());
+                println!(" - Headers: {}", get_header_file().unwrap().1.display());
+                println!(" - Cache: {}", CACHE_DIR.display());
+                return;
+            }
+            "--fix-db" => {
+                database::fix_db();
+                println!("[INFO] Database fixed");
+                return;
+            }
+            "--clear-cache" => {
+                match std::fs::remove_dir_all(&*CACHE_DIR) {
+                    Ok(_) => {
+                        println!("[INFO] Cache cleared");
+                    }
+                    Err(e) => {
+                        println!("[ERROR] Can't clear cache: {e}");
+                    }
+                }
+                return;
+            }
+            e => {
+                println!("Unknown argument `{e}`");
+                println!("Here are the available arguments:");
+                println!(" - --files: Show the location of the ytermusic files");
+                println!(" - --fix-db: Fix the database");
+                return;
+            }
+        }
     }
     panic::set_hook(Box::new(|e| {
         println!("{e}");

@@ -7,7 +7,7 @@ mod reader;
 mod writer;
 
 pub use reader::read;
-pub use writer::{write, write_video};
+pub use writer::{fix_db, write, write_video};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::consts::CACHE_DIR;

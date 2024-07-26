@@ -94,6 +94,24 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 - Press <kbd>ESC</kbd> to exit the current menu
 - Press <kbd>CTRL</kbd> + <kbd>C</kbd> or <kbd>CTRL</kbd> + <kbd>D</kbd> to exit
 
+## How to fix common issues
+
+If you have any issues start by running:
+```sh
+ytermusic --fix-db
+```
+This will try to fix any issues with the cache database.
+
+If you still have issues, you can clear the cache by running:
+```sh
+ytermusic --clear-cache
+```
+
+If you need to report an issue or find the files related to ytermusic:
+```sh
+ytermusic --files
+```
+
 ## Changelog
 
 ```
