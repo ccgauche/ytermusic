@@ -8,7 +8,7 @@ use json_extractor::{
     get_video, get_video_from_album, Continuation,
 };
 use log::{error, trace, debug};
-use reqwest::header::HeaderMap;
+pub use reqwest::header::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};
