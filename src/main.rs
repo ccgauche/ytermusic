@@ -2,7 +2,6 @@ use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
 use log::{error, info};
 use once_cell::sync::Lazy;
-use rookie::firefox;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
@@ -97,6 +96,7 @@ async fn main() {
             "--with-auto-cookies" => {
                 if let Some(cookies) = cookies() {
                     let mut cookies_guard = COOKIES.write().unwrap();
+                    info!("Cookies: {cookies}");
                     *cookies_guard = Some(cookies);
                     info!("Cookies loaded");
                 } else {

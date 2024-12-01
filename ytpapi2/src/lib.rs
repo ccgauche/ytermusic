@@ -8,9 +8,9 @@ use json_extractor::{
     extract_playlist_info, from_json, get_continuation, get_playlist, get_playlist_search,
     get_video, get_video_from_album, Continuation,
 };
-pub use reqwest::header::*;
 use log::{debug, error, trace};
-use reqwest::header::HeaderMap;
+pub use reqwest::header::HeaderMap;
+pub use reqwest::header::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};

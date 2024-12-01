@@ -3,15 +3,14 @@ use std::sync::{Arc, Mutex};
 use flume::Sender;
 use log::{error, info};
 use once_cell::sync::Lazy;
-use rusty_ytdl::reqwest::{self, header};
 use tokio::task::JoinSet;
-use ytpapi2::{Endpoint, HeaderMap, HeaderValue, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
+use ytpapi2::{Endpoint, YoutubeMusicInstance, YoutubeMusicPlaylistRef};
 
 use crate::{
     consts::CONFIG,
     get_header_file, run_service,
     structures::performance,
-    term::{ManagerMessage, Screens}, try_get_cookies,
+    term::{ManagerMessage, Screens},
 };
 
 pub fn get_text_cookies_expired_or_invalid() -> String {
@@ -26,22 +25,8 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("API task on");
         let guard = performance::guard("API task");
-        
         let client =
-        if let Some(cookies) = try_get_cookies() {
-            let mut headermap = HeaderMap::new();
-            headermap.insert(
-                "cookie",
-                HeaderValue::from_str(&cookies).unwrap(),
-            );
-            headermap.insert(
-                "user-agent",
-                HeaderValue::from_static("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"),
-            );
-            YoutubeMusicInstance::new(headermap).await
-        } else {
-            YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await
-        };
+            YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await;
         match client {
             Ok(api) => {
                 let api = Arc::new(api);
