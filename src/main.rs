@@ -1,7 +1,8 @@
 use consts::CACHE_DIR;
 use flume::{Receiver, Sender};
-use log::error;
+use log::{error, info};
 use once_cell::sync::Lazy;
+use rookie::firefox;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
@@ -12,6 +13,7 @@ use std::{
     path::{Path, PathBuf},
     process::exit,
     str::FromStr,
+    sync::RwLock,
 };
 use systems::{logger::init, player::player_system};
 
@@ -57,6 +59,13 @@ fn shutdown() {
     exit(0);
 }
 
+static COOKIES: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
+
+pub fn try_get_cookies() -> Option<String> {
+    let cookies = COOKIES.read().unwrap();
+    cookies.clone()
+}
+
 #[tokio::main]
 async fn main() {
     // Check if the first param is --files
@@ -85,6 +94,18 @@ async fn main() {
                 }
                 return;
             }
+            "--with-auto-cookies" => {
+                if let Some(cookies) = cookies() {
+                    let mut cookies_guard = COOKIES.write().unwrap();
+                    *cookies_guard = Some(cookies);
+                    info!("Cookies loaded");
+                } else {
+                    error!("Can't load cookies");
+                    error!("Maybe rookie didn't find any cookies or any browser");
+                    error!("Please make sure you have cookies in your browser");
+                    return;
+                }
+            }
             e => {
                 println!("Unknown argument `{e}`");
                 println!("Here are the available arguments:");
@@ -109,6 +130,37 @@ async fn main() {
         },
     };
 }
+
+fn cookies() -> Option<String> {
+    let mut cookies = Vec::new();
+    let current_timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    for cookie in rookie::load(Some(vec!["youtube.com".to_string()])).unwrap() {
+        if cookie.domain != ".youtube.com" && cookie.domain != "music.youtube.com" {
+            continue;
+        }
+        if cookie
+            .expires
+            .map(|e| e < current_timestamp)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        if cookies.iter().any(|(name, _)| name == &cookie.name) {
+            continue;
+        }
+        cookies.push((cookie.name, cookie.value));
+    }
+    let cookies = cookies
+        .iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect::<Vec<_>>();
+    let cookies = cookies.join("; ");
+    Some(cookies)
+}
+
 fn get_header_file() -> Result<(String, PathBuf), (std::io::Error, PathBuf)> {
     let fp = PathBuf::from_str("headers.txt").unwrap();
     if let Ok(e) = std::fs::read_to_string(&fp) {
@@ -139,13 +191,15 @@ async fn app_start() {
 
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
 
-    if let Err((error, filepath)) = get_header_file() {
-        println!("Can't read or find `{}`", filepath.display());
-        println!("Error: {error}");
-        println!("{HEADER_TUTORIAL}");
-        // prevent console window closing on windows, does nothing on linux
-        std::io::stdin().read_line(&mut String::new()).unwrap();
-        return;
+    if try_get_cookies().is_none() {
+        if let Err((error, filepath)) = get_header_file() {
+            println!("Can't read or find `{}`", filepath.display());
+            println!("Error: {error}");
+            println!("{HEADER_TUTORIAL}");
+            // prevent console window closing on windows, does nothing on linux
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+            return;
+        }
     }
 
     STARTUP_TIME.log("Startup");

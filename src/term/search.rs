@@ -10,11 +10,10 @@ use ratatui::{
     Frame,
 };
 use tokio::task::JoinHandle;
-use ytpapi2::{SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
+use ytpapi2::{HeaderMap, HeaderValue, SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
 
 use crate::{
-    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks,
-    utils::invert, DATABASE,
+    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks, try_get_cookies, utils::invert, DATABASE
 };
 
 use super::{
@@ -218,8 +217,20 @@ impl Search {
             ))),
             goto: Screens::MusicPlayer,
             search_handle: None,
-            api: YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path())
-                .await
+            api: if let Some(cookies) = try_get_cookies() {
+                let mut headermap = HeaderMap::new();
+                headermap.insert(
+                    "cookie",
+                    HeaderValue::from_str(&cookies).unwrap(),
+                );
+                headermap.insert(
+                    "user-agent",
+                    HeaderValue::from_static("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"),
+                );
+                YoutubeMusicInstance::new(headermap).await
+            } else {
+                YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await
+            }
                 .ok()
                 .map(Arc::new),
             action_sender,
