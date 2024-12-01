@@ -110,7 +110,7 @@ pub fn spawn_api_task(updater_s: Sender<ManagerMessage>) {
             Err(e) => match &e {
                 ytpapi2::YoutubeMusicError::NoCookieAttribute
                 | ytpapi2::YoutubeMusicError::NoSapsidInCookie
-                | ytpapi2::YoutubeMusicError::InvalidCookie
+                | ytpapi2::YoutubeMusicError::InvalidCookie(_)
                 | ytpapi2::YoutubeMusicError::NeedToLogin
                 | ytpapi2::YoutubeMusicError::CantFindInnerTubeApiKey(_)
                 | ytpapi2::YoutubeMusicError::CantFindInnerTubeClientVersion(_)
