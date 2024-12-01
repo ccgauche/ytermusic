@@ -12,7 +12,8 @@ use std::{
     panic,
     path::{Path, PathBuf},
     process::exit,
-    str::FromStr, sync::RwLock,
+    str::FromStr,
+    sync::RwLock,
 };
 use systems::{logger::init, player::player_system};
 
@@ -132,16 +133,30 @@ async fn main() {
 
 fn cookies() -> Option<String> {
     let mut cookies = Vec::new();
+    let current_timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     for cookie in rookie::load(Some(vec!["youtube.com".to_string()])).unwrap() {
         if cookie.domain != ".youtube.com" && cookie.domain != "music.youtube.com" {
             continue;
         }
-        cookies.push(format!(
-            "{}={}",
-            cookie.name,
-            cookie.value
-        ));
+        if cookie
+            .expires
+            .map(|e| e < current_timestamp)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        if cookies.iter().any(|(name, _)| name == &cookie.name) {
+            continue;
+        }
+        cookies.push((cookie.name, cookie.value));
     }
+    let cookies = cookies
+        .iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect::<Vec<_>>();
     let cookies = cookies.join("; ");
     Some(cookies)
 }
