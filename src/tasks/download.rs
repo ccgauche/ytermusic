@@ -38,7 +38,7 @@ fn new_video_with_id(id: &str) -> Result<Video, VideoError> {
 }
 
 pub async fn download<P: AsRef<std::path::Path>>(
-    video: &Video,
+    video: &Video<'_>,
     path: P,
     sender: Sender<SoundAction>,
 ) -> Result<(), VideoError> {
