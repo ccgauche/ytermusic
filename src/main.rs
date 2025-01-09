@@ -113,6 +113,7 @@ async fn main() {
                 println!("Unknown argument `{e}`");
                 println!("Here are the available arguments:");
                 println!(" - --files: Show the location of the ytermusic files");
+                println!(" - --clear-cache: Erase all the files in cache");
                 println!(" - --fix-db: Fix the database");
                 return;
             }
