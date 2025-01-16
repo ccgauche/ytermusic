@@ -79,6 +79,7 @@ async fn main() {
             }
             "--fix-db" => {
                 database::fix_db();
+                database::write();
                 println!("[INFO] Database fixed");
                 return;
             }
