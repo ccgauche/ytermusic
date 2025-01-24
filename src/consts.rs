@@ -26,8 +26,7 @@ pub static CACHE_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
 pub static CONFIG: Lazy<config::Config> = Lazy::new(config::Config::new);
 
-pub const INTRODUCTION :&str = 
-r#"Usage: ytermusic [options]
+pub const INTRODUCTION: &str = r#"Usage: ytermusic [options]
 
 YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple as possible.
 In order to get your music, create a file "headers.txt" in the config folder, and copy the Cookie and User-Agent from request header of the music.youtube.com html document "/" page.

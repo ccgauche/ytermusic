@@ -70,7 +70,7 @@ async fn main() {
     // Check if the first param is --files
     if let Some(arg) = std::env::args().nth(1) {
         match arg.as_str() {
-            "-h" | "--help" =>{
+            "-h" | "--help" => {
                 println!("{}", INTRODUCTION);
                 return;
             }

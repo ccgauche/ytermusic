@@ -10,10 +10,14 @@ use ratatui::{
     Frame,
 };
 use tokio::task::JoinHandle;
-use ytpapi2::{HeaderMap, HeaderValue, SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef, YoutubeMusicVideoRef};
+use ytpapi2::{
+    HeaderMap, HeaderValue, SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef,
+    YoutubeMusicVideoRef,
+};
 
 use crate::{
-    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks, try_get_cookies, utils::invert, DATABASE
+    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks,
+    try_get_cookies, utils::invert, DATABASE,
 };
 
 use super::{
