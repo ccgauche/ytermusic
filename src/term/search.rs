@@ -231,7 +231,7 @@ impl Search {
                     "user-agent",
                     HeaderValue::from_static("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"),
                 );
-                YoutubeMusicInstance::new(headermap).await
+                YoutubeMusicInstance::new(headermap, None).await    //don't think we need a brand account for search
             } else {
                 YoutubeMusicInstance::from_header_file(get_header_file().unwrap().1.as_path()).await
             }

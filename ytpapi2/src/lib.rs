@@ -1,7 +1,5 @@
 use std::{
-    path::Path,
-    string::FromUtf8Error,
-    time::{SystemTime, UNIX_EPOCH},
+    path::Path, string::FromUtf8Error, time::{SystemTime, UNIX_EPOCH}
 };
 
 use json_extractor::{
@@ -49,11 +47,21 @@ fn get_headers() -> HeaderMap {
     headers
 }
 
+#[cfg(test)]
+fn get_account_id() -> Option<String>{
+    let file = std::fs::read_to_string("../account_id.txt").unwrap();
+    let account_id = match std::fs::read_to_string(file) {
+        Ok(id) => Some(id),
+        Err(_) => None,
+    };
+    return  account_id;
+}
+
 #[test]
 fn advanced_like() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id()).await.unwrap();
         println!("{}", ytm.compute_sapi_hash());
         let search = ytm
             .get_library(0, &Endpoint::MusicLibraryLanding)
@@ -69,7 +77,7 @@ fn advanced_like() {
 fn advanced_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id()).await.unwrap();
         let search = ytm.search("j'ai la danse qui va avec", 0).await.unwrap();
         assert_eq!(search.videos.is_empty(), false);
         assert_eq!(search.playlists.is_empty(), false);
@@ -82,7 +90,7 @@ fn advanced_test() {
 fn home_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers()).await.unwrap();
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id()).await.unwrap();
         let search = ytm.get_home(0).await.unwrap();
         println!("{:?}", search.playlists);
         assert_eq!(search.playlists.is_empty(), false);
@@ -103,6 +111,7 @@ pub struct YoutubeMusicInstance {
     innertube_api_key: String,
     client_version: String,
     cookies: String,
+    account_id: Option<String>
 }
 
 impl YoutubeMusicInstance {
@@ -139,10 +148,15 @@ impl YoutubeMusicInstance {
                     .unwrap(),
             );
         }
-        Self::new(headers).await
+        let account_path = path.parent().unwrap_or(Path::new("../")).join("account_id.txt");
+        let account_id = match tokio::fs::read_to_string(account_path).await {
+            Ok(id) => Some(id), //will error log in the reqwest response if id is not correct
+            Err(_) => None, //don't care if there is no files or nothing in the file
+        };
+        Self::new(headers, account_id).await
     }
 
-    pub async fn new(headers: HeaderMap) -> Result<Self> {
+    pub async fn new(headers: HeaderMap, account_id: Option<String>) -> Result<Self> {
         trace!("Creating new YoutubeMusicInstance");
         let rest_client = reqwest::ClientBuilder::default()
             .default_headers(headers.clone())
@@ -188,11 +202,14 @@ impl YoutubeMusicInstance {
                 YoutubeMusicError::CantFindInnerTubeClientVersion(response.to_string())
             })?;
         trace!("Innertube client version: {}", client_version);
+        // New file for brand accounts, maybe put it in config or headers.txt is better but more complex.
+        trace!("account id {:?}", account_id);
         Ok(Self {
             sapisid: sapisid.to_string(),
             innertube_api_key: innertube_api_key.to_string(),
             client_version: client_version.to_string(),
             cookies,
+            account_id
         })
     }
     fn compute_sapi_hash(&self) -> String {
@@ -244,10 +261,16 @@ impl YoutubeMusicInstance {
             "https://music.youtube.com/youtubei/v1/browse?ctoken={continuation}&continuation={continuation}&type=next&itct={click_tracking_params}&key={}&prettyPrint=false",
             self.innertube_api_key
         );
-        let body = format!(
-            r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
-            self.client_version
-        );
+        let body = match &self.account_id {
+            Some(id) => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}}}}"#,
+                self.client_version
+            ),
+            None => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
+                self.client_version
+            )
+        };
         reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
@@ -276,10 +299,16 @@ impl YoutubeMusicInstance {
             "https://music.youtube.com/youtubei/v1/{endpoint_route}?key={}&prettyPrint=false",
             self.innertube_api_key
         );
-        let body = format!(
-            r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}},"{endpoint_key}":"{endpoint_param}"}}"#,
-            self.client_version
-        );
+        let body = match &self.account_id {
+            Some(id) => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}},"{endpoint_key}":"{endpoint_param}"}}"#,
+                self.client_version
+            ),
+            None => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}},"{endpoint_key}":"{endpoint_param}"}}"#,
+                self.client_version
+            )
+        };
         reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
