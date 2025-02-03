@@ -150,7 +150,15 @@ impl YoutubeMusicInstance {
         }
         let account_path = path.parent().unwrap_or(Path::new("../")).join("account_id.txt");
         let account_id = match tokio::fs::read_to_string(account_path).await {
-            Ok(id) => Some(id), //will error log in the reqwest response if id is not correct
+            Ok(mut id) => {
+                if id.ends_with("\n") {
+                    id.pop();
+                    if id.ends_with("\r") {
+                        id.pop();
+                    }
+                }
+                Some(id)
+            },
             Err(_) => None, //don't care if there is no files or nothing in the file
         };
         Self::new(headers, account_id).await
@@ -261,16 +269,20 @@ impl YoutubeMusicInstance {
             "https://music.youtube.com/youtubei/v1/browse?ctoken={continuation}&continuation={continuation}&type=next&itct={click_tracking_params}&key={}&prettyPrint=false",
             self.innertube_api_key
         );
-        let body = match &self.account_id {
-            Some(id) => format!(
-                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}}}}"#,
-                self.client_version
-            ),
-            None => format!(
-                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
-                self.client_version
-            )
-        };
+        let body = format!(
+            r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
+            self.client_version
+        );
+        // let body = match &self.account_id {
+        //     Some(id) => format!(
+        //         r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}}}}"#,
+        //         self.client_version
+        //     ),
+        //     None => format!(
+        //         r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
+        //         self.client_version
+        //     )
+        // };
         reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
