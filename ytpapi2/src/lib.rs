@@ -64,7 +64,7 @@ fn advanced_like() {
         let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id()).await.unwrap();
         println!("{}", ytm.compute_sapi_hash());
         let search = ytm
-            .get_library(0, &Endpoint::MusicLibraryLanding)
+            .get_library(&Endpoint::MusicLibraryLanding, 0)
             .await
             .unwrap();
         assert_eq!(search.is_empty(), false);
@@ -269,20 +269,20 @@ impl YoutubeMusicInstance {
             "https://music.youtube.com/youtubei/v1/browse?ctoken={continuation}&continuation={continuation}&type=next&itct={click_tracking_params}&key={}&prettyPrint=false",
             self.innertube_api_key
         );
-        let body = format!(
-            r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
-            self.client_version
-        );
-        // let body = match &self.account_id {
-        //     Some(id) => format!(
-        //         r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}}}}"#,
-        //         self.client_version
-        //     ),
-        //     None => format!(
-        //         r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
-        //         self.client_version
-        //     )
-        // };
+        // let body = format!(
+        //     r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
+        //     self.client_version
+        // );
+        let body = match &self.account_id {
+            Some(id) => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}},"user":{{"onBehalfOfUser":"{id}"}}}}}}"#,
+                self.client_version
+            ),
+            None => format!(
+                r#"{{"context":{{"client":{{"clientName":"WEB_REMIX","clientVersion":"{}"}}}}}}"#,
+                self.client_version
+            )
+        };
         reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
