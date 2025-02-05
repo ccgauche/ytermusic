@@ -69,6 +69,13 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 	```
 - Then you can start `ytermusic`
 
+### (Optional) Using a brand account
+- If you use a second account for youtube music
+  	1. Go to https://myaccount.google.com/
+  	2. Switch to your brand account
+  	3. copy the number written in the url, after \b\
+  	4. paste it into a new `account_id.txt` file in the same folder as `headers.txt`
+
 ## Building from source
 
 - Clone the repository
