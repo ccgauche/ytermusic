@@ -1,7 +1,9 @@
+use rusty_ytdl::Video;
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     errors::{handle_error, handle_error_option},
+    remove_video,
     systems::{download, player::PlayerState},
     tasks::download::IN_DOWNLOAD,
     DATABASE,
@@ -22,6 +24,7 @@ pub enum SoundAction {
     Next(usize),
     AddVideosToQueue(Vec<YoutubeMusicVideoRef>),
     AddVideoUnary(YoutubeMusicVideoRef),
+    DeleteVideoUnary,
     ReplaceQueue(Vec<YoutubeMusicVideoRef>),
     VideoStatusUpdate(String, MusicDownloadStatus),
 }
@@ -43,6 +46,7 @@ impl SoundAction {
         }
         player.music_status.insert(video, status);
     }
+
     pub fn apply_sound_action(self, player: &mut PlayerState) {
         match self {
             Self::Backward => player.sink.seek_bw(),
@@ -123,6 +127,29 @@ impl SoundAction {
                 } else {
                     player.list.insert(player.current + 1, video);
                 }
+            }
+            Self::DeleteVideoUnary => {
+                let video = player.current().cloned().unwrap();
+                if matches!(
+                    player.music_status.get(&video.video_id),
+                    Some(
+                        &MusicDownloadStatus::DownloadFailed
+                        | &MusicDownloadStatus::Downloading(_)
+                        | &MusicDownloadStatus::NotDownloaded
+                    )
+                ) {
+                    IN_DOWNLOAD.lock().unwrap().remove(&video.video_id);    // remove from the downloaded list if necessary
+                }
+                player.music_status.remove(&video.video_id);                // remove from the player status (maybe not necessary)
+                remove_video(&video);                                       // remove from the database
+                if let Some(index) = player         // remove from the player list
+                    .list
+                    .iter()
+                    .position(|deleted_video| *deleted_video == video)
+                {
+                    player.list.remove(index);
+                }
+                Self::Next(1).apply_sound_action(player);
             }
             Self::ReplaceQueue(videos) => {
                 player.list.truncate(player.current + 1);
