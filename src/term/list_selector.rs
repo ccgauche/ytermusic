@@ -28,6 +28,23 @@ impl ListSelector {
         )
     }
 
+    pub fn get_relative_position(&self) -> isize {
+        //Supposing you don't have more than 2^32-1 songs on a 64bit computer. Even if so, panics after.
+        match self.scroll_position.cmp(&self.current_position) {
+            std::cmp::Ordering::Less => {
+                let pos = (self.current_position - self.scroll_position) as isize;
+                return -pos;
+            }
+            std::cmp::Ordering::Equal => {
+                return self.current_position as isize;
+            }
+            std::cmp::Ordering::Greater => {
+                let pos = (self.scroll_position - self.current_position) as isize;
+                return pos;
+            }
+        }
+    }
+
     pub fn is_scrolling(&self) -> bool {
         self.scroll_position != self.current_position
     }

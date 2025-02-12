@@ -164,7 +164,7 @@ impl Screen for PlayerState {
                 }
                 EventResponse::None
             }
-            KeyCode::Char('d') => {
+            KeyCode::Char('r') => {
                 SoundAction::DeleteVideoUnary.apply_sound_action(self);
                 EventResponse::None
             }
