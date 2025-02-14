@@ -44,6 +44,7 @@ Shortcuts:
         Enter                     select a playlist or a music
         f                         search
         s                         shuffle
+        r                         remove a music from the main playlist
         Arrow Right or >          skip 5 seconds
         Arrow Left or <           go back 5 seconds
         CTRL + Arrow Right (>)    go to the next song

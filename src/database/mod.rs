@@ -20,6 +20,7 @@ pub static DATABASE: Lazy<RwLock<Vec<YoutubeMusicVideoRef>>> =
 pub fn remove_video(video: &YoutubeMusicVideoRef) {
     let mut database = DATABASE.write().unwrap();
     database.retain(|v| v.video_id != video.video_id);
+    drop(database);
     write();
 }
 

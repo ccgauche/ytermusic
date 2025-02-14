@@ -90,6 +90,7 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 - Press <kbd>Enter</kbd> to select a playlist or a music
 - Press <kbd>f</kbd> to search
 - Press <kbd>s</kbd> to shuffle
+- Press <kbd>r</kbd> to remove a music from the main playlist
 - Press <kbd>Arrow Right</kbd> or <kbd>\></kbd> to skip 5 seconds
 - Press <kbd>Arrow Left</kbd> or <kbd>\<</kbd> to go back 5 seconds
 - Press <kbd>CTRL</kbd> + <kbd>Arrow Right</kbd> or <kbd>CTRL</kbd> + <kbd>\></kbd> to go to the next song
