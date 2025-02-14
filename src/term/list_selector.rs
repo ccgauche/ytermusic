@@ -36,7 +36,7 @@ impl ListSelector {
                 return -pos;
             }
             std::cmp::Ordering::Equal => {
-                return self.current_position as isize;
+                return 0;
             }
             std::cmp::Ordering::Greater => {
                 let pos = (self.scroll_position - self.current_position) as isize;

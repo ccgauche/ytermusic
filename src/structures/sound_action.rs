@@ -144,7 +144,7 @@ impl SoundAction {
                     IN_DOWNLOAD.lock().unwrap().remove(&video.video_id);
                 }
                 player.music_status.remove(&video.video_id); // maybe not necessary to do it
-                
+
                 //manage deleting in the list
                 player.list.retain(|vid| *vid != video);
                 player.list_selector.list_size = player.list_selector.list_size - 1;
