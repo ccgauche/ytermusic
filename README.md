@@ -69,6 +69,13 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 	```
 - Then you can start `ytermusic`
 
+### (Optional) Using a brand account
+- If you use a second account for youtube music
+  	1. Go to https://myaccount.google.com/
+  	2. Switch to your brand account
+  	3. copy the number written in the url, after \b\
+  	4. paste it into a new `account_id.txt` file in the same folder as `headers.txt`
+
 ## Building from source
 
 - Clone the repository
@@ -83,6 +90,7 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 - Press <kbd>Enter</kbd> to select a playlist or a music
 - Press <kbd>f</kbd> to search
 - Press <kbd>s</kbd> to shuffle
+- Press <kbd>r</kbd> to remove a music from the main playlist
 - Press <kbd>Arrow Right</kbd> or <kbd>\></kbd> to skip 5 seconds
 - Press <kbd>Arrow Left</kbd> or <kbd>\<</kbd> to go back 5 seconds
 - Press <kbd>CTRL</kbd> + <kbd>Arrow Right</kbd> or <kbd>CTRL</kbd> + <kbd>\></kbd> to go to the next song

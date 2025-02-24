@@ -7,7 +7,7 @@ pub fn spawn_clean_task() {
         let guard = performance::guard("Clean task");
         for i in std::fs::read_dir(CACHE_DIR.join("downloads")).unwrap() {
             let path = i.unwrap().path();
-            if path.ends_with(".mp4") {
+            if path.extension().unwrap_or_default() == "mp4" {
                 let mut path1 = path.clone();
                 path1.set_extension("json");
                 if !path1.exists() {

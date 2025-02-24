@@ -192,7 +192,7 @@ pub fn start_task_unary(s: Sender<SoundAction>, song: YoutubeMusicVideoRef) {
 
 #[tokio::test]
 async fn video_download_test() {
-    let ids = vec!["iFbNzVFgjCk"];
+    let ids = vec!["iFbNzVFgjCk", "ni-xbEK271I"]; //second not working, need checking
     for id in ids {
         let video = Video::new(id).unwrap();
         let stream = video.stream().await.unwrap();

@@ -1,6 +1,10 @@
+use log::{error, trace};
+use std::fs;
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
+    consts::CACHE_DIR,
+    database,
     errors::{handle_error, handle_error_option},
     systems::{download, player::PlayerState},
     tasks::download::IN_DOWNLOAD,
@@ -22,6 +26,7 @@ pub enum SoundAction {
     Next(usize),
     AddVideosToQueue(Vec<YoutubeMusicVideoRef>),
     AddVideoUnary(YoutubeMusicVideoRef),
+    DeleteVideoUnary,
     ReplaceQueue(Vec<YoutubeMusicVideoRef>),
     VideoStatusUpdate(String, MusicDownloadStatus),
 }
@@ -43,6 +48,7 @@ impl SoundAction {
         }
         player.music_status.insert(video, status);
     }
+
     pub fn apply_sound_action(self, player: &mut PlayerState) {
         match self {
             Self::Backward => player.sink.seek_bw(),
@@ -122,6 +128,47 @@ impl SoundAction {
                     player.list.push(video);
                 } else {
                     player.list.insert(player.current + 1, video);
+                }
+            }
+            Self::DeleteVideoUnary => {
+                let index_list = player.list_selector.get_relative_position();
+                let video = player.relative_current(index_list).cloned().unwrap();
+                if matches!(
+                    player.music_status.get(&video.video_id), // not sure abt conditions, needs testing
+                    Some(
+                        &MusicDownloadStatus::DownloadFailed
+                            | &MusicDownloadStatus::Downloading(_)
+                            | &MusicDownloadStatus::NotDownloaded
+                    )
+                ) {
+                    IN_DOWNLOAD.lock().unwrap().remove(&video.video_id);
+                }
+                player.music_status.remove(&video.video_id); // maybe not necessary to do it
+
+                //manage deleting in the list
+                player.list.retain(|vid| *vid != video);
+                player.list_selector.list_size = player.list_selector.list_size - 1;
+                if index_list < 0 {
+                    player.set_relative_current(-1);
+                }
+                if index_list == 0 {
+                    Self::Next(0).apply_sound_action(player);
+                }
+
+                // manage deleting physically
+                database::remove_video(&video);
+
+                let cache_folder = CACHE_DIR.join("downloads");
+                let json_path = cache_folder.join(format!("{}.json", &video.video_id));
+                match fs::remove_file(json_path) {
+                    Ok(_) => trace!("Deleted JSON file"),
+                    Err(e) => error!("Error deleting JSON video file: {}", e),
+                }
+
+                let mp4_path = cache_folder.join(format!("{}.mp4", &video.video_id));
+                match fs::remove_file(mp4_path) {
+                    Ok(_) => trace!("Deleted MP4 file"),
+                    Err(e) => error!("Error deleting MP4 video file: {}", e),
                 }
             }
             Self::ReplaceQueue(videos) => {

@@ -1,4 +1,4 @@
-use consts::CACHE_DIR;
+use consts::{CACHE_DIR, INTRODUCTION};
 use flume::{Receiver, Sender};
 use log::{error, info};
 use once_cell::sync::Lazy;
@@ -70,6 +70,10 @@ async fn main() {
     // Check if the first param is --files
     if let Some(arg) = std::env::args().nth(1) {
         match arg.as_str() {
+            "-h" | "--help" => {
+                println!("{}", INTRODUCTION);
+                return;
+            }
             "--files" => {
                 println!("# Location of ytermusic files");
                 println!(" - Logs: {}", get_log_file_path().display());
@@ -79,6 +83,7 @@ async fn main() {
             }
             "--fix-db" => {
                 database::fix_db();
+                database::write();
                 println!("[INFO] Database fixed");
                 return;
             }
@@ -113,6 +118,7 @@ async fn main() {
                 println!("Unknown argument `{e}`");
                 println!("Here are the available arguments:");
                 println!(" - --files: Show the location of the ytermusic files");
+                println!(" - --clear-cache: Erase all the files in cache");
                 println!(" - --fix-db: Fix the database");
                 return;
             }
