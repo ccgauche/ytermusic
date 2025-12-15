@@ -6,8 +6,8 @@ use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use rodio::cpal::traits::HostTrait;
 
 use std::fs::File;
-use std::path::Path;
-use std::time::{Duration, Instant};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 static VOLUME_STEP: u8 = 5;
 
@@ -32,7 +32,6 @@ pub struct Player {
     data: PlayerData,
     error_sender: Sender<String>,
     options: PlayerOptions,
-    timer: PlayTimer,
 }
 
 pub struct Guard {
@@ -42,60 +41,13 @@ pub struct Guard {
 #[derive(Clone)]
 pub struct PlayerData {
     total_duration: Option<Duration>,
+    current_file: Option<PathBuf>,
     volume: u8,
-    safe_guard: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct PlayerOptions {
     pub initial_volume: u8,
-}
-
-/// Helper struct to track elapsed time manually
-struct PlayTimer {
-    start_time: Option<Instant>,
-    accumulated_time: Duration,
-}
-
-impl PlayTimer {
-    fn new() -> Self {
-        Self {
-            start_time: None,
-            accumulated_time: Duration::ZERO,
-        }
-    }
-
-    fn start(&mut self) {
-        if self.start_time.is_none() {
-            self.start_time = Some(Instant::now());
-        }
-    }
-
-    fn pause(&mut self) {
-        if let Some(start) = self.start_time {
-            self.accumulated_time += start.elapsed();
-            self.start_time = None;
-        }
-    }
-
-    fn stop(&mut self) {
-        self.start_time = None;
-        self.accumulated_time = Duration::ZERO;
-    }
-
-    fn set_time(&mut self, time: Duration) {
-        self.accumulated_time = time;
-        if self.start_time.is_some() {
-            self.start_time = Some(Instant::now());
-        }
-    }
-
-    fn elapsed(&self) -> Duration {
-        match self.start_time {
-            Some(start) => self.accumulated_time + start.elapsed(),
-            None => self.accumulated_time,
-        }
-    }
 }
 
 impl Player {
@@ -146,10 +98,9 @@ impl Player {
             data: PlayerData {
                 total_duration: None,
                 volume,
-                safe_guard: false,
+                current_file: None,
             },
             options,
-            timer: PlayTimer::new(),
         })
     }
 
@@ -166,14 +117,6 @@ impl Player {
             error_sender: self.error_sender.clone(),
             data: self.data.clone(),
             options: self.options.clone(),
-            timer: PlayTimer {
-                start_time: if self.timer.start_time.is_some() {
-                    Some(Instant::now())
-                } else {
-                    None
-                },
-                accumulated_time: self.timer.elapsed(),
-            },
         })
     }
 }
@@ -193,7 +136,21 @@ impl Player {
         self.sink.empty()
     }
 
+    pub fn play_at(&mut self, path: &Path, time: Duration) -> Result<(), PlayError> {
+        log::info!("Playing file: {:?} at time: {:?}", path, time);
+        self.play(path)?;
+        if let Err(e) = self.sink.try_seek(time) {
+            log::error!("Seek error: {}", e);
+            let _ = self.error_sender.send(format!("Seek error: {}", e));
+        }
+
+        Ok(())
+    }
+
     pub fn play(&mut self, path: &Path) -> Result<(), PlayError> {
+        log::info!("Playing file: {:?}", path);
+        self.data.current_file = Some(path.to_path_buf());
+
         self.stop();
 
         let file = File::open(path).map_err(PlayError::Io)?;
@@ -218,9 +175,6 @@ impl Player {
         self.sink.set_volume(f32::from(self.data.volume) / 100.0);
         self.sink.append(decoder);
 
-        self.timer.stop();
-        self.timer.start();
-
         Ok(())
     }
 
@@ -229,11 +183,14 @@ impl Player {
         if !self.sink.empty() {
             self.sink.clear();
         }
-        self.timer.stop();
+    }
+
+    pub fn elapsed_f64(&self) -> f64 {
+        self.sink.get_pos().as_secs_f64()
     }
 
     pub fn elapsed(&self) -> u32 {
-        self.timer.elapsed().as_secs() as u32
+        self.sink.get_pos().as_secs() as u32
     }
 
     pub fn duration(&self) -> Option<f64> {
@@ -245,29 +202,20 @@ impl Player {
     pub fn toggle_playback(&mut self) {
         if self.sink.is_paused() {
             self.sink.play();
-            self.timer.start();
         } else {
             self.sink.pause();
-            self.timer.pause();
         }
     }
 
     pub fn seek_fw(&mut self) {
-        let current_elapsed = self.timer.elapsed().as_secs_f64();
+        let current_elapsed = self.elapsed_f64();
         let new_pos = current_elapsed + 5.0;
 
-        if let Some(duration) = self.duration() {
-            if new_pos > duration {
-                self.data.safe_guard = true;
-                self.seek_to(Duration::from_secs_f64(duration));
-            } else {
-                self.seek_to(Duration::from_secs_f64(new_pos));
-            }
-        }
+        self.seek_to(Duration::from_secs_f64(new_pos));
     }
 
     pub fn seek_bw(&mut self) {
-        let current_elapsed = self.timer.elapsed().as_secs_f64();
+        let current_elapsed = self.elapsed_f64();
         let mut new_pos = current_elapsed - 5.0;
         if new_pos < 0.0 {
             new_pos = 0.0;
@@ -276,19 +224,33 @@ impl Player {
     }
 
     pub fn seek_to(&mut self, time: Duration) {
-        if self.sink.empty() {
+        log::info!("Seek to: {:?}", time);
+        if self.is_finished() {
             return;
         }
+        let file = self.data.current_file.clone().expect("Current file not set");
+
         if let Err(e) = self.sink.try_seek(time) {
+            log::error!("Seek error: {}", e);
             let _ = self.error_sender.send(format!("Seek error: {}", e));
         } else {
-            self.timer.set_time(time);
+            // If the sink is finished, we need to reset the music
+            // This happens when the user seeks to the start of the song before the buffer.
+            if self.is_finished() {
+                log::info!("Sink is finished while seeking, resetting the music");
+                if let Err(e) = self.play_at(&file, time) {
+                    log::error!("Error playing file: {:?}", e);
+                    let _ = self
+                        .error_sender
+                        .send(format!("Error playing file: {:?}", e));
+                }
+            }
         }
     }
 
     pub fn percentage(&self) -> f64 {
         self.duration().map_or(0.0, |duration| {
-            let elapsed = self.timer.elapsed().as_secs_f64();
+            let elapsed = self.elapsed_f64();
             elapsed / duration
         })
     }
