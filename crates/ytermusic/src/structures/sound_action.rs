@@ -4,7 +4,6 @@ use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::CACHE_DIR,
-    database,
     errors::handle_error_option,
     systems::{download, player::PlayerState},
     tasks::download::IN_DOWNLOAD,
@@ -144,7 +143,7 @@ impl SoundAction {
                 }
 
                 // manage deleting physically
-                database::remove_video(&video);
+                DATABASE.remove_video(&video);
 
                 let cache_folder = CACHE_DIR.join("downloads");
                 let json_path = cache_folder.join(format!("{}.json", &video.video_id));

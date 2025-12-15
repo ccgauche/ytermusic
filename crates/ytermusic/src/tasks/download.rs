@@ -16,6 +16,7 @@ use crate::{
     run_service,
     structures::{app_status::MusicDownloadStatus, sound_action::SoundAction},
     systems::download::HANDLES,
+    DATABASE,
 };
 
 fn new_video_with_id(id: &str) -> Result<Video<'_>, VideoError> {
@@ -161,7 +162,7 @@ pub async fn start_download(song: YoutubeMusicVideoRef, s: &Sender<SoundAction>)
     match handle_download(&song.video_id, s.clone()).await {
         Ok(_) => {
             std::fs::write(download_path_json, serde_json::to_string(&song).unwrap()).unwrap();
-            crate::append(song.clone());
+            DATABASE.append(song.clone());
             s.send(SoundAction::VideoStatusUpdate(
                 song.video_id.clone(),
                 MusicDownloadStatus::Downloaded,

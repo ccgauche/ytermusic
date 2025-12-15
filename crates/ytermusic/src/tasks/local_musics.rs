@@ -5,7 +5,7 @@ use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
-    read, run_service,
+    run_service,
     structures::performance,
     term::{ManagerMessage, Screens},
     DATABASE,
@@ -15,7 +15,7 @@ pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
     run_service(async move {
         info!("Database getter task on");
         let guard = performance::guard("Local musics");
-        if let Some(videos) = read() {
+        if let Some(videos) = DATABASE.read() {
             shuffle_and_send(videos, &updater_s);
         } else {
             let mut videos = Vec::new();
@@ -30,14 +30,14 @@ pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
             }
             shuffle_and_send(videos, &updater_s);
 
-            crate::write();
+            DATABASE.write();
         }
         drop(guard);
     });
 }
 
 fn shuffle_and_send(mut videos: Vec<YoutubeMusicVideoRef>, updater_s: &Sender<ManagerMessage>) {
-    DATABASE.write().unwrap().clone_from(&videos);
+    DATABASE.clone_from(&videos);
 
     if CONFIG.player.shuffle {
         videos.shuffle(&mut rand::thread_rng());

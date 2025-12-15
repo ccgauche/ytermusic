@@ -3,16 +3,17 @@ use std::io::{Cursor, Read};
 use varuint::ReadVarint;
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::consts::CACHE_DIR;
+use crate::YTLocalDatabase;
 
-/// Reads the database
-pub fn read() -> Option<Vec<YoutubeMusicVideoRef>> {
-    let mut buffer = Cursor::new(std::fs::read(CACHE_DIR.join("db.bin")).ok()?);
-    let mut videos = Vec::new();
-    while buffer.get_mut().len() > buffer.position() as usize {
-        videos.push(read_video(&mut buffer)?);
+impl YTLocalDatabase {
+    pub fn read(&self) -> Option<Vec<YoutubeMusicVideoRef>> {
+        let mut buffer = Cursor::new(std::fs::read(self.cache_dir.join("db.bin")).ok()?);
+        let mut videos = Vec::new();
+        while buffer.get_mut().len() > buffer.position() as usize {
+            videos.push(read_video(&mut buffer)?);
+        }
+        Some(videos)
     }
-    Some(videos)
 }
 
 /// Reads a video from the cursor

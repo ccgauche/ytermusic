@@ -11,10 +11,10 @@ use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
-    database,
     errors::{handle_error, handle_error_option},
     structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
     term::{list_selector::ListSelector, playlist::PLAYER_RUNNING, ManagerMessage, Screens},
+    DATABASE,
 };
 
 use super::download::DOWNLOAD_LIST;
@@ -139,7 +139,7 @@ impl PlayerState {
                         if matches!(e, PlayError::DecoderError(_)) {
                             // Cleaning the file
 
-                            database::remove_video(&video);
+                            DATABASE.remove_video(&video);
                             handle_error(
                                 &self.updater,
                                 "invalid cleaning MP4",
@@ -153,7 +153,7 @@ impl PlayerState {
                                 ),
                             );
                             self.current = 0;
-                            crate::write();
+                            DATABASE.write();
                         } else {
                             self.updater
                                 .send(ManagerMessage::PassTo(

@@ -44,6 +44,9 @@ toml = "0.8.11"
 #  --- Logging ---
 log = "0.4.21"
 
+#  --- Database ---
+database.workspace = true
+
 # -- Cookies auto retreival --
 rookie = "0.5.2"
 

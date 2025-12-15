@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["crates/player", "crates/ytermusic", "crates/ytpapi2"]
+members = ["crates/database","crates/player", "crates/ytermusic", "crates/ytpapi2"]
 
 [workspace.dependencies]
 player = { path = "crates/player" }
 ytpapi2 = { path = "crates/ytpapi2" }
+database = { path = "crates/database" }

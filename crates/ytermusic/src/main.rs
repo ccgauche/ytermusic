@@ -29,7 +29,7 @@ mod utils;
 
 mod tasks;
 
-pub use database::*;
+pub use database::DATABASE;
 
 use mimalloc::MiMalloc;
 
@@ -82,8 +82,8 @@ async fn main() {
                 return;
             }
             "--fix-db" => {
-                database::fix_db();
-                database::write();
+                DATABASE.fix_db();
+                DATABASE.write();
                 println!("[INFO] Database fixed");
                 return;
             }
