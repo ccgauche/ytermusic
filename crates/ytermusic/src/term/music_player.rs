@@ -192,7 +192,7 @@ impl Screen for PlayerState {
                 volume_rect,
             );
         }
-        let current_time = self.sink.elapsed();
+        let current_time = self.sink.elapsed().as_secs();
         let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
             Gauge::default()

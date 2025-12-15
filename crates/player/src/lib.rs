@@ -1,5 +1,7 @@
 mod error;
 
+use std::time::Duration;
+
 pub use error::PlayError;
 
 mod player;
@@ -12,3 +14,4 @@ mod player_data;
 pub(crate) use player_data::PlayerData;
 
 pub(crate) static VOLUME_STEP: u8 = 5;
+pub(crate) static SEEK_STEP: Duration = Duration::from_secs(5);

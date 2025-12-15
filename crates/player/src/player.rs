@@ -6,7 +6,7 @@ use std::fs::File;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::{PlayError, PlayerData, PlayerOptions, VOLUME_STEP};
+use crate::{PlayError, PlayerData, PlayerOptions, SEEK_STEP};
 
 pub struct Player {
     sink: Sink,
@@ -52,14 +52,13 @@ impl Player {
         // sink::try_new requires a reference to the handle
         let sink = Sink::connect_new(stream.mixer());
 
-        let volume = options.initial_volume.min(100);
-        sink.set_volume(f32::from(volume) / 100.0);
+        sink.set_volume(options.initial_volume_f32());
 
         Ok(Self {
             sink,
             stream,
             error_sender,
-            data: PlayerData::new(volume),
+            data: PlayerData::new(options.initial_volume()),
             options,
         })
     }
@@ -68,8 +67,7 @@ impl Player {
         let stream = Self::try_default()?;
         let sink = Sink::connect_new(stream.mixer());
 
-        let volume = self.data.volume();
-        sink.set_volume(f32::from(volume) / 100.0);
+        sink.set_volume(self.data.volume_f32());
 
         Ok(Self {
             sink,
@@ -80,15 +78,8 @@ impl Player {
         })
     }
     pub fn change_volume(&mut self, positive: bool) {
-        if positive {
-            self.data
-                .set_volume(self.data.volume().saturating_add(VOLUME_STEP));
-        } else {
-            self.data
-                .set_volume(self.data.volume().saturating_sub(VOLUME_STEP));
-        }
-        self.data.set_volume(self.data.volume().min(100));
-        self.sink.set_volume(f32::from(self.data.volume()) / 100.0);
+        self.data.change_volume(positive);
+        self.sink.set_volume(self.data.volume_f32());
     }
 
     pub fn is_finished(&self) -> bool {
@@ -131,7 +122,7 @@ impl Player {
             self.sink = Sink::connect_new(self.stream.mixer());
         }
 
-        self.sink.set_volume(f32::from(self.data.volume()) / 100.0);
+        self.sink.set_volume(self.data.volume_f32());
         self.sink.append(decoder);
 
         Ok(())
@@ -144,12 +135,8 @@ impl Player {
         }
     }
 
-    pub fn elapsed_f64(&self) -> f64 {
-        self.sink.get_pos().as_secs_f64()
-    }
-
-    pub fn elapsed(&self) -> u32 {
-        self.sink.get_pos().as_secs() as u32
+    pub fn elapsed(&self) -> Duration {
+        self.sink.get_pos()
     }
 
     pub fn duration(&self) -> Option<f64> {
@@ -167,19 +154,16 @@ impl Player {
     }
 
     pub fn seek_fw(&mut self) {
-        let current_elapsed = self.elapsed_f64();
-        let new_pos = current_elapsed + 5.0;
+        let current_elapsed = self.elapsed();
+        let new_pos = current_elapsed + SEEK_STEP;
 
-        self.seek_to(Duration::from_secs_f64(new_pos));
+        self.seek_to(new_pos);
     }
 
     pub fn seek_bw(&mut self) {
-        let current_elapsed = self.elapsed_f64();
-        let mut new_pos = current_elapsed - 5.0;
-        if new_pos < 0.0 {
-            new_pos = 0.0;
-        }
-        self.seek_to(Duration::from_secs_f64(new_pos));
+        let current_elapsed = self.elapsed();
+        let new_pos = current_elapsed.saturating_sub(SEEK_STEP);
+        self.seek_to(new_pos);
     }
 
     pub fn seek_to(&mut self, time: Duration) {
@@ -207,7 +191,7 @@ impl Player {
 
     pub fn percentage(&self) -> f64 {
         self.duration().map_or(0.0, |duration| {
-            let elapsed = self.elapsed_f64();
+            let elapsed = self.elapsed().as_secs_f64();
             elapsed / duration
         })
     }
@@ -264,6 +248,6 @@ impl Player {
         let position = self.elapsed();
         let duration = self.duration().unwrap_or(99.0) as u32;
         let percent = self.percentage() * 100.0;
-        (percent.min(100.0), position, duration)
+        (percent.min(100.0), position.as_secs() as u32, duration)
     }
 }

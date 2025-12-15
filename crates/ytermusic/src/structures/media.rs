@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use flume::Sender;
 use log::{error, info};
 use player::Player;
@@ -76,11 +74,11 @@ impl Media {
                 MediaPlayback::Stopped
             } else if sink.is_paused() {
                 MediaPlayback::Paused {
-                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
+                    progress: Some(MediaPosition(sink.elapsed())),
                 }
             } else {
                 MediaPlayback::Playing {
-                    progress: Some(MediaPosition(Duration::from_secs(sink.elapsed() as _))),
+                    progress: Some(MediaPosition(sink.elapsed())),
                 }
             };
             if self.current_playback != Some(playback.clone()) {

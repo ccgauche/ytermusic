@@ -46,9 +46,7 @@ impl PlayerState {
             "player creation error",
             Player::new(
                 stream_error_sender,
-                PlayerOptions {
-                    initial_volume: CONFIG.player.initial_volume,
-                },
+                PlayerOptions::new(CONFIG.player.initial_volume),
             ),
         )
         .unwrap();
