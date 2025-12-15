@@ -15,8 +15,8 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
-          - os: ubuntu-latest
-            target: x86_64-pc-windows-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
             archive: zip
           - os: macos-latest
             target: aarch64-apple-darwin
@@ -35,11 +35,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libdbus-1-dev pkg-config
 
-      - name: Install cross-compilation tools (Windows)
-        if: matrix.target == 'x86_64-pc-windows-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64-x86-64
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
