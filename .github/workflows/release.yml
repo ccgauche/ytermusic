@@ -35,6 +35,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libdbus-1-dev pkg-config
 
+      - name: Install cross-compilation tools (Windows)
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64-x86-64
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
