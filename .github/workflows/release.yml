@@ -46,7 +46,8 @@ jobs:
         run: |
           cargo build --release --target ${{ matrix.target }}
 
-      - name: Package binary
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           # Determine binary name and path
@@ -67,6 +68,25 @@ jobs:
           else
             tar czf "${ARCHIVE_NAME}.tar.gz" -C "target/${{ matrix.target }}/release" "$BINARY_NAME"
           fi
+
+      - name: Package binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Determine binary name and path
+          $binaryName = "ytermusic.exe"
+          $binaryPath = "target/${{ matrix.target }}/release/ytermusic.exe"
+
+          # Determine archive name
+          $archiveName = "ytermusic-${{ github.ref_name }}-${{ matrix.target }}"
+
+          # Create archive
+          if ("${{ matrix.archive }}" -eq "zip") {
+            Compress-Archive -Path $binaryPath -DestinationPath "${archiveName}.zip"
+          } else {
+            # For tar.gz on Windows, we could use tar if available, or just copy the binary
+            Copy-Item $binaryPath "${archiveName}.tar.gz"
+          }
 
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
