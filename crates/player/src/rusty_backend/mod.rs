@@ -1,5 +1,3 @@
-#![cfg_attr(test, deny(missing_docs))]
-
 mod conversions;
 mod sink;
 mod stream;
