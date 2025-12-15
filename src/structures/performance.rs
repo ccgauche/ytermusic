@@ -23,7 +23,7 @@ impl Performance {
     }
 }
 
-pub fn guard(name: &str) -> PerformanceGuard {
+pub fn guard<'a>(name: &'a str) -> PerformanceGuard<'a> {
     PerformanceGuard::new(name)
 }
 

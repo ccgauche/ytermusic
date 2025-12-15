@@ -18,7 +18,7 @@ use crate::{
     systems::download::HANDLES,
 };
 
-fn new_video_with_id(id: &str) -> Result<Video, VideoError> {
+fn new_video_with_id(id: &str) -> Result<Video<'_>, VideoError> {
     let search_options = VideoSearchOptions::Custom(Arc::new(|format| {
         format.has_audio && !format.has_video && format.mime_type.container == "mp4"
     }));

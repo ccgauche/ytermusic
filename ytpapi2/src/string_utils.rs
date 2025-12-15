@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+#[allow(dead_code)]
 pub trait StringUtils {
     fn after(&self, needle: &str) -> Option<&str>;
     fn before(&self, needle: &str) -> Option<&str>;

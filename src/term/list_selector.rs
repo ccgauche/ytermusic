@@ -33,15 +33,10 @@ impl ListSelector {
         match self.scroll_position.cmp(&self.current_position) {
             std::cmp::Ordering::Less => {
                 let pos = (self.current_position - self.scroll_position) as isize;
-                return -pos;
+                -pos
             }
-            std::cmp::Ordering::Equal => {
-                return 0;
-            }
-            std::cmp::Ordering::Greater => {
-                let pos = (self.scroll_position - self.current_position) as isize;
-                return pos;
-            }
+            std::cmp::Ordering::Equal => 0,
+            std::cmp::Ordering::Greater => (self.scroll_position - self.current_position) as isize,
         }
     }
 

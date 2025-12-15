@@ -147,7 +147,7 @@ impl SoundAction {
 
                 //manage deleting in the list
                 player.list.retain(|vid| *vid != video);
-                player.list_selector.list_size = player.list_selector.list_size - 1;
+                player.list_selector.list_size -= 1;
                 if index_list < 0 {
                     player.set_relative_current(-1);
                 }
