@@ -1,0 +1,21 @@
+name: Test Windows
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-windows:
+    name: Test Windows (stable)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run cargo test
+        run: cargo test --verbose

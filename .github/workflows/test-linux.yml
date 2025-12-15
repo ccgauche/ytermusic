@@ -1,0 +1,32 @@
+name: Test Linux
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-linux:
+    name: Test Linux (${{ matrix.rust }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable, beta]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libdbus-1-dev pkg-config
+
+      - name: Install ${{ matrix.rust }} toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Run cargo test
+        run: cargo test --verbose

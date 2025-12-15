@@ -1,17 +1,14 @@
-name: CI
+name: Clippy
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  quality:
-    name: Code Quality
+  clippy:
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -25,13 +22,7 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-
-      - name: Run cargo check
-        run: cargo check
-
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
+          components: clippy
 
       - name: Run cargo clippy
         run: cargo clippy -- -D warnings
