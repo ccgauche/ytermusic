@@ -1,14 +1,13 @@
 use std::error::Error;
 use std::fmt;
-use std::io::{Read, Seek};
+use std::fs::File;
 use std::str::FromStr;
 use std::time::Duration;
 
 use super::Source;
 
-use self::{read_seek_source::ReadSeekSource, symphonia::SymphoniaDecoder};
+use self::{symphonia::SymphoniaDecoder};
 use ::symphonia::core::io::{MediaSource, MediaSourceStream};
-mod read_seek_source;
 mod symphonia;
 
 pub struct Decoder {
@@ -19,11 +18,11 @@ impl Decoder {
     /// Builds a new decoder.
     ///
     /// Attempts to automatically detect the format of the source of data.
-    pub fn new_decoder<R: Read + Seek + Send + Sync + 'static>(
-        data: R,
+    pub fn new_decoder(
+        data: File,
     ) -> Result<SymphoniaDecoder, DecoderError> {
         let mss = MediaSourceStream::new(
-            Box::new(ReadSeekSource::new(data)) as Box<dyn MediaSource>,
+            Box::new(data) as Box<dyn MediaSource>,
             ::symphonia::core::io::MediaSourceStreamOptions::default(),
         );
 

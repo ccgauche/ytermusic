@@ -25,7 +25,7 @@ pub use stream::{OutputStream, OutputStreamHandle, PlayError, StreamError};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{fs::File, io::BufReader};
+use std::{fs::File};
 
 use self::stream::CpalDeviceExt;
 
@@ -168,7 +168,7 @@ impl Player {
         let file = File::open(path).map_err(PlayError::Io)?;
         //println!("{:?}", path);
         let decoder =
-            Decoder::new_decoder(BufReader::new(file)).map_err(PlayError::DecoderError)?;
+            Decoder::new_decoder(file).map_err(PlayError::DecoderError)?;
         self.data.total_duration = decoder.total_duration();
         self.sink.append(decoder);
         Ok(())
