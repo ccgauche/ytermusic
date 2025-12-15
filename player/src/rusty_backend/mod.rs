@@ -22,10 +22,10 @@ pub use sink::Sink;
 pub use source::Source;
 pub use stream::{OutputStream, OutputStreamHandle, PlayError, StreamError};
 
+use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{fs::File};
 
 use self::stream::CpalDeviceExt;
 
@@ -167,8 +167,7 @@ impl Player {
         self.stop(guard);
         let file = File::open(path).map_err(PlayError::Io)?;
         //println!("{:?}", path);
-        let decoder =
-            Decoder::new_decoder(file).map_err(PlayError::DecoderError)?;
+        let decoder = Decoder::new_decoder(file).map_err(PlayError::DecoderError)?;
         self.data.total_duration = decoder.total_duration();
         self.sink.append(decoder);
         Ok(())
@@ -201,7 +200,7 @@ impl Player {
         }
     }
     pub fn seek_bw(&self) {
-        let mut new_pos = self.elapsed()  as f64 - 5.0;
+        let mut new_pos = self.elapsed() as f64 - 5.0;
         if new_pos < 0.0 {
             new_pos = 0.0;
         }

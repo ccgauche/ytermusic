@@ -87,7 +87,8 @@ impl Sink {
                         }
                     }
                     elapsed.store(src.elapsed().as_secs() as u32, Ordering::Relaxed);
-                    src.inner_mut().set_factor(controls.volume.load(Ordering::Relaxed));
+                    src.inner_mut()
+                        .set_factor(controls.volume.load(Ordering::Relaxed));
                     src.inner_mut()
                         .inner_mut()
                         .set_paused(controls.pause.load(Ordering::Relaxed));
@@ -95,7 +96,8 @@ impl Sink {
             })
             .convert_samples::<f32>();
         self.sound_playing.store(true, Ordering::Relaxed);
-        self.queue_tx.append(Done::new(source, self.sound_playing.clone()));
+        self.queue_tx
+            .append(Done::new(source, self.sound_playing.clone()));
     }
 
     /// Gets the volume of the sound.

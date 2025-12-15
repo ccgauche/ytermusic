@@ -82,7 +82,7 @@ impl OutputStreamHandle {
     }
 
     /// Plays a sound once. Returns a `Sink` that can be used to control the sound.
-    pub fn play_once<R>(&self, input:std::fs::File ) -> Result<Sink, PlayError>
+    pub fn play_once<R>(&self, input: std::fs::File) -> Result<Sink, PlayError>
     where
         R: Read + Seek + Send + Sync + 'static,
     {

@@ -61,10 +61,7 @@ where
     where
         T: Source<Item = S> + Send + 'static,
     {
-        *self.next_sounds
-            .lock()
-            .unwrap()
-            = Some(Box::new(source) as Box<_>);
+        *self.next_sounds.lock().unwrap() = Some(Box::new(source) as Box<_>);
     }
 
     /// Sets whether the queue stays alive if there's no more sound to play.
@@ -188,7 +185,6 @@ where
     ///
     /// This method is separate so that it is not inlined.
     fn go_next(&mut self) -> Result<(), ()> {
-
         let next = {
             let mut next = self.input.next_sounds.lock().unwrap();
 
@@ -196,8 +192,8 @@ where
                 if self.input.keep_alive_if_empty.load(Ordering::Acquire) {
                     // Play a short silence in order to avoid spinlocking.
                     let silence = Zero::<S>::new(1, 44100); // TODO: meh
-                    
-                        Box::new(silence.take_duration(Duration::from_millis(10))) as Box<_>
+
+                    Box::new(silence.take_duration(Duration::from_millis(10))) as Box<_>
                 } else {
                     return Err(());
                 }

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use super::Source;
 
-use self::{symphonia::SymphoniaDecoder};
+use self::symphonia::SymphoniaDecoder;
 use ::symphonia::core::io::{MediaSource, MediaSourceStream};
 mod symphonia;
 
@@ -18,9 +18,7 @@ impl Decoder {
     /// Builds a new decoder.
     ///
     /// Attempts to automatically detect the format of the source of data.
-    pub fn new_decoder(
-        data: File,
-    ) -> Result<SymphoniaDecoder, DecoderError> {
+    pub fn new_decoder(data: File) -> Result<SymphoniaDecoder, DecoderError> {
         let mss = MediaSourceStream::new(
             Box::new(data) as Box<dyn MediaSource>,
             ::symphonia::core::io::MediaSourceStreamOptions::default(),
