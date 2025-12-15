@@ -5,7 +5,6 @@ use ratatui::widgets::{Block, Borders, Gauge};
 
 use crate::{
     consts::CONFIG,
-    errors::handle_error,
     structures::{
         app_status::{AppStatus, MusicDownloadStatus},
         sound_action::SoundAction,
@@ -115,7 +114,7 @@ impl Screen for PlayerState {
             KeyCode::Char('s') => {
                 self.list.shuffle(&mut rand::thread_rng());
                 self.current = 0;
-                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
+                self.sink.stop();
                 EventResponse::None
             }
             KeyCode::Char('C') => {
@@ -193,7 +192,7 @@ impl Screen for PlayerState {
                 volume_rect,
             );
         }
-        let current_time = self.sink.elapsed();
+        let current_time = self.sink.elapsed().as_secs();
         let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
             Gauge::default()

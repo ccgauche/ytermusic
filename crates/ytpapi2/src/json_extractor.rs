@@ -113,7 +113,7 @@ pub fn get_playlist_search(value: &Value) -> Option<YoutubeMusicPlaylistRef> {
         })
         .collect();
     Some(YoutubeMusicPlaylistRef {
-        name: titles.get(0)?.clone(),
+        name: titles.first()?.clone(),
         subtitle: titles.get(1)?.clone(),
         browse_id: browse_id.to_string(),
     })
@@ -149,7 +149,7 @@ pub fn get_video_from_album(value: &Value) -> Option<YoutubeMusicVideoRef> {
         })
         .collect();
     Some(YoutubeMusicVideoRef {
-        title: title.get(0)?.clone(),
+        title: title.first()?.clone(),
         author: String::new(),
         album: String::new(),
         video_id: video_id.to_string(),

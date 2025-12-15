@@ -205,7 +205,7 @@ impl YoutubeMusicInstance {
             .ok_or(YoutubeMusicError::NoCookieAttribute)?;
         let cookies_bytes = cookies.as_bytes();
         let cookies = String::from_utf8(cookies_bytes.to_vec())
-            .map_err(|e| YoutubeMusicError::InvalidCookie(e))?
+            .map_err(YoutubeMusicError::InvalidCookie)?
             .to_string();
         let sapisid = cookies
             .between("SAPISID=", ";")

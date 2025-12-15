@@ -9,7 +9,7 @@ pub fn handle_error_option<T, E>(
     a: Result<E, T>,
 ) -> Option<E>
 where
-    T: std::fmt::Display,
+    T: std::fmt::Debug,
 {
     match a {
         Ok(e) => Some(e),
@@ -18,7 +18,7 @@ where
                 .send(ManagerMessage::PassTo(
                     Screens::DeviceLost,
                     Box::new(ManagerMessage::Error(
-                        format!("{error_type} {a}"),
+                        format!("{error_type} {a:?}"),
                         Box::new(None),
                     )),
                 ))
@@ -31,7 +31,7 @@ where
 /// Utils to handle errors
 pub fn handle_error<T>(updater: &Sender<ManagerMessage>, error_type: &'static str, a: Result<(), T>)
 where
-    T: std::fmt::Display,
+    T: std::fmt::Debug,
 {
     let _ = handle_error_option(updater, error_type, a);
 }
