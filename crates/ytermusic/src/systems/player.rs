@@ -4,6 +4,7 @@ use std::{
 };
 
 use flume::{unbounded, Receiver, Sender};
+use log::error;
 use player::{PlayError, Player, PlayerOptions};
 
 use ytpapi2::YoutubeMusicVideoRef;
@@ -30,7 +31,7 @@ pub struct PlayerState {
     pub updater: Sender<ManagerMessage>,
     pub soundaction_sender: Sender<SoundAction>,
     pub soundaction_receiver: Receiver<SoundAction>,
-    pub stream_error_receiver: Receiver<String>,
+    pub stream_error_receiver: Receiver<PlayError>,
 }
 
 impl PlayerState {
@@ -39,7 +40,7 @@ impl PlayerState {
         soundaction_receiver: Receiver<SoundAction>,
         updater: Sender<ManagerMessage>,
     ) -> Self {
-        let (stream_error_sender, stream_error_receiver) = unbounded::<String>();
+        let (stream_error_sender, stream_error_receiver) = unbounded::<PlayError>();
         let sink = handle_error_option(
             &updater,
             "player creation error",
@@ -187,6 +188,7 @@ impl PlayerState {
 
     fn handle_stream_errors(&self) {
         while let Ok(e) = self.stream_error_receiver.try_recv() {
+            error!("Stream error: {:?}", e);
             handle_error(&self.updater, "audio device stream error", Err(e));
         }
     }

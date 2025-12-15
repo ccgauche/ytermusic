@@ -7,8 +7,5 @@ edition = "2021"
 
 [dependencies]
 flume = "0.11.0"
-tokio = "1.36.0"
-atomic_float = "0.1.0"
 rodio = { version = "0.21.1", features = ["symphonia-all"] }
-cpal = "0.15"
 log = "0.4.28"

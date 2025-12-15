@@ -1,9 +1,6 @@
-// Remove explicit 'cpal' crate import to avoid version mismatch.
-// usage: use rodio::cpal...
 use flume::Sender;
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
-// We import cpal traits from INSIDE rodio to ensure version compatibility
 use rodio::cpal::traits::HostTrait;
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -18,6 +15,7 @@ pub enum PlayError {
     DecoderError(rodio::decoder::DecoderError),
     StreamError(rodio::StreamError),
     PlayError(rodio::PlayError),
+    SeekError(rodio::source::SeekError),
 }
 
 impl From<rodio::PlayError> for PlayError {
@@ -30,7 +28,7 @@ pub struct Player {
     sink: Sink,
     stream: OutputStream,
     data: PlayerData,
-    error_sender: Sender<String>,
+    error_sender: Sender<PlayError>,
     options: PlayerOptions,
 }
 
@@ -51,8 +49,6 @@ pub struct PlayerOptions {
 }
 
 impl Player {
-    /// Try to create a stream from a specific CPAL device
-    /// Note: We use rodio::cpal::Device to match rodio's dependency version
     fn try_from_device(device: rodio::cpal::Device) -> Result<OutputStream, PlayError> {
         // In rodio 0.21, try_from_device is available on OutputStream
         OutputStreamBuilder::default()
@@ -82,7 +78,7 @@ impl Player {
         })
     }
 
-    pub fn new(error_sender: Sender<String>, options: PlayerOptions) -> Result<Self, PlayError> {
+    pub fn new(error_sender: Sender<PlayError>, options: PlayerOptions) -> Result<Self, PlayError> {
         let stream = Self::try_default()?;
 
         // sink::try_new requires a reference to the handle
@@ -141,7 +137,7 @@ impl Player {
         self.play(path)?;
         if let Err(e) = self.sink.try_seek(time) {
             log::error!("Seek error: {}", e);
-            let _ = self.error_sender.send(format!("Seek error: {}", e));
+            let _ = self.error_sender.send(PlayError::SeekError(e));
         }
 
         Ok(())
@@ -228,11 +224,15 @@ impl Player {
         if self.is_finished() {
             return;
         }
-        let file = self.data.current_file.clone().expect("Current file not set");
+        let file = self
+            .data
+            .current_file
+            .clone()
+            .expect("Current file not set");
 
         if let Err(e) = self.sink.try_seek(time) {
             log::error!("Seek error: {}", e);
-            let _ = self.error_sender.send(format!("Seek error: {}", e));
+            let _ = self.error_sender.send(PlayError::SeekError(e));
         } else {
             // If the sink is finished, we need to reset the music
             // This happens when the user seeks to the start of the song before the buffer.
@@ -240,9 +240,7 @@ impl Player {
                 log::info!("Sink is finished while seeking, resetting the music");
                 if let Err(e) = self.play_at(&file, time) {
                     log::error!("Error playing file: {:?}", e);
-                    let _ = self
-                        .error_sender
-                        .send(format!("Error playing file: {:?}", e));
+                    let _ = self.error_sender.send(e);
                 }
             }
         }
@@ -309,10 +307,7 @@ impl Player {
     pub fn get_progress(&self) -> (f64, u32, u32) {
         let position = self.elapsed();
         let duration = self.duration().unwrap_or(99.0) as u32;
-        let mut percent = self.percentage() * 100.0;
-        if percent > 100.0 {
-            percent = 100.0;
-        }
-        (percent, position, duration)
+        let percent = self.percentage() * 100.0;
+        (percent.min(100.0), position, duration)
     }
 }
