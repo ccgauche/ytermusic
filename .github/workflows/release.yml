@@ -1,26 +1,77 @@
+name: Release
+
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   release:
-    name: ${{ matrix.job.os }} (${{ matrix.job.target }})
-    runs-on: ${{ matrix.job.os }}
+    name: Build and Release (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - {os: ubuntu-latest, target: x86_64-unknown-linux-musl, archive: zip}
-          - {os: ubuntu-latest, target: x86_64-pc-windows-gnu, archive: zip}
-          - {os: macos-latest, target: aarch64-apple-darwin, archive: zip}
-          - {os: macos-13, target: x86_64-apple-darwin, archive: zip}
-               
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            archive: tar.gz
+          - os: ubuntu-latest
+            target: x86_64-pc-windows-gnu
+            archive: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux musl)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build release binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          # Determine binary name and path
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            BINARY_NAME="ytermusic.exe"
+            BINARY_PATH="target/${{ matrix.target }}/release/ytermusic.exe"
+          else
+            BINARY_NAME="ytermusic"
+            BINARY_PATH="target/${{ matrix.target }}/release/ytermusic"
+          fi
+
+          # Determine archive name
+          ARCHIVE_NAME="ytermusic-${{ github.ref_name }}-${{ matrix.target }}"
+
+          # Create archive
+          if [[ "${{ matrix.archive }}" == "zip" ]]; then
+            zip "${ARCHIVE_NAME}.zip" "$BINARY_PATH"
+          else
+            tar czf "${ARCHIVE_NAME}.tar.gz" -C "target/${{ matrix.target }}/release" "$BINARY_NAME"
+          fi
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ytermusic-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+          asset_name: ytermusic-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+          asset_content_type: application/octet-stream
