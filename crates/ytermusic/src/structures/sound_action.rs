@@ -5,7 +5,7 @@ use ytpapi2::YoutubeMusicVideoRef;
 use crate::{
     consts::CACHE_DIR,
     database,
-    errors::{handle_error, handle_error_option},
+    errors::handle_error_option,
     systems::{download, player::PlayerState},
     tasks::download::IN_DOWNLOAD,
     DATABASE,
@@ -58,20 +58,12 @@ impl SoundAction {
                 player.list.clear();
                 player.current = 0;
                 player.music_status.clear();
-                handle_error(
-                    &player.updater,
-                    "sink stop",
-                    player.sink.stop(&player.guard),
-                );
+                player.sink.stop();
             }
             Self::Plus => player.sink.volume_up(),
             Self::Minus => player.sink.volume_down(),
             Self::Next(a) => {
-                handle_error(
-                    &player.updater,
-                    "sink stop",
-                    player.sink.stop(&player.guard),
-                );
+                player.sink.stop();
 
                 player.set_relative_current(a as _);
             }
@@ -95,14 +87,10 @@ impl SoundAction {
             }
             Self::Previous(a) => {
                 player.set_relative_current(-(a as isize));
-                handle_error(
-                    &player.updater,
-                    "sink stop",
-                    player.sink.stop(&player.guard),
-                );
+                player.sink.stop();
             }
             Self::RestartPlayer => {
-                (player.sink, player.guard) =
+                player.sink =
                     handle_error_option(&player.updater, "update player", player.sink.update())
                         .unwrap();
                 if let Some(e) = player.current().cloned() {

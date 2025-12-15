@@ -5,7 +5,6 @@ use ratatui::widgets::{Block, Borders, Gauge};
 
 use crate::{
     consts::CONFIG,
-    errors::handle_error,
     structures::{
         app_status::{AppStatus, MusicDownloadStatus},
         sound_action::SoundAction,
@@ -115,7 +114,7 @@ impl Screen for PlayerState {
             KeyCode::Char('s') => {
                 self.list.shuffle(&mut rand::thread_rng());
                 self.current = 0;
-                handle_error(&self.updater, "sink stop", self.sink.stop(&self.guard));
+                self.sink.stop();
                 EventResponse::None
             }
             KeyCode::Char('C') => {

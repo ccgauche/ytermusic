@@ -4,7 +4,7 @@ use std::{
 };
 
 use flume::{unbounded, Receiver, Sender};
-use player::{Guard, PlayError, Player, PlayerOptions, StreamError};
+use player::{PlayError, Player, PlayerOptions};
 
 use ytpapi2::YoutubeMusicVideoRef;
 
@@ -27,11 +27,10 @@ pub struct PlayerState {
     pub list_selector: ListSelector,
     pub controls: Media,
     pub sink: Player,
-    pub guard: Guard,
     pub updater: Sender<ManagerMessage>,
     pub soundaction_sender: Sender<SoundAction>,
     pub soundaction_receiver: Receiver<SoundAction>,
-    pub stream_error_receiver: Receiver<StreamError>,
+    pub stream_error_receiver: Receiver<String>,
 }
 
 impl PlayerState {
@@ -40,8 +39,8 @@ impl PlayerState {
         soundaction_receiver: Receiver<SoundAction>,
         updater: Sender<ManagerMessage>,
     ) -> Self {
-        let (stream_error_sender, stream_error_receiver) = unbounded::<StreamError>();
-        let (sink, guard) = handle_error_option(
+        let (stream_error_sender, stream_error_receiver) = unbounded::<String>();
+        let sink = handle_error_option(
             &updater,
             "player creation error",
             Player::new(
@@ -62,7 +61,6 @@ impl PlayerState {
             soundaction_sender,
             sink,
             goto: Screens::Playlist,
-            guard,
             list: Vec::new(),
             current: 0,
             rtcurrent: None,
@@ -138,7 +136,7 @@ impl PlayerState {
             {
                 if let Some(video) = self.current().cloned() {
                     let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
-                    if let Err(e) = self.sink.play(k.as_path(), &self.guard) {
+                    if let Err(e) = self.sink.play(k.as_path()) {
                         if matches!(e, PlayError::DecoderError(_)) {
                             // Cleaning the file
 
@@ -161,7 +159,10 @@ impl PlayerState {
                             self.updater
                                 .send(ManagerMessage::PassTo(
                                     Screens::DeviceLost,
-                                    Box::new(ManagerMessage::Error(format!("{e}"), Box::new(None))),
+                                    Box::new(ManagerMessage::Error(
+                                        format!("{e:?}"),
+                                        Box::new(None),
+                                    )),
                                 ))
                                 .unwrap();
                         }
