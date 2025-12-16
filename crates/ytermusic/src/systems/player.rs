@@ -3,6 +3,7 @@ use std::{
     sync::atomic::Ordering,
 };
 
+use common_structs::MusicDownloadStatus;
 use flume::{unbounded, Receiver, Sender};
 use log::error;
 use player::{PlayError, Player, PlayerOptions};
@@ -12,12 +13,11 @@ use ytpapi2::YoutubeMusicVideoRef;
 use crate::{
     consts::{CACHE_DIR, CONFIG},
     errors::{handle_error, handle_error_option},
-    structures::{app_status::MusicDownloadStatus, media::Media, sound_action::SoundAction},
+    structures::{media::Media, sound_action::SoundAction},
+    systems::DOWNLOAD_MANAGER,
     term::{list_selector::ListSelector, playlist::PLAYER_RUNNING, ManagerMessage, Screens},
     DATABASE,
 };
-
-use super::download::DOWNLOAD_LIST;
 
 pub struct PlayerState {
     pub goto: Screens,
@@ -181,7 +181,7 @@ impl PlayerState {
             .take(12)
             .cloned()
             .collect::<VecDeque<_>>();
-        *DOWNLOAD_LIST.lock().unwrap() = to_download;
+        DOWNLOAD_MANAGER.set_download_list(to_download);
     }
 
     fn handle_stream_errors(&self) {

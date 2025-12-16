@@ -1,0 +1,19 @@
+[package]
+name = "download-manager"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ytpapi2.workspace = true
+flume = "0.11.0"
+once_cell = "1.19.0"
+tokio = { version = "1.36.0", features = ["rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+database.workspace = true
+common-structs.workspace = true
+
+#  --- YT Download ---
+rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main", features = ["rustls-tls", "search", "live"], default-features = false}
+
+log = "0.4.20"

@@ -1,3 +1,4 @@
+use common_structs::{AppStatus, MusicDownloadStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
@@ -6,10 +7,10 @@ use ratatui::widgets::{Block, Borders, Gauge};
 use crate::{
     consts::CONFIG,
     structures::{
-        app_status::{AppStatus, MusicDownloadStatus},
+        app_status::{AppStatusExt, MusicDownloadStatusExt},
         sound_action::SoundAction,
     },
-    systems::{download::DOWNLOAD_LIST, player::PlayerState},
+    systems::{player::PlayerState, DOWNLOAD_MANAGER},
     utils::invert,
 };
 
@@ -107,7 +108,7 @@ impl Screen for PlayerState {
                         }
                     });
                 // Download them
-                DOWNLOAD_LIST.lock().unwrap().extend(musics);
+                DOWNLOAD_MANAGER.add_to_download_list(musics);
                 EventResponse::None
             }
             KeyCode::Char('f') => ManagerMessage::SearchFrom(Screens::MusicPlayer).event(),

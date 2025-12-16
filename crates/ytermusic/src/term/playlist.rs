@@ -7,10 +7,10 @@ use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
-    structures::sound_action::SoundAction,
-    systems::download,
+    structures::sound_action::{download_manager_handler, SoundAction},
+    systems::DOWNLOAD_MANAGER,
     utils::invert,
-    DATABASE,
+    DATABASE, SIGNALING_STOP,
 };
 
 use super::{
@@ -148,7 +148,10 @@ impl Chooser {
             .unwrap();
         }
         self.action_sender.send(SoundAction::Cleanup).unwrap();
-        download::clean(&self.action_sender);
+        DOWNLOAD_MANAGER.clean(
+            SIGNALING_STOP.1.clone(),
+            download_manager_handler(self.action_sender.clone()),
+        );
         self.action_sender
             .send(SoundAction::AddVideosToQueue(a.videos.clone()))
             .unwrap();

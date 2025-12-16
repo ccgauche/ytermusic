@@ -16,8 +16,13 @@ use ytpapi2::{
 };
 
 use crate::{
-    consts::CONFIG, get_header_file, run_service, structures::sound_action::SoundAction, tasks,
-    try_get_cookies, utils::invert, DATABASE,
+    consts::CONFIG,
+    get_header_file, run_service,
+    structures::sound_action::{download_manager_handler, SoundAction},
+    systems::DOWNLOAD_MANAGER,
+    try_get_cookies,
+    utils::invert,
+    DATABASE, SIGNALING_STOP,
 };
 
 use super::{
@@ -247,7 +252,11 @@ impl Search {
                 self.action_sender
                     .send(SoundAction::AddVideoUnary(e.clone()))
                     .unwrap();
-                tasks::download::start_task_unary(self.action_sender.clone(), e);
+                DOWNLOAD_MANAGER.start_task_unary(
+                    download_manager_handler(self.action_sender.clone()),
+                    e,
+                    SIGNALING_STOP.1.clone(),
+                );
                 if modifiers.contains(KeyModifiers::CONTROL) {
                     EventResponse::None
                 } else {

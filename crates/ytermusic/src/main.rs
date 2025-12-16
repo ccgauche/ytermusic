@@ -16,7 +16,12 @@ use std::{
 };
 use systems::{logger::init, player::player_system};
 
-use crate::{consts::HEADER_TUTORIAL, systems::logger::get_log_file_path, utils::get_project_dirs};
+use crate::{
+    consts::HEADER_TUTORIAL,
+    structures::sound_action::download_manager_handler,
+    systems::{logger::get_log_file_path, DOWNLOAD_MANAGER},
+    utils::get_project_dirs,
+};
 
 mod config;
 mod consts;
@@ -250,7 +255,10 @@ async fn app_start() {
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
-    systems::download::spawn_system(&sa);
+    DOWNLOAD_MANAGER.spawn_system(
+        SIGNALING_STOP.1.clone(),
+        download_manager_handler(sa.clone()),
+    );
     STARTUP_TIME.log("Spawned system task");
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     STARTUP_TIME.log("Spawned last playlist task");

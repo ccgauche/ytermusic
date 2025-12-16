@@ -727,6 +727,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "common-structs"
+version = "0.1.0"
+
+[[package]]
 name = "compact_str"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1304,6 +1308,22 @@ name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
+
+[[package]]
+name = "download-manager"
+version = "0.1.0"
+dependencies = [
+ "common-structs",
+ "database",
+ "flume",
+ "log",
+ "once_cell",
+ "rusty_ytdl",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ytpapi2",
+]
 
 [[package]]
 name = "dtoa"
@@ -6087,9 +6107,11 @@ name = "ytermusic"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "common-structs",
  "crossterm",
  "database",
  "directories",
+ "download-manager",
  "flume",
  "log",
  "mimalloc",
@@ -6099,7 +6121,6 @@ dependencies = [
  "ratatui",
  "raw-window-handle",
  "rookie",
- "rusty_ytdl",
  "serde",
  "serde_json",
  "souvlaki",

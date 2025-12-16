@@ -1,43 +1,18 @@
+use common_structs::{AppStatus, MusicDownloadStatus};
 use ratatui::style::{Modifier, Style};
+
+pub trait MusicDownloadStatusExt {
+    fn style(&self, playing: Option<bool>) -> Style;
+}
+
+pub trait AppStatusExt {
+    fn style(&self) -> Style;
+}
 
 use crate::consts::CONFIG;
 
-#[derive(PartialEq, Debug, Clone)]
-pub enum AppStatus {
-    Paused,
-    Playing,
-    NoMusic,
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum MusicDownloadStatus {
-    NotDownloaded,
-    Downloaded,
-    Downloading(usize),
-    DownloadFailed,
-}
-
-impl MusicDownloadStatus {
-    pub fn character(&self, playing: Option<bool>) -> String {
-        match self {
-            Self::NotDownloaded => {
-                if let Some(e) = playing {
-                    if e {
-                        '▶'
-                    } else {
-                        '⏸'
-                    }
-                } else {
-                    ' '
-                }
-            }
-            Self::Downloaded => ' ',
-            Self::Downloading(progress) => return format!("⭳ [{:02}%]", progress),
-            Self::DownloadFailed => '⚠',
-        }
-        .into()
-    }
-    pub fn style(&self, playing: Option<bool>) -> Style {
+impl MusicDownloadStatusExt for MusicDownloadStatus {
+    fn style(&self, playing: Option<bool>) -> Style {
         let k = match self {
             Self::NotDownloaded => CONFIG.player.text_waiting_style,
             Self::Downloaded => {
@@ -62,12 +37,12 @@ impl MusicDownloadStatus {
     }
 }
 
-impl AppStatus {
-    pub fn style(&self) -> Style {
+impl AppStatusExt for AppStatus {
+    fn style(&self) -> Style {
         match self {
-            AppStatus::Paused => CONFIG.player.gauge_paused_style,
-            AppStatus::Playing => CONFIG.player.gauge_playing_style,
-            AppStatus::NoMusic => CONFIG.player.gauge_nomusic_style,
+            Self::Paused => CONFIG.player.gauge_paused_style,
+            Self::Playing => CONFIG.player.gauge_playing_style,
+            Self::NoMusic => CONFIG.player.gauge_nomusic_style,
         }
     }
 }

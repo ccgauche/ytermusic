@@ -1,16 +1,17 @@
+use common_structs::MusicDownloadStatus;
+use download_manager::{DownloadManagerMessage, MessageHandler};
+use flume::Sender;
 use log::{error, trace};
-use std::fs;
+use std::{fs, sync::Arc};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::CACHE_DIR,
     errors::handle_error_option,
-    systems::{download, player::PlayerState},
-    tasks::download::IN_DOWNLOAD,
-    DATABASE,
+    systems::{player::PlayerState, DOWNLOAD_MANAGER},
+    DATABASE, SIGNALING_STOP,
 };
 
-use super::app_status::MusicDownloadStatus;
 /// Actions that can be sent to the player from other services
 #[derive(Debug, Clone)]
 pub enum SoundAction {
@@ -36,7 +37,7 @@ impl SoundAction {
             player.music_status.get(&video),
             Some(&MusicDownloadStatus::DownloadFailed)
         ) {
-            IN_DOWNLOAD.lock().unwrap().remove(&video);
+            DOWNLOAD_MANAGER.remove_from_in_downloads(&video);
         }
         if matches!(
             player.music_status.get(&video),
@@ -128,7 +129,7 @@ impl SoundAction {
                             | &MusicDownloadStatus::NotDownloaded
                     )
                 ) {
-                    IN_DOWNLOAD.lock().unwrap().remove(&video.video_id);
+                    DOWNLOAD_MANAGER.remove_from_in_downloads(&video.video_id);
                 }
                 player.music_status.remove(&video.video_id); // maybe not necessary to do it
 
@@ -160,10 +161,23 @@ impl SoundAction {
             }
             Self::ReplaceQueue(videos) => {
                 player.list.truncate(player.current + 1);
-                download::clean(&player.soundaction_sender);
+                DOWNLOAD_MANAGER.clean(
+                    SIGNALING_STOP.1.clone(),
+                    download_manager_handler(player.soundaction_sender.clone()),
+                );
                 Self::AddVideosToQueue(videos).apply_sound_action(player);
                 Self::Next(1).apply_sound_action(player);
             }
         }
     }
+}
+
+pub fn download_manager_handler(sender: Sender<SoundAction>) -> MessageHandler {
+    Arc::new(move |message| match message {
+        DownloadManagerMessage::VideoStatusUpdate(video, status) => {
+            sender
+                .send(SoundAction::VideoStatusUpdate(video, status))
+                .unwrap();
+        }
+    })
 }

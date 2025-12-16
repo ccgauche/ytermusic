@@ -6,8 +6,6 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#  --- YT Download ---
-rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main", features = ["rustls-tls", "search", "live"], default-features = false}
 
 ytpapi2.workspace = true
 
@@ -46,6 +44,8 @@ log = "0.4.21"
 
 #  --- Database ---
 database.workspace = true
+download-manager.workspace = true
+common-structs.workspace = true
 
 # -- Cookies auto retreival --
 rookie = "0.5.2"
