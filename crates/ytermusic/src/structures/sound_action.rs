@@ -2,7 +2,7 @@ use common_structs::MusicDownloadStatus;
 use download_manager::{DownloadManagerMessage, MessageHandler};
 use flume::Sender;
 use log::{error, trace};
-use std::{fs, sync::Arc};
+use std::{fs, sync::Arc, time::Duration};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
@@ -20,6 +20,8 @@ pub enum SoundAction {
     RestartPlayer,
     Plus,
     Minus,
+    /// Seek to a specific time in the current song in seconds
+    SeekTo(Duration),
     Previous(usize),
     Forward,
     Backward,
@@ -51,6 +53,7 @@ impl SoundAction {
 
     pub fn apply_sound_action(self, player: &mut PlayerState) {
         match self {
+            Self::SeekTo(time) => player.sink.seek_to(time),
             Self::Backward => player.sink.seek_bw(),
             Self::Forward => player.sink.seek_fw(),
             Self::PlayPause => player.sink.toggle_playback(),

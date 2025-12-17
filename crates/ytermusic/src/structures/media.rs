@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use flume::Sender;
 use log::{error, info};
 use player::Player;
@@ -54,7 +56,9 @@ impl Media {
                 album: current.as_ref().map(|video| video.album.as_str()),
                 artist: current.as_ref().map(|video| video.author.as_str()),
                 cover_url: None,
-                duration: None,
+                duration: sink
+                    .duration()
+                    .map(|duration| Duration::from_secs(duration as u64)),
             };
             if self.current_meta
                 != Some((
@@ -122,7 +126,7 @@ fn connect(mpris: &mut MediaControls, sender: Sender<SoundAction>) -> Result<(),
         }
 
         MediaControlEvent::SetPosition(a) => {
-            todo!("Can't set position to {a:?}")
+            sender.send(SoundAction::SeekTo(a.0)).unwrap();
         }
         MediaControlEvent::OpenUri(a) => {
             todo!("Implement URI opening {a:?}")
