@@ -154,6 +154,56 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
         .map_err(|e| format!("{e:?}")),
     )
 }
+#[cfg(not(target_os = "macos"))]
+pub fn run_window_handler(_updater: &Sender<ManagerMessage>) -> Option<()> {
+    use crate::SIGNALING_STOP;
+    loop {
+        if SIGNALING_STOP.1.try_recv() == Ok(()) {
+            use std::process::exit;
+
+            info!("event loop closed");
+            SIGNALING_STOP.0.send(()).unwrap();
+            exit(0);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn run_window_handler(updater: &Sender<ManagerMessage>) -> Option<()> {
+    use std::process::exit;
+
+    use winit::event_loop::EventLoop;
+    use winit::platform::macos::{ActivationPolicy, EventLoopExtMacOS};
+    use winit::window::WindowBuilder;
+
+    use crate::errors::handle_error_option;
+    let thread = std::thread::current();
+    info!("Current Thread Name: {:?}", thread.name());
+    info!("Current Thread ID:   {:?}", thread.id());
+
+    // On macOS, winit requires the EventLoop to be created on the main thread.
+    // Unlike Windows, we cannot use `new_any_thread`.
+    // We create a hidden window to ensure NSApplication is active and capable of receiving events.
+    let mut event_loop = EventLoop::new();
+    event_loop.set_activation_policy(ActivationPolicy::Regular);
+
+    // Create a hidden window. While souvlaki doesn't need the handle in the config,
+    // the existence of the window helps keep the event loop and application state valid.
+    let _window = handle_error_option(
+        updater,
+        "OS Error while creating media hook window",
+        WindowBuilder::new().with_visible(false).build(&event_loop),
+    )?;
+    event_loop.run(move |_event, _window_target, ctrl_flow| {
+        use crate::SIGNALING_STOP;
+        if SIGNALING_STOP.1.try_recv() == Ok(()) {
+            info!("event loop closed");
+            SIGNALING_STOP.0.send(()).unwrap();
+            *ctrl_flow = winit::event_loop::ControlFlow::Exit;
+            exit(0);
+        }
+    });
+}
 
 #[cfg(target_os = "windows")]
 fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {

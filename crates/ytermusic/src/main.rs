@@ -10,7 +10,6 @@ use std::{
     future::Future,
     panic,
     path::{Path, PathBuf},
-    process::exit,
     str::FromStr,
     sync::RwLock,
 };
@@ -18,7 +17,7 @@ use systems::{logger::init, player::player_system};
 
 use crate::{
     consts::HEADER_TUTORIAL,
-    structures::sound_action::download_manager_handler,
+    structures::{media::run_window_handler, sound_action::download_manager_handler},
     systems::{logger::get_log_file_path, DOWNLOAD_MANAGER},
     utils::get_project_dirs,
 };
@@ -57,10 +56,11 @@ where
 }
 
 fn shutdown() {
+    info!("Shutdown signal sending");
     for _ in 0..1000 {
         SIGNALING_STOP.0.send(()).unwrap();
     }
-    exit(0);
+    info!("Shutdown signal sent");
 }
 
 static COOKIES: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
@@ -70,8 +70,7 @@ pub fn try_get_cookies() -> Option<String> {
     cookies.clone()
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // Check if the first param is --files
     if let Some(arg) = std::env::args().nth(1) {
         match arg.as_str() {
@@ -137,15 +136,7 @@ async fn main() {
         error!("{e}");
         shutdown();
     }));
-    select! {
-        _ = async {
-            app_start().await
-        } => {},
-        _ = SIGNALING_STOP.1.recv_async() => {},
-        _ = tokio::signal::ctrl_c() => {
-            shutdown();
-        },
-    };
+    app_start();
 }
 
 fn cookies(specific_browser: Option<String>) -> Option<String> {
@@ -229,7 +220,8 @@ fn get_header_file() -> Result<(String, PathBuf), (std::io::Error, PathBuf)> {
     let fp = fp.join("headers.txt");
     std::fs::read_to_string(&fp).map_or_else(|e| Err((e, fp.clone())), |e| Ok((e, fp.clone())))
 }
-async fn app_start() {
+
+async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<ManagerMessage>) {
     STARTUP_TIME.log("Init");
 
     std::fs::create_dir_all(CACHE_DIR.join("downloads")).unwrap();
@@ -248,7 +240,6 @@ async fn app_start() {
     STARTUP_TIME.log("Startup");
 
     // Spawn the clean task
-    let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
     tasks::clean::spawn_clean_task();
 
     STARTUP_TIME.log("Spawned clean task");
@@ -271,4 +262,27 @@ async fn app_start() {
     STARTUP_TIME.log("Running manager");
     let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
+}
+fn app_start() {
+    let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
+    let updater_s_c = updater_s.clone();
+    ctrlc::set_handler(move || {
+        info!("CTRL-C received");
+        shutdown()
+    })
+    .expect("Error setting Ctrl-C handler");
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to build runtime")
+            .block_on(async move {
+                select! {
+                    _ = app_start_main(updater_r, updater_s) => {},
+                    _ = SIGNALING_STOP.1.recv_async() => {},
+                };
+            });
+        info!("Runtime closed");
+    });
+    run_window_handler(&updater_s_c);
 }

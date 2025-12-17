@@ -24,7 +24,9 @@ use flume::{Receiver, Sender};
 use ratatui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP};
+use crate::{
+    shutdown, structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP,
+};
 
 use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};
 
@@ -254,6 +256,8 @@ impl Manager {
             DisableMouseCapture
         )?;
         terminal.show_cursor()?;
+
+        shutdown();
 
         Ok(())
     }
