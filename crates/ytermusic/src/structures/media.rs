@@ -16,7 +16,7 @@ use super::sound_action::SoundAction;
 pub struct Media {
     controls: Option<MediaControls>,
 
-    current_meta: Option<(String, String, String)>,
+    current_meta: Option<(String, String, String, Option<Duration>)>,
     current_playback: Option<MediaPlayback>,
 }
 
@@ -65,12 +65,16 @@ impl Media {
                     media_meta.title.unwrap_or("").to_string(),
                     media_meta.album.unwrap_or("").to_string(),
                     media_meta.artist.unwrap_or("").to_string(),
+                    sink.duration()
+                        .map(|duration| Duration::from_secs(duration as u64)),
                 ))
             {
                 self.current_meta = Some((
                     media_meta.title.unwrap_or("").to_string(),
                     media_meta.album.unwrap_or("").to_string(),
                     media_meta.artist.unwrap_or("").to_string(),
+                    sink.duration()
+                        .map(|duration| Duration::from_secs(duration as u64)),
                 ));
                 e.set_metadata(media_meta)?;
             }
@@ -138,7 +142,7 @@ fn connect(mpris: &mut MediaControls, sender: Sender<SoundAction>) -> Result<(),
             shutdown();
         }
         MediaControlEvent::SetVolume(e) => {
-            todo!("Implement volume setting {e:?}");
+            sender.send(SoundAction::SetVolume(e as f32)).unwrap();
         }
     })
 }

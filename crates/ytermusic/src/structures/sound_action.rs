@@ -15,6 +15,8 @@ use crate::{
 /// Actions that can be sent to the player from other services
 #[derive(Debug, Clone)]
 pub enum SoundAction {
+    /// Set the volume of the player to the given value
+    SetVolume(f32),
     Cleanup,
     PlayPause,
     RestartPlayer,
@@ -53,6 +55,7 @@ impl SoundAction {
 
     pub fn apply_sound_action(self, player: &mut PlayerState) {
         match self {
+            Self::SetVolume(volume) => player.sink.set_volume((volume * 100.) as i32),
             Self::SeekTo(time) => player.sink.seek_to(time),
             Self::Backward => player.sink.seek_bw(),
             Self::Forward => player.sink.seek_fw(),
