@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use flume::Receiver;
 use log::error;
 use rusty_ytdl::{
     DownloadOptions, Video, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
@@ -144,7 +143,7 @@ impl DownloadManager {
         &'static self,
         s: MessageHandler,
         song: YoutubeMusicVideoRef,
-        cancelation: Receiver<()>,
+        cancelation: impl Future<Output = ()> + Send + 'static,
     ) {
         let fut = async move {
             self.start_download(song, s).await;
@@ -152,7 +151,7 @@ impl DownloadManager {
         let service = tokio::task::spawn(async move {
             select! {
                 _ = fut => {},
-                _ = cancelation.recv_async() => {},
+                _ = cancelation => {},
             }
         });
         self.handles.lock().unwrap().push(service);

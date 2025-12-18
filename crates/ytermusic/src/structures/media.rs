@@ -203,10 +203,10 @@ pub fn run_window_handler(updater: &Sender<ManagerMessage>) -> Option<()> {
         WindowBuilder::new().with_visible(false).build(&event_loop),
     )?;
     event_loop.run(move |_event, _window_target, ctrl_flow| {
-        use crate::SIGNALING_STOP;
-        if SIGNALING_STOP.1.try_recv() == Ok(()) {
+        use crate::is_shutdown_sent;
+
+        if is_shutdown_sent() {
             info!("event loop closed");
-            SIGNALING_STOP.0.send(()).unwrap();
             *ctrl_flow = winit::event_loop::ControlFlow::Exit;
             exit(0);
         }

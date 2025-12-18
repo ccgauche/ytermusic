@@ -6,13 +6,7 @@ use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{
-    future::Future,
-    panic,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::RwLock,
-};
+use std::{future::Future, panic, path::{Path, PathBuf}, str::FromStr, sync::RwLock};
 use systems::{logger::init, player::player_system};
 
 use crate::{
@@ -30,7 +24,8 @@ mod structures;
 mod systems;
 mod term;
 mod utils;
-
+mod shutdown;
+pub use shutdown::{ShutdownSignal, is_shutdown_sent, shutdown};
 mod tasks;
 
 pub use database::DATABASE;
@@ -41,8 +36,6 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-pub static SIGNALING_STOP: Lazy<(Sender<()>, Receiver<()>)> = Lazy::new(flume::unbounded);
-
 fn run_service<T>(future: T) -> tokio::task::JoinHandle<()>
 where
     T: Future + Send + 'static,
@@ -50,17 +43,9 @@ where
     tokio::task::spawn(async move {
         select! {
             _ = future => {},
-            _ = SIGNALING_STOP.1.recv_async() => {},
+            _ = ShutdownSignal => {},
         }
     })
-}
-
-fn shutdown() {
-    info!("Shutdown signal sending");
-    for _ in 0..1000 {
-        SIGNALING_STOP.0.send(()).unwrap();
-    }
-    info!("Shutdown signal sent");
 }
 
 static COOKIES: Lazy<RwLock<Option<String>>> = Lazy::new(|| RwLock::new(None));
@@ -247,7 +232,7 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
     DOWNLOAD_MANAGER.spawn_system(
-        SIGNALING_STOP.1.clone(),
+        ShutdownSignal,
         download_manager_handler(sa.clone()),
     );
     STARTUP_TIME.log("Spawned system task");
@@ -279,7 +264,7 @@ fn app_start() {
             .block_on(async move {
                 select! {
                     _ = app_start_main(updater_r, updater_s) => {},
-                    _ = SIGNALING_STOP.1.recv_async() => {},
+                    _ = ShutdownSignal => {},
                 };
             });
         info!("Runtime closed");

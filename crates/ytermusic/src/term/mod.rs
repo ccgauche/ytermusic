@@ -25,7 +25,7 @@ use ratatui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
-    shutdown, structures::sound_action::SoundAction, systems::player::PlayerState, SIGNALING_STOP,
+    is_shutdown_sent, shutdown, structures::sound_action::SoundAction, systems::player::PlayerState
 };
 
 use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};
@@ -203,7 +203,7 @@ impl Manager {
 
         let mut last_tick = Instant::now();
         'a: loop {
-            if matches!(SIGNALING_STOP.1.try_recv(), Ok(())) {
+            if is_shutdown_sent() {
                 break;
             }
             while let Ok(e) = updater.try_recv() {

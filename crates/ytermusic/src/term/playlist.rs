@@ -10,7 +10,7 @@ use crate::{
     structures::sound_action::{download_manager_handler, SoundAction},
     systems::DOWNLOAD_MANAGER,
     utils::invert,
-    DATABASE, SIGNALING_STOP,
+    ShutdownSignal, DATABASE,
 };
 
 use super::{
@@ -149,7 +149,7 @@ impl Chooser {
         }
         self.action_sender.send(SoundAction::Cleanup).unwrap();
         DOWNLOAD_MANAGER.clean(
-            SIGNALING_STOP.1.clone(),
+            ShutdownSignal,
             download_manager_handler(self.action_sender.clone()),
         );
         self.action_sender

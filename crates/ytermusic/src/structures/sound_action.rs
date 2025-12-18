@@ -6,10 +6,7 @@ use std::{fs, sync::Arc, time::Duration};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
-    consts::CACHE_DIR,
-    errors::handle_error_option,
-    systems::{player::PlayerState, DOWNLOAD_MANAGER},
-    DATABASE, SIGNALING_STOP,
+    DATABASE, ShutdownSignal, consts::CACHE_DIR, errors::handle_error_option, systems::{DOWNLOAD_MANAGER, player::PlayerState}
 };
 
 /// Actions that can be sent to the player from other services
@@ -168,7 +165,7 @@ impl SoundAction {
             Self::ReplaceQueue(videos) => {
                 player.list.truncate(player.current + 1);
                 DOWNLOAD_MANAGER.clean(
-                    SIGNALING_STOP.1.clone(),
+                    ShutdownSignal,
                     download_manager_handler(player.soundaction_sender.clone()),
                 );
                 Self::AddVideosToQueue(videos).apply_sound_action(player);
