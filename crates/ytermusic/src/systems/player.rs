@@ -78,6 +78,22 @@ impl PlayerState {
         self.current = self.current.saturating_add_signed(n);
     }
 
+    pub fn is_current_download_failed(&self) -> bool {
+        self.current()
+            .as_ref()
+            .map(|x| {
+                self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn is_current_downloaded(&self) -> bool {
+        self.current()
+            .as_ref()
+            .map(|x| self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::Downloaded))
+            .unwrap_or(false)
+    }
+
     pub fn update(&mut self) {
         PLAYER_RUNNING.store(self.current().is_some(), Ordering::SeqCst);
         self.update_controls();
@@ -88,28 +104,11 @@ impl PlayerState {
         while let Ok(e) = self.soundaction_receiver.try_recv() {
             e.apply_sound_action(self);
         }
-        if self
-            .current()
-            .as_ref()
-            .map(|x| {
-                self.music_status.get(&x.video_id) == Some(&MusicDownloadStatus::DownloadFailed)
-            })
-            .unwrap_or(false)
-        {
+        if self.is_current_download_failed() {
             SoundAction::Next(1).apply_sound_action(self);
         }
         if self.sink.is_finished() {
-            if self
-                .rtcurrent
-                .as_ref()
-                .zip(self.current())
-                .map(|(x, y)| {
-                    x == y
-                        && self.music_status.get(&x.video_id)
-                            == Some(&MusicDownloadStatus::Downloaded)
-                })
-                .unwrap_or(false)
-            {
+            if self.is_current_downloaded() && self.rtcurrent.as_ref() == self.current() {
                 self.set_relative_current(1);
             }
             self.handle_stream_errors();
@@ -126,13 +125,7 @@ impl PlayerState {
                 self.set_relative_current(1);
             }
 
-            if !self
-                .current()
-                .map(|x| {
-                    self.music_status.get(&x.video_id) != Some(&MusicDownloadStatus::Downloaded)
-                })
-                .unwrap_or(true)
-            {
+            if self.is_current_downloaded() {
                 if let Some(video) = self.current().cloned() {
                     let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
                     if let Err(e) = self.sink.play(k.as_path()) {
@@ -168,8 +161,9 @@ impl PlayerState {
                     }
                 }
             }
+        } else {
+            self.rtcurrent = self.current().cloned();
         }
-        self.rtcurrent = self.current().cloned();
         let to_download = self
             .list
             .iter()
