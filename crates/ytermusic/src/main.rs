@@ -6,7 +6,13 @@ use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
 
-use std::{future::Future, panic, path::{Path, PathBuf}, str::FromStr, sync::RwLock};
+use std::{
+    future::Future,
+    panic,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::RwLock,
+};
 use systems::{logger::init, player::player_system};
 
 use crate::{
@@ -20,12 +26,12 @@ mod config;
 mod consts;
 mod database;
 mod errors;
+mod shutdown;
 mod structures;
 mod systems;
 mod term;
 mod utils;
-mod shutdown;
-pub use shutdown::{ShutdownSignal, is_shutdown_sent, shutdown};
+pub use shutdown::{is_shutdown_sent, shutdown, ShutdownSignal};
 mod tasks;
 
 pub use database::DATABASE;
@@ -231,10 +237,7 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
-    DOWNLOAD_MANAGER.spawn_system(
-        ShutdownSignal,
-        download_manager_handler(sa.clone()),
-    );
+    DOWNLOAD_MANAGER.spawn_system(ShutdownSignal, download_manager_handler(sa.clone()));
     STARTUP_TIME.log("Spawned system task");
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     STARTUP_TIME.log("Spawned last playlist task");
@@ -248,6 +251,7 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
     let mut manager = Manager::new(sa, player).await;
     manager.run(&updater_r).unwrap();
 }
+
 fn app_start() {
     let (updater_s, updater_r) = flume::unbounded::<ManagerMessage>();
     let updater_s_c = updater_s.clone();

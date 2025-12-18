@@ -16,7 +16,13 @@ use ytpapi2::{
 };
 
 use crate::{
-    DATABASE, ShutdownSignal, consts::CONFIG, get_header_file, run_service, structures::sound_action::{SoundAction, download_manager_handler}, systems::DOWNLOAD_MANAGER, try_get_cookies, utils::invert
+    consts::CONFIG,
+    get_header_file, run_service,
+    structures::sound_action::{download_manager_handler, SoundAction},
+    systems::DOWNLOAD_MANAGER,
+    try_get_cookies,
+    utils::invert,
+    ShutdownSignal, DATABASE,
 };
 
 use super::{

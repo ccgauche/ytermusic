@@ -25,7 +25,7 @@ use ratatui::{backend::CrosstermBackend, layout::Rect, Frame, Terminal};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
-    is_shutdown_sent, shutdown, structures::sound_action::SoundAction, systems::player::PlayerState
+    is_shutdown_sent, shutdown, structures::sound_action::SoundAction, systems::player::PlayerState,
 };
 
 use self::{device_lost::DeviceLost, item_list::ListItem, playlist::Chooser, search::Search};

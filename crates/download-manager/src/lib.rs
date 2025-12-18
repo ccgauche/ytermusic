@@ -50,7 +50,11 @@ impl DownloadManager {
     /// HANDLES.lock().unwrap().push(run_service(async move {
     ///     run_service_stream(sender);
     /// }));
-    pub fn run_service_stream(&'static self, cancelation: impl Future<Output = ()> + Clone + Send + 'static, sender: MessageHandler) {
+    pub fn run_service_stream(
+        &'static self,
+        cancelation: impl Future<Output = ()> + Clone + Send + 'static,
+        sender: MessageHandler,
+    ) {
         let fut = async move {
             loop {
                 if let Some(id) = self.take() {
@@ -69,13 +73,21 @@ impl DownloadManager {
         self.handles.lock().unwrap().push(service);
     }
 
-    pub fn spawn_system(&'static self, cancelation: impl Future<Output = ()> + Clone + Send + 'static, sender: MessageHandler) {
+    pub fn spawn_system(
+        &'static self,
+        cancelation: impl Future<Output = ()> + Clone + Send + 'static,
+        sender: MessageHandler,
+    ) {
         for _ in 0..DOWNLOADER_COUNT {
             self.run_service_stream(cancelation.clone(), sender.clone());
         }
     }
 
-    pub fn clean(&'static self, cancelation: impl Future<Output = ()> + Clone + Send + 'static, sender: MessageHandler) {
+    pub fn clean(
+        &'static self,
+        cancelation: impl Future<Output = ()> + Clone + Send + 'static,
+        sender: MessageHandler,
+    ) {
         self.download_list.lock().unwrap().clear();
         self.in_download.lock().unwrap().clear();
         {

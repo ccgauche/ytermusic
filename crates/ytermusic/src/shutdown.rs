@@ -1,7 +1,11 @@
-use std::{future::Future, pin::Pin, sync::atomic::{AtomicBool, Ordering}, task::{Context, Poll}};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::atomic::{AtomicBool, Ordering},
+    task::{Context, Poll},
+};
 
 use log::info;
-
 
 static SHUTDOWN_SENT: AtomicBool = AtomicBool::new(false);
 
