@@ -57,6 +57,7 @@ jobs:
           else
             BINARY_NAME="ytermusic"
             BINARY_PATH="target/${{ matrix.target }}/release/ytermusic"
+            strip "$BINARY_PATH"
           fi
 
           # Determine archive name
