@@ -164,13 +164,13 @@ fn get_handle(updater: &Sender<ManagerMessage>) -> Option<MediaControls> {
 }
 #[cfg(not(target_os = "macos"))]
 pub fn run_window_handler(_updater: &Sender<ManagerMessage>) -> Option<()> {
-    use crate::SIGNALING_STOP;
+    use crate::is_shutdown_sent;
+
     loop {
-        if SIGNALING_STOP.1.try_recv() == Ok(()) {
+        if is_shutdown_sent() {
             use std::process::exit;
 
             info!("event loop closed");
-            SIGNALING_STOP.0.send(()).unwrap();
             exit(0);
         }
     }
