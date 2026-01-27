@@ -169,7 +169,7 @@ pub fn run_window_handler(_updater: &Sender<ManagerMessage>) -> Option<()> {
     while !is_shutdown_sent() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    
+
     info!("event loop closed");
     std::process::exit(0);
 }
