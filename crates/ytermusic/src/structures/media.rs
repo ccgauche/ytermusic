@@ -167,7 +167,7 @@ pub fn run_window_handler(_updater: &Sender<ManagerMessage>) -> Option<()> {
     use crate::is_shutdown_sent;
 
     loop {
-        if is_shutdown_sent() {
+        if crate::shutdown::block_until_shutdown() && is_shutdown_sent() {
             use std::process::exit;
 
             info!("event loop closed");
