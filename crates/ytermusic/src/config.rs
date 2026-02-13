@@ -6,7 +6,14 @@ use crate::utils::get_project_dirs;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
-pub struct GlobalConfig {}
+pub struct GlobalConfig {
+    /// Maximum number of parallel downloads.
+    /// If your downloads are failing, try lowering
+    /// this.
+    /// Default value is 4.
+    #[serde(default = "parallel_downloads")]
+    pub parallel_downloads: u16,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[non_exhaustive]
