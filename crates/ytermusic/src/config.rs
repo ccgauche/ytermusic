@@ -101,6 +101,10 @@ fn default_error_style() -> Style {
     Style::default().fg(Color::Red)
 }
 
+fn parallel_downloads() -> u16 {
+    4
+}
+
 fn default_false() -> bool {
     false
 }
