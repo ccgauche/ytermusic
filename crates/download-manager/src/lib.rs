@@ -29,7 +29,11 @@ pub struct DownloadManager {
 }
 
 impl DownloadManager {
-    pub fn new(cache_dir: PathBuf, database: &'static YTLocalDatabase, parallel_downloads: u16) -> Self {
+    pub fn new(
+        cache_dir: PathBuf,
+        database: &'static YTLocalDatabase,
+        parallel_downloads: u16,
+    ) -> Self {
         Self {
             database,
             cache_dir,
