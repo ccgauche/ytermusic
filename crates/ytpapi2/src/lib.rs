@@ -63,7 +63,7 @@ fn get_account_id() -> Option<String> {
 fn advanced_like() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id())
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id(), None)
             .await
             .unwrap();
         println!("{}", ytm.compute_sapi_hash());
@@ -81,7 +81,7 @@ fn advanced_like() {
 fn advanced_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id())
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id(), None)
             .await
             .unwrap();
         let search = ytm.search("j'ai la danse qui va avec", 0).await.unwrap();
@@ -96,7 +96,7 @@ fn advanced_test() {
 fn home_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
-        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id())
+        let ytm = YoutubeMusicInstance::new(get_headers(), get_account_id(), None)
             .await
             .unwrap();
         let search = ytm.get_home(0).await.unwrap();
@@ -120,6 +120,7 @@ pub struct YoutubeMusicInstance {
     client_version: String,
     cookies: String,
     account_id: Option<String>,
+    auth_user: Option<String>,
 }
 
 impl YoutubeMusicInstance {
@@ -131,8 +132,13 @@ impl YoutubeMusicInstance {
             .lines()
         {
             if let Some((key, value)) = header.split_once(": ") {
+                let key_lower = key.to_lowercase();
+                if key_lower == "x-goog-authuser" {
+                    // Store this separately, don't add to HeaderMap
+                    continue;
+                }
                 headers.insert(
-                    match key.to_lowercase().as_str() {
+                    match key_lower.as_str() {
                         "cookie" => reqwest::header::COOKIE,
                         "user-agent" => reqwest::header::USER_AGENT,
                         _ => {
@@ -145,6 +151,20 @@ impl YoutubeMusicInstance {
                 );
             }
         }
+        // Read x-goog-authuser from headers file
+        let headers_content = tokio::fs::read_to_string(path)
+            .await
+            .map_err(YoutubeMusicError::IoError)?;
+        let auth_user = headers_content
+            .lines()
+            .find_map(|line| {
+                let (key, value) = line.split_once(": ")?;
+                if key.to_lowercase() == "x-goog-authuser" {
+                    Some(value.to_string())
+                } else {
+                    None
+                }
+            });
         if !headers.contains_key(reqwest::header::COOKIE) {
             return Err(YoutubeMusicError::InvalidHeaders);
         }
@@ -172,10 +192,10 @@ impl YoutubeMusicInstance {
             }
             Err(_) => None, //don't care if there is no files or nothing in the file
         };
-        Self::new(headers, account_id).await
+        Self::new(headers, account_id, auth_user).await
     }
 
-    pub async fn new(headers: HeaderMap, account_id: Option<String>) -> Result<Self> {
+    pub async fn new(headers: HeaderMap, account_id: Option<String>, auth_user: Option<String>) -> Result<Self> {
         trace!("Creating new YoutubeMusicInstance");
         let rest_client = reqwest::ClientBuilder::default()
             .default_headers(headers.clone())
@@ -223,12 +243,14 @@ impl YoutubeMusicInstance {
         trace!("Innertube client version: {}", client_version);
         // New file for brand accounts, maybe put it in config or headers.txt is better but more complex.
         trace!("account id {:?}", account_id);
+        trace!("auth_user {:?}", auth_user);
         Ok(Self {
             sapisid: sapisid.to_string(),
             innertube_api_key: innertube_api_key.to_string(),
             client_version: client_version.to_string(),
             cookies,
             account_id,
+            auth_user,
         })
     }
     fn compute_sapi_hash(&self) -> String {
@@ -294,7 +316,7 @@ impl YoutubeMusicInstance {
                 self.client_version
             ),
         };
-        reqwest::Client::new()
+        let mut request = reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
             .header(
@@ -302,7 +324,11 @@ impl YoutubeMusicInstance {
                 format!("SAPISIDHASH {}", self.compute_sapi_hash()),
             )
             .header("X-Origin", "https://music.youtube.com")
-            .header("Cookie", &self.cookies)
+            .header("Cookie", &self.cookies);
+        if let Some(auth_user) = &self.auth_user {
+            request = request.header("X-Goog-AuthUser", auth_user);
+        }
+        request
             .body(body)
             .send()
             .await
@@ -332,7 +358,7 @@ impl YoutubeMusicInstance {
                 self.client_version
             ),
         };
-        reqwest::Client::new()
+        let mut request = reqwest::Client::new()
             .post(&url)
             .header("Content-Type", "application/json")
             .header(
@@ -340,7 +366,11 @@ impl YoutubeMusicInstance {
                 format!("SAPISIDHASH {}", self.compute_sapi_hash()),
             )
             .header("X-Origin", "https://music.youtube.com")
-            .header("Cookie", &self.cookies)
+            .header("Cookie", &self.cookies);
+        if let Some(auth_user) = &self.auth_user {
+            request = request.header("X-Goog-AuthUser", auth_user);
+        }
+        request
             .body(body)
             .send()
             .await
