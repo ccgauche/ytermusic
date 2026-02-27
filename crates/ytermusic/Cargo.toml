@@ -26,6 +26,7 @@ varuint = "0.7.1"
 #  --- UI ---
 crossterm = "0.27.0"
 ratatui = { version = "0.26.1", features = ["serde"] }
+unicode-bidi = "0.3"
 
 #  --- Player ---
 player.workspace = true
