@@ -21,7 +21,7 @@ use crate::{
     structures::sound_action::{download_manager_handler, SoundAction},
     systems::DOWNLOAD_MANAGER,
     try_get_cookies,
-    utils::invert,
+    utils::{invert, to_bidi_string},
     ShutdownSignal, DATABASE,
 };
 
@@ -114,7 +114,12 @@ impl Screen for Search {
                 x.title.to_lowercase().contains(&text) || x.author.to_lowercase().contains(&text)
             })
             .cloned()
-            .map(|video| (format!(" {video} "), Status::Local(video)))
+            .map(|video| {
+                (
+                    format!(" {} ", to_bidi_string(&video.to_string())),
+                    Status::Local(video),
+                )
+            })
             .take(100)
             .collect::<Vec<_>>();
         self.list.write().unwrap().update_contents(local.clone());
@@ -137,7 +142,7 @@ impl Screen for Search {
                         for video in e.into_iter() {
                             let id = video.video_id.clone();
                             item.push((
-                                format!(" {video} "),
+                                format!(" {} ", to_bidi_string(&video.to_string())),
                                 if DATABASE.read().unwrap().iter().any(|x| x.video_id == id) {
                                     Status::Local(video)
                                 } else {
@@ -158,7 +163,8 @@ impl Screen for Search {
                                             format_playlist(
                                                 &format!(
                                                     " [P] {} ({})",
-                                                    playlist.name, playlist.subtitle
+                                                    to_bidi_string(&playlist.name),
+                                                    to_bidi_string(&playlist.subtitle)
                                                 ),
                                                 &e,
                                             ),

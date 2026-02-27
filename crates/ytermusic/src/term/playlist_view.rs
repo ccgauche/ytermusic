@@ -3,7 +3,12 @@ use flume::Sender;
 use ratatui::{layout::Rect, style::Style, Frame};
 use ytpapi2::YoutubeMusicVideoRef;
 
-use crate::{consts::CONFIG, structures::sound_action::SoundAction, utils::invert, DATABASE};
+use crate::{
+    consts::CONFIG,
+    structures::sound_action::SoundAction,
+    utils::{invert, to_bidi_string},
+    DATABASE,
+};
 
 use super::{
     item_list::{ListItem, ListItemAction},
@@ -74,7 +79,8 @@ impl Screen for PlaylistView {
     fn handle_global_message(&mut self, m: ManagerMessage) -> EventResponse {
         match m {
             ManagerMessage::Inspect(a, screen, m) => {
-                self.items.set_title(format!(" Inspecting {a} "));
+                self.items
+                    .set_title(format!(" Inspecting {} ", to_bidi_string(&a)));
                 self.goto = screen;
                 let db = DATABASE.read().unwrap();
                 self.items.update(
@@ -82,7 +88,7 @@ impl Screen for PlaylistView {
                         .enumerate()
                         .map(|(i, m)| {
                             (
-                                format!("  {m}"),
+                                format!("  {}", to_bidi_string(&m.to_string())),
                                 PlayListAction(i, !db.iter().any(|x| x.video_id == m.video_id)),
                             )
                         })
