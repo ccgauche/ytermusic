@@ -9,7 +9,7 @@ use crate::{
     consts::{CACHE_DIR, CONFIG},
     structures::sound_action::{download_manager_handler, SoundAction},
     systems::DOWNLOAD_MANAGER,
-    utils::invert,
+    utils::{invert, to_bidi_string},
     ShutdownSignal, DATABASE,
 };
 
@@ -67,7 +67,7 @@ pub fn format_playlist(name: &str, videos: &[YoutubeMusicVideoRef]) -> String {
         .count();
     format!(
         "{}     ({}/{} {}%)",
-        name,
+        to_bidi_string(name),
         local_videos,
         videos.len(),
         (local_videos as f32 / videos.len() as f32 * 100.0) as u8

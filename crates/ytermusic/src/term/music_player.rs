@@ -11,7 +11,7 @@ use crate::{
         sound_action::SoundAction,
     },
     systems::{player::PlayerState, DOWNLOAD_MANAGER},
-    utils::invert,
+    utils::{invert, to_bidi_string},
 };
 
 use super::{
@@ -201,7 +201,7 @@ impl Screen for PlayerState {
                     Block::default()
                         .title(
                             self.current()
-                                .map(|x| format!(" {x} "))
+                                .map(|x| format!(" {} ", to_bidi_string(&x.to_string())))
                                 .unwrap_or_else(|| " No music playing ".to_owned()),
                         )
                         .borders(Borders::ALL),
@@ -246,7 +246,11 @@ impl Screen for PlayerState {
                         music_state.style(None)
                     },
                     if let Some(e) = self.list.get(index) {
-                        format!(" {music_state_c} {} | {}", e.author, e.title)
+                        format!(
+                            " {music_state_c} {} | {}",
+                            to_bidi_string(&e.author),
+                            to_bidi_string(&e.title)
+                        )
                     } else {
                         String::new()
                     },
