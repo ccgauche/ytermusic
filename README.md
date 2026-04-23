@@ -73,8 +73,16 @@ YTerMusic is a TUI based Youtube Music Player that aims to be as fast and simple
 - If you use a second account for youtube music
   	1. Go to https://myaccount.google.com/
   	2. Switch to your brand account
-  	3. copy the number written in the url, after \b\
-  	4. paste it into a new `account_id.txt` file in the same folder as `headers.txt`
+  	3. Copy the number written in the url, after `\b\`
+  	4. Paste it into a new `account_id.txt` file in the same folder as `headers.txt`
+  	5. Add the `X-Goog-AuthUser` header to your `headers.txt` file:
+  	   - In the browser developer tools Network tab, find the `X-Goog-AuthUser` header value (usually `0` or `1`)
+  	   - Add it to your `headers.txt`:
+  	   ```
+  	   Cookie: <cookie>
+  	   User-Agent: Mozilla/5.0 (X11; Linux x86_64) ...
+  	   X-Goog-AuthUser: 0
+  	   ```
 
 ## Building from source
 
