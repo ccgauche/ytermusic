@@ -126,7 +126,7 @@ impl SoundAction {
             }
             Self::DeleteVideoUnary => {
                 let index_list = player.list_selector.get_relative_position();
-                let video = player.relative_current(index_list).cloned().unwrap();
+                let Some(video) = player.relative_current(index_list).cloned() else { return; };
                 if matches!(
                     player.music_status.get(&video.video_id), // not sure abt conditions, needs testing
                     Some(
