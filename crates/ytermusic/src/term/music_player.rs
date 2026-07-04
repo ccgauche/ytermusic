@@ -2,7 +2,7 @@ use common_structs::{AppStatus, MusicDownloadStatus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEventKind};
 
 use rand::seq::SliceRandom;
-use ratatui::widgets::{Block, Borders, Gauge};
+use ratatui::widgets::{Block, Borders, Widget};
 
 use crate::{
     consts::CONFIG,
@@ -15,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    rect_contains, relative_pos, split_x, split_y, vertical_gauge::VerticalGauge, EventResponse,
-    ManagerMessage, Screen, Screens,
+    rect_contains, relative_pos, split_x, split_x_start, split_y, vertical_gauge::VerticalGauge,
+    EventResponse, ManagerMessage, Screen, Screens,
 };
 
 impl PlayerState {
@@ -134,6 +134,14 @@ impl Screen for PlayerState {
                 self.list_selector.scroll_down();
                 EventResponse::None
             }
+            KeyCode::Char('K') => {
+                self.lyrics.scroll_up();
+                EventResponse::None
+            }
+            KeyCode::Char('J') => {
+                self.lyrics.scroll_down();
+                EventResponse::None
+            }
             KeyCode::Enter => {
                 if let Some(e) = self.list_selector.play() {
                     self.activate(e);
@@ -193,10 +201,34 @@ impl Screen for PlayerState {
                 volume_rect,
             );
         }
+        let (start_color, end_color) = if self.sink.is_paused() {
+            let c = CONFIG
+                .player
+                .gauge_paused_style
+                .fg
+                .unwrap_or(ratatui::style::Color::White);
+            (c, c)
+        } else if self.sink.is_finished() {
+            let c = CONFIG
+                .player
+                .gauge_nomusic_style
+                .fg
+                .unwrap_or(ratatui::style::Color::White);
+            (c, c)
+        } else {
+            (
+                CONFIG
+                    .player
+                    .gauge_playing_style
+                    .fg
+                    .unwrap_or(ratatui::style::Color::White),
+                ratatui::style::Color::Rgb(99, 102, 241), // Indigo end
+            )
+        };
         let current_time = self.sink.elapsed().as_secs();
         let total_time = self.sink.duration().map(|x| x as u32).unwrap_or(0);
         f.render_widget(
-            Gauge::default()
+            crate::term::gradient_gauge::GradientGauge::default()
                 .block(
                     Block::default()
                         .title(
@@ -206,7 +238,7 @@ impl Screen for PlayerState {
                         )
                         .borders(Borders::ALL),
                 )
-                .gauge_style(colors)
+                .gradient(start_color, end_color)
                 .ratio(
                     if self.sink.is_finished() {
                         0.5
@@ -224,10 +256,13 @@ impl Screen for PlayerState {
                 )),
             progress_rect,
         );
-        // Create a List from all list items and highlight the currently selected one
+        // Split the UI layout to include lyrics and visualizer
+        let [left_rect, side_rect] = split_x_start(list_rect, list_rect.width / 2);
+        let [lyrics_rect, visualizer_rect] = split_y(side_rect, (side_rect.height / 3).max(4));
+
         self.list_selector.update(self.list.len(), self.current);
         self.list_selector.render(
-            list_rect,
+            left_rect,
             f.buffer_mut(),
             |index, select, scroll| {
                 let music_state = self
@@ -257,7 +292,17 @@ impl Screen for PlayerState {
                 )
             },
             " Playlist ",
-        )
+        );
+
+        // Render Lyrics
+        self.lyrics.render(lyrics_rect, f.buffer_mut());
+
+        // Render Visualizer
+        let visualizer = super::visualizer::Visualizer::new(
+            current_time * 1000
+                + (self.sink.percentage() * total_time as f64 * 1000.0) as u64 % 1000,
+        );
+        visualizer.render(visualizer_rect, f.buffer_mut());
     }
 
     fn handle_global_message(&mut self, message: ManagerMessage) -> EventResponse {

@@ -26,40 +26,46 @@ pub type Result<T> = std::result::Result<T, YoutubeMusicError>;
 const YTM_DOMAIN: &str = "https://music.youtube.com";
 
 #[cfg(test)]
+fn live_headers_path() -> std::path::PathBuf {
+    std::env::var_os("YTERMUSIC_HEADERS_PATH")
+        .map(std::path::PathBuf::from)
+        .expect("set YTERMUSIC_HEADERS_PATH to run ignored live API tests")
+}
+
+#[cfg(test)]
 fn get_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
-    let file = std::fs::read_to_string("../headers.txt").unwrap();
-    for header in file.lines() {
-        if header.trim().is_empty() {
-            continue;
-        }
-        let (key, value) = header.split_once(": ").unwrap();
-        headers.insert(
-            match key {
-                "Cookie" => reqwest::header::COOKIE,
-                "User-Agent" => reqwest::header::USER_AGENT,
-                _ => {
-                    println!("Unknown header key: {}", key);
-                    continue;
-                }
-            },
-            value.parse().unwrap(),
-        );
+    let file = std::fs::read_to_string(live_headers_path())
+        .expect("failed to read YTERMUSIC_HEADERS_PATH");
+    for header in file.lines().filter(|line| !line.trim().is_empty()) {
+        let (key, value) = header
+            .split_once(": ")
+            .expect("live test header lines must contain ': '");
+        let name = match key {
+            "Cookie" => reqwest::header::COOKIE,
+            "User-Agent" => reqwest::header::USER_AGENT,
+            _ => continue,
+        };
+        headers.insert(name, value.parse().expect("invalid live test header value"));
     }
     headers
 }
 
 #[cfg(test)]
 fn get_account_id() -> Option<String> {
-    let file = std::fs::read_to_string("../account_id.txt").unwrap();
-    let account_id = match std::fs::read_to_string(file) {
-        Ok(id) => Some(id),
-        Err(_) => None,
-    };
-    return account_id;
+    let headers_path = live_headers_path();
+    let account_path = headers_path
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join("account_id.txt");
+    std::fs::read_to_string(account_path)
+        .ok()
+        .map(|id| id.trim().to_owned())
+        .filter(|id| !id.is_empty())
 }
 
 #[test]
+#[ignore = "requires YTERMUSIC_HEADERS_PATH and live YouTube Music access"]
 fn advanced_like() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
@@ -71,13 +77,14 @@ fn advanced_like() {
             .get_library(&Endpoint::MusicLibraryLanding, 0)
             .await
             .unwrap();
-        assert_eq!(search.is_empty(), false);
+        assert!(!search.is_empty());
         println!("{:?}", search[1]);
         println!("{:?}", ytm.get_playlist(&search[1], 0).await.unwrap());
     });
 }
 
 #[test]
+#[ignore = "requires YTERMUSIC_HEADERS_PATH and live YouTube Music access"]
 fn advanced_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
@@ -85,14 +92,15 @@ fn advanced_test() {
             .await
             .unwrap();
         let search = ytm.search("j'ai la danse qui va avec", 0).await.unwrap();
-        assert_eq!(search.videos.is_empty(), false);
-        assert_eq!(search.playlists.is_empty(), false);
+        assert!(!search.videos.is_empty());
+        assert!(!search.playlists.is_empty());
         let playlist_contents = ytm.get_playlist(&search.playlists[1], 0).await.unwrap();
         println!("{:?}", playlist_contents);
     });
 }
 
 #[test]
+#[ignore = "requires YTERMUSIC_HEADERS_PATH and live YouTube Music access"]
 fn home_test() {
     use tokio::runtime::Runtime;
     Runtime::new().unwrap().block_on(async {
@@ -101,7 +109,7 @@ fn home_test() {
             .unwrap();
         let search = ytm.get_home(0).await.unwrap();
         println!("{:?}", search.playlists);
-        assert_eq!(search.playlists.is_empty(), false);
+        assert!(!search.playlists.is_empty());
         let playlist_contents = ytm.get_playlist(&search.playlists[0], 0).await.unwrap();
         println!("{:?}", playlist_contents);
     });

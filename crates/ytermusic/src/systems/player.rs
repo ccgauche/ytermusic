@@ -33,6 +33,7 @@ pub struct PlayerState {
     pub soundaction_receiver: Receiver<SoundAction>,
     pub stream_error_receiver: Receiver<PlayError>,
     last_download_list: Vec<String>,
+    pub lyrics: crate::term::lyrics::LyricsState,
 }
 
 impl PlayerState {
@@ -65,6 +66,7 @@ impl PlayerState {
             current: 0,
             rtcurrent: None,
             last_download_list: Vec::new(),
+            lyrics: crate::term::lyrics::LyricsState::new(),
         }
     }
 
@@ -97,6 +99,12 @@ impl PlayerState {
     }
 
     pub fn update(&mut self) {
+        if let Some(current) = self.current().cloned() {
+            self.lyrics
+                .update(Some(current.video_id), &current.title, &current.author);
+        } else {
+            self.lyrics.update(None, "", "");
+        }
         PLAYER_RUNNING.store(self.current().is_some(), Ordering::SeqCst);
         self.update_controls();
         self.handle_stream_errors();

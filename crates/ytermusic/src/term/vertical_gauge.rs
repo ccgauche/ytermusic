@@ -42,34 +42,33 @@ impl<'a> Widget for VerticalGauge<'a> {
         let filled_height = f64::from(gauge_area.height) * self.ratio;
         let end = gauge_area.bottom() - filled_height.round() as u16;
         for y in gauge_area.top()..end {
-            // render the filled area (left to end)
+            // empty area
             for x in gauge_area.left()..gauge_area.right() {
-                buf.get_mut(x, y)
-                    .set_symbol(" ")
-                    .set_bg(self.gauge_style.bg.unwrap_or(Color::Reset))
-                    .set_fg(self.gauge_style.fg.unwrap_or(Color::Reset));
+                buf.get_mut(x, y).set_symbol(" ").set_fg(Color::Reset);
+                // No bg set -> transparent!
             }
         }
         for y in end..gauge_area.bottom() {
-            // render the empty area (end to right)
+            // filled area
             for x in gauge_area.left()..gauge_area.right() {
                 buf.get_mut(x, y)
-                    .set_symbol(" ")
-                    .set_bg(self.gauge_style.fg.unwrap_or(Color::Reset))
-                    .set_fg(self.gauge_style.bg.unwrap_or(Color::Reset));
+                    .set_symbol("█")
+                    .set_fg(self.gauge_style.fg.unwrap_or(Color::Reset));
+                // No bg set -> transparent background around block
             }
         }
         for x in label_col..label_col + clamped_label_width {
+            let cell = buf.get_mut(x, label_row);
+            cell.set_symbol(&label[(x - label_col) as usize..(x - label_col + 1) as usize]);
+
             if gauge_area.height / 2 > end.saturating_sub(2) {
-                buf.get_mut(x, label_row)
-                    .set_symbol(&label[(x - label_col) as usize..(x - label_col + 1) as usize])
-                    .set_bg(self.gauge_style.fg.unwrap_or(Color::Reset))
-                    .set_fg(self.gauge_style.bg.unwrap_or(Color::Reset));
+                // Inside filled area
+                cell.set_bg(self.gauge_style.fg.unwrap_or(Color::Reset));
+                cell.set_fg(Color::Black);
             } else {
-                buf.get_mut(x, label_row)
-                    .set_symbol(&label[(x - label_col) as usize..(x - label_col + 1) as usize])
-                    .set_bg(self.gauge_style.bg.unwrap_or(Color::Reset))
-                    .set_fg(self.gauge_style.fg.unwrap_or(Color::Reset));
+                // Inside empty area
+                cell.set_fg(Color::White);
+                // No bg set, remains transparent
             }
         }
     }

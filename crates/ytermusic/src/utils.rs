@@ -1,5 +1,9 @@
 use directories::ProjectDirs;
-use ratatui::style::{Color, Style};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+};
 use unicode_bidi::{BidiInfo, Level};
 
 /// Get directories for the project for config, cache, etc.
@@ -82,4 +86,66 @@ pub fn to_bidi_string(s: &str) -> String {
         }
     }
     s.to_string()
+}
+
+/// Interpolates between two colors
+pub fn interpolate_color(color1: Color, color2: Color, t: f64) -> Color {
+    let t = t.clamp(0.0, 1.0);
+    let (r1, g1, b1) = match color1 {
+        Color::Rgb(r, g, b) => (r as f64, g as f64, b as f64),
+        _ => (0.0, 0.0, 0.0), // Simplified, assuming we always pass RGB
+    };
+    let (r2, g2, b2) = match color2 {
+        Color::Rgb(r, g, b) => (r as f64, g as f64, b as f64),
+        _ => (0.0, 0.0, 0.0),
+    };
+
+    let r = (r1 * (1.0 - t) + r2 * t) as u8;
+    let g = (g1 * (1.0 - t) + g2 * t) as u8;
+    let b = (b1 * (1.0 - t) + b2 * t) as u8;
+
+    Color::Rgb(r, g, b)
+}
+
+/// Fills a region of the buffer with a vertical gradient background
+pub fn fill_gradient_bg(buf: &mut Buffer, area: Rect, top_color: Color, bottom_color: Color) {
+    if area.height == 0 {
+        return;
+    }
+    for y in area.top()..area.bottom() {
+        let t = (y - area.top()) as f64 / area.height as f64;
+        let color = interpolate_color(top_color, bottom_color, t);
+        for x in area.left()..area.right() {
+            buf.get_mut(x, y).set_bg(color);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interpolates_midpoint_between_rgb_colors() {
+        assert_eq!(
+            interpolate_color(Color::Rgb(0, 10, 20), Color::Rgb(100, 110, 120), 0.5,),
+            Color::Rgb(50, 60, 70)
+        );
+    }
+
+    #[test]
+    fn fills_each_row_with_a_gradient_color() {
+        let area = Rect::new(0, 0, 2, 3);
+        let mut buffer = Buffer::empty(area);
+
+        fill_gradient_bg(
+            &mut buffer,
+            area,
+            Color::Rgb(0, 0, 0),
+            Color::Rgb(90, 90, 90),
+        );
+
+        assert_eq!(buffer.get(0, 0).bg, buffer.get(1, 0).bg);
+        assert_ne!(buffer.get(0, 0).bg, buffer.get(0, 2).bg);
+    }
 }
