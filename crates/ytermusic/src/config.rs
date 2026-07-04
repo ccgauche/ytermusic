@@ -104,11 +104,11 @@ impl Default for MusicPlayerConfig {
 }
 
 fn default_searching_style() -> Style {
-    Style::default().fg(Color::LightCyan)
+    Style::default().fg(Color::Rgb(196, 181, 253)) // Lilac (#C4B5FD)
 }
 
 fn default_error_style() -> Style {
-    Style::default().fg(Color::Red)
+    Style::default().fg(Color::Rgb(255, 107, 107)) // Coral (#FF6B6B)
 }
 
 fn parallel_downloads() -> u16 {
@@ -128,19 +128,19 @@ fn enable_volume_slider() -> bool {
 }
 
 fn default_paused_style() -> Style {
-    Style::default().fg(Color::Yellow)
+    Style::default().fg(Color::Rgb(255, 107, 107)) // Coral (#FF6B6B)
 }
 
 fn default_playing_style() -> Style {
-    Style::default().fg(Color::Green)
+    Style::default().fg(Color::Rgb(0, 201, 167)) // Neon Green-Aqua (#00C9A7)
 }
 
 fn default_nomusic_style() -> Style {
-    Style::default().fg(Color::White)
+    Style::default().fg(Color::Rgb(226, 232, 240)) // Soft White (#E2E8F0)
 }
 
 fn default_downloading_style() -> Style {
-    Style::default().fg(Color::Blue)
+    Style::default().fg(Color::Rgb(99, 102, 241)) // Indigo (#6366F1)
 }
 
 fn default_volume() -> u8 {
@@ -198,5 +198,27 @@ impl Config {
             Some(config)
         };
         opt().unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Config;
+
+    #[test]
+    fn default_config_round_trips_through_toml() {
+        let original = Config::default();
+        let serialized = toml::to_string_pretty(&original).expect("serialize default config");
+        let decoded: Config = toml::from_str(&serialized).expect("deserialize default config");
+
+        assert_eq!(
+            decoded.global.parallel_downloads,
+            original.global.parallel_downloads
+        );
+        assert_eq!(
+            decoded.player.initial_volume,
+            original.player.initial_volume
+        );
+        assert_eq!(decoded.player.volume_slider, original.player.volume_slider);
     }
 }

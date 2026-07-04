@@ -27,11 +27,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Run cargo check
-        run: cargo check
-
-      - name: Run cargo fmt
+      - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run cargo clippy
-        run: cargo clippy -- -D warnings
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace --all-targets --locked

@@ -8,3 +8,9 @@ ytpapi2 = { path = "crates/ytpapi2" }
 database = { path = "crates/database" }
 download-manager = { path = "crates/download-manager" }
 common-structs = { path = "crates/common-structs" }
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
+opt-level = 3

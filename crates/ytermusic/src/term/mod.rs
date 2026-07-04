@@ -1,11 +1,14 @@
 pub mod device_lost;
+pub mod gradient_gauge;
 pub mod item_list;
 pub mod list_selector;
+pub mod lyrics;
 pub mod music_player;
 pub mod playlist;
 pub mod playlist_view;
 pub mod search;
 pub mod vertical_gauge;
+pub mod visualizer;
 
 use std::{
     io::{self},
@@ -213,6 +216,13 @@ impl Manager {
             }
             let rectsize = terminal.size()?;
             terminal.draw(|f| {
+                let size = f.size();
+                crate::utils::fill_gradient_bg(
+                    f.buffer_mut(),
+                    size,
+                    ratatui::style::Color::Rgb(13, 15, 26), // Top: #0D0F1A
+                    ratatui::style::Color::Rgb(26, 29, 46), // Bottom: #1A1D2E
+                );
                 self.music_player.update();
                 self.current_screen().render(f);
             })?;
@@ -288,6 +298,14 @@ pub fn split_x(f: Rect, end_size: u16) -> [Rect; 2] {
     rectprogress.x += rectprogress.width.saturating_sub(end_size);
     rectprogress.width = end_size;
     [rectlistvol, rectprogress]
+}
+pub fn split_x_start(f: Rect, start_size: u16) -> [Rect; 2] {
+    let mut rect1 = f;
+    rect1.width = start_size;
+    let mut rect2 = f;
+    rect2.x += start_size;
+    rect2.width = rect2.width.saturating_sub(start_size);
+    [rect1, rect2]
 }
 
 pub fn rect_contains(rect: &Rect, x: u16, y: u16, margin: u16) -> bool {
