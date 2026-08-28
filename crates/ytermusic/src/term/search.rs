@@ -12,7 +12,7 @@ use ratatui::{
 use tokio::task::JoinHandle;
 use ytpapi2::{
     HeaderMap, HeaderValue, SearchResults, YoutubeMusicInstance, YoutubeMusicPlaylistRef,
-    YoutubeMusicVideoRef,
+    YoutubeMusicVideoRef, YT_USER_AGENT,
 };
 
 use crate::{
@@ -240,7 +240,7 @@ impl Search {
                 );
                 headermap.insert(
                     "user-agent",
-                    HeaderValue::from_static("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"),
+                    HeaderValue::from_static(YT_USER_AGENT),
                 );
                 YoutubeMusicInstance::new(headermap, None).await    //don't think we need a brand account for search
             } else {

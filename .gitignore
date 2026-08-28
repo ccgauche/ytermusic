@@ -11,4 +11,6 @@ account_id.txt
 /music_renamer
 last-playlist.json
 muex
-cssparser
+cssparserresult
+
+/result
