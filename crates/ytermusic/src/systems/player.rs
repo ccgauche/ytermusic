@@ -129,7 +129,7 @@ impl PlayerState {
 
             if self.is_current_downloaded() {
                 if let Some(video) = self.current().cloned() {
-                    let k = CACHE_DIR.join(format!("downloads/{}.mp4", &video.video_id));
+                    let k = CACHE_DIR.join(format!("downloads/{}.mp4", video.video_id));
                     if let Err(e) = self.sink.play(k.as_path()) {
                         if matches!(e, PlayError::DecoderError(_)) {
                             // Cleaning the file
@@ -144,7 +144,7 @@ impl PlayerState {
                                 &self.updater,
                                 "invalid cleaning JSON",
                                 std::fs::remove_file(
-                                    CACHE_DIR.join(format!("downloads/{}.json", &video.video_id)),
+                                    CACHE_DIR.join(format!("downloads/{}.json", video.video_id)),
                                 ),
                             );
                             self.current = 0;

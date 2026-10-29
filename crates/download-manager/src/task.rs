@@ -178,10 +178,10 @@ impl DownloadManager {
         ));
         let download_path_mp4 = self
             .cache_dir
-            .join(format!("downloads/{}.mp4", &song.video_id));
+            .join(format!("downloads/{}.mp4", song.video_id));
         let download_path_json = self
             .cache_dir
-            .join(format!("downloads/{}.json", &song.video_id));
+            .join(format!("downloads/{}.json", song.video_id));
         if download_path_json.exists() {
             s(DownloadManagerMessage::VideoStatusUpdate(
                 song.video_id.clone(),

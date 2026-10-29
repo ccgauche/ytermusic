@@ -23,6 +23,21 @@ pub struct GlobalConfig {
     pub parallel_downloads: u16,
     #[serde(default)]
     pub downloader: DownloaderConfig,
+    /// Maximum number of playlists fetched from the API at the same time.
+    /// Lower values use less memory but fill the playlist list slower.
+    /// Default value is 4.
+    #[serde(default = "max_concurrent_fetches")]
+    pub max_concurrent_fetches: u16,
+}
+
+impl GlobalConfig {
+    /// `max_concurrent_fetches`, with 0 falling back to the default.
+    pub fn fetch_limit(&self) -> usize {
+        match self.max_concurrent_fetches {
+            0 => max_concurrent_fetches() as usize,
+            n => n as usize,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -112,6 +127,10 @@ fn default_error_style() -> Style {
 }
 
 fn parallel_downloads() -> u16 {
+    4
+}
+
+fn max_concurrent_fetches() -> u16 {
     4
 }
 

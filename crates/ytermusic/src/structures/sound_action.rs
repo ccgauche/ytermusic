@@ -77,7 +77,7 @@ impl SoundAction {
                 player.music_status.insert(video, status);
             }
             Self::AddVideosToQueue(video) => {
-                let db = DATABASE.read().unwrap();
+                let db = DATABASE.read();
                 for v in video {
                     Self::insert(
                         player,
@@ -107,12 +107,7 @@ impl SoundAction {
                 Self::insert(
                     player,
                     video.video_id.clone(),
-                    if DATABASE
-                        .read()
-                        .unwrap()
-                        .iter()
-                        .any(|e| e.video_id == video.video_id)
-                    {
+                    if DATABASE.read().iter().any(|e| e.video_id == video.video_id) {
                         MusicDownloadStatus::Downloaded
                     } else {
                         MusicDownloadStatus::NotDownloaded
@@ -153,13 +148,13 @@ impl SoundAction {
                 DATABASE.remove_video(&video);
 
                 let cache_folder = CACHE_DIR.join("downloads");
-                let json_path = cache_folder.join(format!("{}.json", &video.video_id));
+                let json_path = cache_folder.join(format!("{}.json", video.video_id));
                 match fs::remove_file(json_path) {
                     Ok(_) => trace!("Deleted JSON file"),
                     Err(e) => error!("Error deleting JSON video file: {}", e),
                 }
 
-                let mp4_path = cache_folder.join(format!("{}.mp4", &video.video_id));
+                let mp4_path = cache_folder.join(format!("{}.mp4", video.video_id));
                 match fs::remove_file(mp4_path) {
                     Ok(_) => trace!("Deleted MP4 file"),
                     Err(e) => error!("Error deleting MP4 video file: {}", e),

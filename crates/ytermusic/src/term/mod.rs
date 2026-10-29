@@ -109,7 +109,7 @@ impl Manager {
                 goto: Screens::Playlist,
                 videos: Vec::new(),
             },
-            search: Search::new(action_sender).await,
+            search: Search::new(action_sender),
             current_screen: Screens::Playlist,
             device_lost: DeviceLost(Vec::new(), None),
         }
@@ -245,6 +245,7 @@ impl Manager {
             }
             if last_tick.elapsed() >= tick_rate {
                 last_tick = Instant::now();
+                crate::release_memory();
             }
         }
 

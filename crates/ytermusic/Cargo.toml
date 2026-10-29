@@ -34,9 +34,6 @@ player.workspace = true
 #  --- Media Control ---
 souvlaki = "0.7.3"
 
-#  --- Alloc ---
-mimalloc = { version = "0.1.39", default-features = false }
-
 #  --- Config ---
 toml = "0.8.11"
 
@@ -56,14 +53,14 @@ ctrlc = "3.5.0"
 [features]
 rusty-ytdl-backend = ["download-manager/rusty-ytdl-backend"]
 
+# glibc Linux uses the system allocator, see `release_memory` in main.rs
+[target.'cfg(not(all(target_os = "linux", target_env = "gnu")))'.dependencies]
+mimalloc = { version = "0.1.39", default-features = false }
+[target.'cfg(all(target_os = "linux", target_env = "gnu"))'.dependencies]
+libc = "0.2"
+
 [target."cfg(target_os = \"windows\")".dependencies]
 raw-window-handle = "0.4.3"
 winit = "0.26.1"
 [target."cfg(target_os = \"macos\")".dependencies]
 winit = "0.26.1"
-
-[profile.release]
-codegen-units = 1
-debug = true
-lto = true
-opt-level = 3

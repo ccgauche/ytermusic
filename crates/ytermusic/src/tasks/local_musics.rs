@@ -1,7 +1,6 @@
 use flume::Sender;
 use log::info;
 use rand::seq::SliceRandom;
-use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     consts::{CACHE_DIR, CONFIG},
@@ -12,12 +11,12 @@ use crate::{
 };
 
 pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
+    // Load synchronously so playlists formatted by other tasks see the downloaded songs
+    let loaded = DATABASE.load();
     run_service(async move {
         info!("Database getter task on");
         let guard = performance::guard("Local musics");
-        if let Some(videos) = DATABASE.read() {
-            shuffle_and_send(videos, &updater_s);
-        } else {
+        if !loaded {
             let mut videos = Vec::new();
             for files in std::fs::read_dir(CACHE_DIR.join("downloads")).unwrap() {
                 let path = files.unwrap().path();
@@ -28,25 +27,21 @@ pub fn spawn_local_musics_task(updater_s: Sender<ManagerMessage>) {
                     videos.push(video);
                 }
             }
-            shuffle_and_send(videos, &updater_s);
-
+            DATABASE.clone_from(&videos);
             DATABASE.write();
         }
+
+        let mut videos = DATABASE.read().clone();
+        if CONFIG.player.shuffle {
+            videos.shuffle(&mut rand::thread_rng());
+        }
+
+        updater_s
+            .send(
+                ManagerMessage::AddElementToChooser(("Local musics".to_owned(), videos))
+                    .pass_to(Screens::Playlist),
+            )
+            .unwrap();
         drop(guard);
     });
-}
-
-fn shuffle_and_send(mut videos: Vec<YoutubeMusicVideoRef>, updater_s: &Sender<ManagerMessage>) {
-    DATABASE.clone_from(&videos);
-
-    if CONFIG.player.shuffle {
-        videos.shuffle(&mut rand::thread_rng());
-    }
-
-    updater_s
-        .send(
-            ManagerMessage::AddElementToChooser(("Local musics".to_owned(), videos))
-                .pass_to(Screens::Playlist),
-        )
-        .unwrap();
 }

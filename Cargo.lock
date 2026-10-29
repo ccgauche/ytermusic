@@ -6223,6 +6223,7 @@ dependencies = [
  "directories",
  "download-manager",
  "flume",
+ "libc",
  "log",
  "mimalloc",
  "once_cell",

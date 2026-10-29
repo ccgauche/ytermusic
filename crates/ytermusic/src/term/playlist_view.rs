@@ -82,7 +82,7 @@ impl Screen for PlaylistView {
                 self.items
                     .set_title(format!(" Inspecting {} ", to_bidi_string(&a)));
                 self.goto = screen;
-                let db = DATABASE.read().unwrap();
+                let db = DATABASE.read();
                 self.items.update(
                     m.iter()
                         .enumerate()

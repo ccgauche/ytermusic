@@ -1,4 +1,7 @@
-use std::io::{Cursor, Read};
+use std::{
+    io::{Cursor, Read},
+    sync::RwLockReadGuard,
+};
 
 use varuint::ReadVarint;
 use ytpapi2::YoutubeMusicVideoRef;
@@ -6,7 +9,23 @@ use ytpapi2::YoutubeMusicVideoRef;
 use crate::YTLocalDatabase;
 
 impl YTLocalDatabase {
-    pub fn read(&self) -> Option<Vec<YoutubeMusicVideoRef>> {
+    /// Loads `db.bin` into memory. Returns false if the file is missing or corrupted.
+    pub fn load(&self) -> bool {
+        match self.read_file() {
+            Some(videos) => {
+                *self.references.write().unwrap() = videos;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Returns the in-memory list of downloaded videos.
+    pub fn read(&self) -> RwLockReadGuard<'_, Vec<YoutubeMusicVideoRef>> {
+        self.references.read().unwrap()
+    }
+
+    fn read_file(&self) -> Option<Vec<YoutubeMusicVideoRef>> {
         let mut buffer = Cursor::new(std::fs::read(self.cache_dir.join("db.bin")).ok()?);
         let mut videos = Vec::new();
         while buffer.get_mut().len() > buffer.position() as usize {

@@ -36,11 +36,20 @@ mod tasks;
 
 pub use database::DATABASE;
 
-use mimalloc::MiMalloc;
-
-// Changes the allocator to improve performance especially on Windows
+// Changes the allocator to improve performance especially on Windows.
+// On glibc Linux mimalloc keeps far more memory resident than the system allocator.
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 #[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+/// Returns freed heap memory to the OS. glibc otherwise keeps the memory freed after
+/// the startup API responses cached for the whole session.
+pub fn release_memory() {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    unsafe {
+        libc::malloc_trim(0);
+    }
+}
 
 fn run_service<T>(future: T) -> tokio::task::JoinHandle<()>
 where
@@ -254,6 +263,9 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
     tasks::clean::spawn_clean_task();
 
     STARTUP_TIME.log("Spawned clean task");
+    // Spawn the database getter task, first so the database is loaded for the other tasks
+    tasks::local_musics::spawn_local_musics_task(updater_s.clone());
+    STARTUP_TIME.log("Spawned local musics task");
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system
@@ -262,10 +274,8 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
     tasks::last_playlist::spawn_last_playlist_task(updater_s.clone());
     STARTUP_TIME.log("Spawned last playlist task");
     // Spawn the API task
-    tasks::api::spawn_api_task(updater_s.clone());
+    tasks::api::spawn_api_task(updater_s);
     STARTUP_TIME.log("Spawned api task");
-    // Spawn the database getter task
-    tasks::local_musics::spawn_local_musics_task(updater_s);
 
     STARTUP_TIME.log("Running manager");
     let mut manager = Manager::new(sa, player).await;
@@ -282,7 +292,7 @@ fn app_start() {
     .expect("Error setting Ctrl-C handler");
     std::thread::spawn(move || {
         tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
+            .worker_threads(1)
             .enable_all()
             .build()
             .expect("Failed to build runtime")
