@@ -1,0 +1,9 @@
+[package]
+name = "stream-source"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+flume = "0.11.0"
+log = "0.4.29"
+rodio = { version = "0.21.1", default-features = false, features = ["symphonia-aac", "symphonia-isomp4"] }

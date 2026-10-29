@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
-    sync::atomic::Ordering,
+    sync::{atomic::Ordering, Arc},
 };
 
 use common_structs::MusicDownloadStatus;
@@ -33,7 +33,13 @@ pub struct PlayerState {
     pub soundaction_receiver: Receiver<SoundAction>,
     pub stream_error_receiver: Receiver<PlayError>,
     last_download_list: Vec<String>,
+    /// Last song started from its partial download, so it isn't restarted.
+    streamed: Option<String>,
 }
+
+/// Downloaded bytes needed before a song plays while downloading
+/// (about 30s of YouTube's 128kbps audio).
+const MIN_STREAM_BYTES: u64 = 512 * 1024;
 
 impl PlayerState {
     fn new(
@@ -65,6 +71,7 @@ impl PlayerState {
             current: 0,
             rtcurrent: None,
             last_download_list: Vec::new(),
+            streamed: None,
         }
     }
 
@@ -162,6 +169,8 @@ impl PlayerState {
                         }
                     }
                 }
+            } else {
+                self.try_stream_current();
             }
         } else {
             self.rtcurrent = self.current().cloned();
@@ -181,6 +190,37 @@ impl PlayerState {
         if new_ids != self.last_download_list {
             self.last_download_list = new_ids;
             DOWNLOAD_MANAGER.set_download_list(to_download);
+        }
+    }
+
+    /// Plays the current song from its partial download so long songs don't
+    /// have to finish downloading first. Only yt-dlp writes a `.part` file.
+    fn try_stream_current(&mut self) {
+        let Some(video) = self.current().cloned() else {
+            return;
+        };
+        if !matches!(
+            self.music_status.get(&video.video_id),
+            Some(MusicDownloadStatus::Downloading(_))
+        ) || self.streamed.as_ref() == Some(&video.video_id)
+        {
+            return;
+        }
+        let downloads = CACHE_DIR.join("downloads");
+        let partial = downloads.join(format!("{}.mp4.part", video.video_id));
+        let downloaded = std::fs::metadata(&partial).map_or(0, |m| m.len());
+        if downloaded < MIN_STREAM_BYTES {
+            return;
+        }
+        self.streamed = Some(video.video_id.clone());
+        // The download manager writes the json once the mp4 is complete.
+        let json = downloads.join(format!("{}.json", video.video_id));
+        let final_path = downloads.join(format!("{}.mp4", video.video_id));
+        if let Err(e) =
+            self.sink
+                .play_streaming(&partial, &final_path, Arc::new(move || json.exists()))
+        {
+            error!("couldn't stream {}: {e:?}", video.video_id);
         }
     }
 

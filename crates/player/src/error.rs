@@ -6,6 +6,7 @@ pub enum PlayError {
     StreamError(rodio::StreamError),
     PlayError(rodio::PlayError),
     SeekError(rodio::source::SeekError),
+    StreamOpen(stream_source::OpenError),
 }
 
 impl From<rodio::PlayError> for PlayError {

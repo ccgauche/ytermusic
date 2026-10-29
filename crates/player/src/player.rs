@@ -3,8 +3,10 @@ use rodio::cpal::traits::HostTrait;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+use stream_source::{IsComplete, StreamingSource};
 
 use crate::{PlayError, PlayerData, PlayerOptions, SEEK_STEP};
 
@@ -14,6 +16,13 @@ pub struct Player {
     data: PlayerData,
     error_sender: Sender<PlayError>,
     options: PlayerOptions,
+    streaming: Option<Streaming>,
+}
+
+/// The song playing while it downloads.
+struct Streaming {
+    final_path: PathBuf,
+    is_complete: IsComplete,
 }
 
 impl Player {
@@ -60,6 +69,7 @@ impl Player {
             error_sender,
             data: PlayerData::new(options.initial_volume()),
             options,
+            streaming: None,
         })
     }
 
@@ -75,6 +85,7 @@ impl Player {
             error_sender: self.error_sender.clone(),
             data: self.data.clone(),
             options: self.options.clone(),
+            streaming: None,
         })
     }
     pub fn change_volume(&mut self, positive: bool) {
@@ -100,6 +111,7 @@ impl Player {
     pub fn play(&mut self, path: &Path) -> Result<(), PlayError> {
         log::info!("Playing file: {:?}", path);
         self.data.set_current_file(Some(path.to_path_buf()));
+        self.streaming = None;
 
         self.stop();
 
@@ -124,6 +136,36 @@ impl Player {
 
         self.sink.set_volume(self.data.volume_f32());
         self.sink.append(decoder);
+
+        Ok(())
+    }
+
+    /// Plays `partial_path` while it is being downloaded. `final_path` is where
+    /// the finished file lands, it is used for seeking once the download is done.
+    pub fn play_streaming(
+        &mut self,
+        partial_path: &Path,
+        final_path: &Path,
+        is_complete: IsComplete,
+    ) -> Result<(), PlayError> {
+        log::info!("Streaming file: {:?}", partial_path);
+        let source = StreamingSource::open(partial_path, is_complete.clone())
+            .map_err(PlayError::StreamOpen)?;
+
+        self.stop();
+        self.data.set_current_file(Some(final_path.to_path_buf()));
+        self.data.set_total_duration(source.total_duration());
+        self.streaming = Some(Streaming {
+            final_path: final_path.to_path_buf(),
+            is_complete,
+        });
+
+        if self.sink.empty() {
+            self.sink = Sink::connect_new(self.stream.mixer());
+        }
+
+        self.sink.set_volume(self.data.volume_f32());
+        self.sink.append(source);
 
         Ok(())
     }
@@ -169,6 +211,19 @@ impl Player {
     pub fn seek_to(&mut self, time: Duration) {
         log::info!("Seek to: {:?}", time);
         if self.is_finished() {
+            return;
+        }
+        if let Some(streaming) = &self.streaming {
+            // A partial file can't be seeked: switch to the finished file if it is there.
+            if !(streaming.is_complete)() {
+                log::info!("Seek ignored, the song is still downloading");
+                return;
+            }
+            let final_path = streaming.final_path.clone();
+            if let Err(e) = self.play_at(&final_path, time) {
+                log::error!("Error playing file: {:?}", e);
+                let _ = self.error_sender.send(e);
+            }
             return;
         }
         let file = self.data.current_file().expect("Current file not set");
