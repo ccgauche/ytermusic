@@ -1,12 +1,30 @@
 use std::process::Stdio;
 
 use log::error;
-use tokio::process::Command;
+use tokio::{
+    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
+    process::Command,
+};
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
     DownloadManager, DownloadManagerMessage, Downloader, MessageHandler, MusicDownloadStatus,
 };
+
+const PROGRESS_PREFIX: &str = "ytermusic-progress";
+const PROGRESS_TEMPLATE: &str = "download:ytermusic-progress %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s";
+
+/// Parses a line printed with `PROGRESS_TEMPLATE` into a percentage.
+/// yt-dlp prints `NA` for unknown values, `total_bytes` is only known for
+/// some formats so the estimate is used as a fallback.
+fn parse_progress(line: &str) -> Option<usize> {
+    let mut parts = line.strip_prefix(PROGRESS_PREFIX)?.split_whitespace();
+    let downloaded: f64 = parts.next()?.parse().ok()?;
+    let total = parts.next()?.parse::<f64>().ok();
+    let estimate = parts.next().and_then(|x| x.parse::<f64>().ok());
+    let total = total.or(estimate).filter(|x| *x > 0.0)?;
+    Some(((downloaded / total * 100.0) as usize).min(100))
+}
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -52,7 +70,9 @@ async fn download_with_ytdlp(
 
     let url = format!("https://www.youtube.com/watch?v={}", video_id);
 
-    let output = Command::new("yt-dlp")
+    // kill_on_drop: when the download task is aborted (e.g. a new playlist is
+    // chosen) yt-dlp must stop too, otherwise it keeps eating bandwidth.
+    let mut child = Command::new("yt-dlp")
         .args([
             "--no-playlist",
             "-f",
@@ -61,18 +81,44 @@ async fn download_with_ytdlp(
             "mp4",
             "-o",
             output_path.to_str().unwrap(),
-            "--no-progress",
             "--quiet",
+            "--progress",
+            "--newline",
+            "--progress-template",
+            PROGRESS_TEMPLATE,
             &url,
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output()
-        .await?;
+        .kill_on_drop(true)
+        .spawn()?;
 
-    if !output.status.success() {
+    let stdout = child.stdout.take().unwrap();
+    let mut stderr = child.stderr.take().unwrap();
+
+    let report_progress = async {
+        let mut lines = BufReader::new(stdout).lines();
+        let mut last_percent = 0;
+        while let Ok(Some(line)) = lines.next_line().await {
+            let Some(percent) = parse_progress(&line) else {
+                continue;
+            };
+            if percent != last_percent {
+                last_percent = percent;
+                sender(DownloadManagerMessage::VideoStatusUpdate(
+                    video_id.to_string(),
+                    MusicDownloadStatus::Downloading(percent),
+                ));
+            }
+        }
+    };
+    let mut error_output = Vec::new();
+    let (_, _) = tokio::join!(report_progress, stderr.read_to_end(&mut error_output));
+    let status = child.wait().await?;
+
+    if !status.success() {
         return Err(DownloadError::YtDlpFailed(
-            String::from_utf8_lossy(&output.stderr).into_owned(),
+            String::from_utf8_lossy(&error_output).into_owned(),
         ));
     }
 
@@ -233,5 +279,19 @@ impl DownloadManager {
             }
         });
         self.handles.lock().unwrap().push(service);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_progress;
+
+    #[test]
+    fn parses_progress_lines() {
+        assert_eq!(parse_progress("ytermusic-progress 1024 4096 NA"), Some(25));
+        assert_eq!(parse_progress("ytermusic-progress 50 NA 100"), Some(50));
+        assert_eq!(parse_progress("ytermusic-progress 4096 4096 NA"), Some(100));
+        assert_eq!(parse_progress("ytermusic-progress 10 NA NA"), None);
+        assert_eq!(parse_progress("[download] something else"), None);
     }
 }

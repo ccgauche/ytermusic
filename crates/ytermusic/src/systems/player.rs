@@ -180,7 +180,10 @@ impl PlayerState {
         let new_ids: Vec<String> = to_download.iter().map(|v| v.video_id.clone()).collect();
         if new_ids != self.last_download_list {
             self.last_download_list = new_ids;
-            DOWNLOAD_MANAGER.set_download_list(to_download);
+            // The song being played is not downloaded yet: fetch it first, alone.
+            let current_first = to_download.front().map(|x| &x.video_id)
+                == self.list.get(self.current).map(|x| &x.video_id);
+            DOWNLOAD_MANAGER.set_download_list(to_download, current_first);
         }
     }
 
