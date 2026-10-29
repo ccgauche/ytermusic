@@ -12,7 +12,7 @@ pub enum DownloaderConfig {
     RustyYtdl,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct GlobalConfig {
     /// Maximum number of parallel downloads.
@@ -23,6 +23,17 @@ pub struct GlobalConfig {
     pub parallel_downloads: u16,
     #[serde(default)]
     pub downloader: DownloaderConfig,
+}
+
+// Written by hand so a freshly generated config.toml gets 4 parallel downloads.
+// A derived Default would write 0, which disables the download queue.
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self {
+            parallel_downloads: parallel_downloads(),
+            downloader: DownloaderConfig::default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -111,8 +122,10 @@ fn default_error_style() -> Style {
     Style::default().fg(Color::Red)
 }
 
+pub const DEFAULT_PARALLEL_DOWNLOADS: u16 = 4;
+
 fn parallel_downloads() -> u16 {
-    4
+    DEFAULT_PARALLEL_DOWNLOADS
 }
 
 fn default_false() -> bool {
@@ -198,5 +211,22 @@ impl Config {
             Some(config)
         };
         opt().unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_enables_parallel_downloads() {
+        assert_eq!(Config::default().global.parallel_downloads, 4);
+    }
+
+    #[test]
+    fn generated_config_file_keeps_parallel_downloads() {
+        let written = toml::to_string_pretty(&Config::default()).unwrap();
+        let read = toml::from_str::<Config>(&written).unwrap();
+        assert_eq!(read.global.parallel_downloads, 4);
     }
 }
